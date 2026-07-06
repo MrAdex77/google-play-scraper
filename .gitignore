@@ -1,0 +1,9 @@
+plan
+CLAUDE.md
+node_modules
+dist
+coverage
+.reference
+*.log
+.DS_Store
+.claude
