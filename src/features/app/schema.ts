@@ -1,0 +1,78 @@
+import { z } from 'zod';
+
+export const appCategorySchema = z.object({
+  name: z.string(),
+  id: z.string().nullable(),
+});
+
+export type AppCategory = z.infer<typeof appCategorySchema>;
+
+const histogramSchema = z.object({
+  '1': z.number(),
+  '2': z.number(),
+  '3': z.number(),
+  '4': z.number(),
+  '5': z.number(),
+});
+
+export const appSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  descriptionHTML: z.string(),
+  summary: z.string().optional(),
+  installs: z.string().optional(),
+  minInstalls: z.number().optional(),
+  maxInstalls: z.number().optional(),
+  score: z.number().min(0).max(5).optional(),
+  scoreText: z.string().optional(),
+  ratings: z.number().optional(),
+  reviews: z.number().optional(),
+  histogram: histogramSchema,
+  price: z.number(),
+  originalPrice: z.number().optional(),
+  discountEndDate: z.number().optional(),
+  free: z.boolean(),
+  currency: z.string().optional(),
+  priceText: z.string(),
+  available: z.boolean(),
+  offersIAP: z.boolean(),
+  IAPRange: z.string().optional(),
+  androidVersion: z.string(),
+  androidVersionText: z.string(),
+  androidMaxVersion: z.string(),
+  developer: z.string(),
+  developerId: z.string(),
+  developerEmail: z.string().optional(),
+  developerWebsite: z.string().optional(),
+  developerAddress: z.string().optional(),
+  developerLegalName: z.string().optional(),
+  developerLegalEmail: z.string().optional(),
+  developerLegalAddress: z.string().optional(),
+  developerLegalPhoneNumber: z.string().optional(),
+  privacyPolicy: z.string().optional(),
+  developerInternalID: z.string(),
+  genre: z.string(),
+  genreId: z.string(),
+  categories: z.array(appCategorySchema),
+  icon: z.string(),
+  headerImage: z.string().optional(),
+  screenshots: z.array(z.string()),
+  video: z.string().optional(),
+  videoImage: z.string().optional(),
+  previewVideo: z.string().optional(),
+  contentRating: z.string().optional(),
+  contentRatingDescription: z.string().optional(),
+  adSupported: z.boolean(),
+  released: z.string().optional(),
+  updated: z.number(),
+  version: z.string(),
+  recentChanges: z.string().optional(),
+  comments: z.array(z.string()),
+  preregister: z.boolean(),
+  earlyAccessEnabled: z.boolean(),
+  isAvailableInPlayPass: z.boolean(),
+  appId: z.string(),
+  url: z.string(),
+});
+
+export type App = z.infer<typeof appSchema>;
