@@ -1,0 +1,7 @@
+dist
+coverage
+pnpm-lock.yaml
+test/fixtures
+.reference
+plan
+CLAUDE.md
