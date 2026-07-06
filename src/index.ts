@@ -13,7 +13,12 @@ export {
 } from './core/errors.js';
 export type { SpecFailure } from './core/errors.js';
 
+export { app } from './features/app/app.js';
+export type { AppOptions } from './features/app/app.js';
+export type { App } from './features/app/schema.js';
+
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
+import { app } from './features/app/app.js';
 
 const gplay = {
   BASE_URL,
@@ -23,6 +28,7 @@ const gplay = {
   collection,
   permission,
   sort,
+  app,
 };
 
 export default gplay;
