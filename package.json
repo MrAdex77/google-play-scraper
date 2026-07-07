@@ -51,6 +51,7 @@
     "test:coverage": "vitest run --project unit --coverage",
     "test:e2e": "vitest run --project e2e",
     "fixtures:update": "tsx scripts/update-fixtures.ts",
+    "example": "tsx examples/all-methods.ts",
     "prepare": "husky",
     "prepublishOnly": "pnpm build"
   },
