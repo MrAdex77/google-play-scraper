@@ -51,6 +51,9 @@ export { datasafety } from './features/datasafety/datasafety.js';
 export type { DataSafetyOptions } from './features/datasafety/datasafety.js';
 export type { DataEntry, DataSafety, SecurityPractice } from './features/datasafety/schema.js';
 
+export { memoized } from './features/memoized/memoized.js';
+export type { MemoizedOptions } from './features/memoized/memoized.js';
+
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
 import { search } from './features/search/search.js';
@@ -62,8 +65,29 @@ import { similar } from './features/similar/similar.js';
 import { reviews } from './features/reviews/reviews.js';
 import { permissions } from './features/permissions/permissions.js';
 import { datasafety } from './features/datasafety/datasafety.js';
+import { memoized } from './features/memoized/memoized.js';
 
-const gplay = {
+export interface GooglePlayClient {
+  BASE_URL: typeof BASE_URL;
+  age: typeof age;
+  category: typeof category;
+  clusters: typeof clusters;
+  collection: typeof collection;
+  permission: typeof permission;
+  sort: typeof sort;
+  app: typeof app;
+  search: typeof search;
+  suggest: typeof suggest;
+  list: typeof list;
+  categories: typeof categories;
+  developer: typeof developer;
+  similar: typeof similar;
+  reviews: typeof reviews;
+  permissions: typeof permissions;
+  datasafety: typeof datasafety;
+}
+
+const gplay: GooglePlayClient & { memoized: typeof memoized } = {
   BASE_URL,
   age,
   category,
@@ -81,6 +105,7 @@ const gplay = {
   reviews,
   permissions,
   datasafety,
+  memoized,
 };
 
 export default gplay;
