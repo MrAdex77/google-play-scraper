@@ -13,6 +13,7 @@ const readFixture = (name: string): string =>
 
 const translateHtml = readFixture('translate.html');
 const minecraftHtml = readFixture('minecraft.html');
+const whereAmIHtml = readFixture('whereami.html');
 
 const fetchReturning = (body: string, status = 200): typeof fetch => {
   const impl: typeof fetch = () => Promise.resolve(new Response(body, { status }));
@@ -58,6 +59,24 @@ describe('app', () => {
     expect(result.price).toBeGreaterThan(0);
     expect(result.currency).toMatch(/^[A-Z]{3}$/);
     expect(typeof result.offersIAP).toBe('boolean');
+  });
+
+  it('parses the Where Am I geography game details page', async () => {
+    const appId = 'com.adex77.WhereAmI';
+    const result = await app({
+      appId,
+      requestOptions: { fetchImpl: fetchReturning(whereAmIHtml) },
+    });
+
+    expect(result.title).toBe('Where Am I? - GeoGuess Game');
+    expect(result.appId).toBe(appId);
+    expect(result.developer).toBe('Adex77');
+    expect(result.free).toBe(true);
+    expect(result.price).toBe(0);
+    expect(result.released).toBe('Jan 2, 2021');
+    expect(result.score).toBeGreaterThanOrEqual(0);
+    expect(result.score).toBeLessThanOrEqual(5);
+    expect(result.screenshots.length).toBeGreaterThan(0);
   });
 
   it('throws a SpecError naming the field when the title path is blank', async () => {
