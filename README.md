@@ -1,5 +1,7 @@
 # google-play-client
 
+[![CI](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml)
+[![Live contract tests](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml)
 ![status](https://img.shields.io/badge/status-under%20construction-orange)
 
 A TypeScript client for scraping public app data from Google Play, built on native `fetch`, `cheerio`, and `zod`.
