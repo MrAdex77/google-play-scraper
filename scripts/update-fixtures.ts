@@ -20,6 +20,7 @@ import {
   REVIEWS_RPC_ID,
   reviewsUrl,
 } from '../src/features/reviews/specs.js';
+import { buildPermissionsBody, permissionsUrl } from '../src/features/permissions/specs.js';
 import { getPath } from '../src/core/path.js';
 import { parseScriptData } from '../src/core/scriptData.js';
 
@@ -163,6 +164,33 @@ function reviewsRecorder(appId: string, initialFile: string, page2File: string):
   };
 }
 
+function permissionsRecorder(appId: string, file: string): Recorder {
+  return {
+    name: 'permissions',
+    async run(client) {
+      const response = await client.request({
+        url: permissionsUrl('en', 'us'),
+        method: 'POST',
+        body: buildPermissionsBody(appId),
+      });
+      await writeFixture(file, response);
+    },
+  };
+}
+
+function dataSafetyRecorder(appId: string, file: string): Recorder {
+  return {
+    name: 'datasafety',
+    async run(client) {
+      const params = new URLSearchParams({ id: appId, hl: 'en' });
+      const html = await client.request({
+        url: `${BASE_URL}/store/apps/datasafety?${params.toString()}`,
+      });
+      await writeFixture(file, html);
+    },
+  };
+}
+
 const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
@@ -183,6 +211,8 @@ const recorders: Recorder[] = [
     'reviews/translate-initial.txt',
     'reviews/translate-page2.txt',
   ),
+  permissionsRecorder('com.google.android.apps.translate', 'permissions/translate.txt'),
+  dataSafetyRecorder('com.google.android.apps.translate', 'datasafety/translate.html'),
 ];
 
 async function main(): Promise<void> {
