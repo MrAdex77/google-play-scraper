@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { similar, type SimilarApp } from '../src/index.js';
+import { liveDescribe, throttled } from './helpers.js';
 
-describe('similar live contract', () => {
+liveDescribe('similar live contract', () => {
   it('returns related apps that exclude the source app', async () => {
     const sourceAppId = 'com.google.android.apps.translate';
-    const items = (await similar({ appId: sourceAppId })) as SimilarApp[];
+    const items = (await similar(throttled({ appId: sourceAppId }))) as SimilarApp[];
 
     expect(items.length).toBeGreaterThanOrEqual(5);
     expect(items.some((item) => item.appId === sourceAppId)).toBe(false);

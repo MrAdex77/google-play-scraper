@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { suggest } from '../src/index.js';
+import { liveDescribe, throttled } from './helpers.js';
 
-describe('suggest live contract', () => {
+liveDescribe('suggest live contract', () => {
   it('returns between one and five nonempty completions', async () => {
-    const results = await suggest({ term: 'pand' });
+    const results = await suggest(throttled({ term: 'pand' }));
 
     expect(results.length).toBeGreaterThanOrEqual(1);
     expect(results.length).toBeLessThanOrEqual(5);

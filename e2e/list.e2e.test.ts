@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { list, type ListItem } from '../src/index.js';
+import { liveDescribe, throttled } from './helpers.js';
 
 const assertValidItem = (item: ListItem): void => {
   expect(item.appId.length).toBeGreaterThan(0);
@@ -13,13 +14,15 @@ const assertValidItem = (item: ListItem): void => {
   }
 };
 
-describe('list live contract', () => {
+liveDescribe('list live contract', () => {
   it('returns exactly ten free games for the top free game collection', async () => {
-    const items = (await list({
-      collection: 'TOP_FREE',
-      category: 'GAME',
-      num: 10,
-    })) as ListItem[];
+    const items = (await list(
+      throttled({
+        collection: 'TOP_FREE',
+        category: 'GAME',
+        num: 10,
+      }),
+    )) as ListItem[];
 
     expect(items).toHaveLength(10);
     for (const item of items) {
@@ -30,11 +33,13 @@ describe('list live contract', () => {
   });
 
   it('returns paid applications with a price above zero', async () => {
-    const items = (await list({
-      collection: 'TOP_PAID',
-      category: 'APPLICATION',
-      num: 5,
-    })) as ListItem[];
+    const items = (await list(
+      throttled({
+        collection: 'TOP_PAID',
+        category: 'APPLICATION',
+        num: 5,
+      }),
+    )) as ListItem[];
 
     expect(items.length).toBeGreaterThan(0);
     for (const item of items) {
@@ -45,7 +50,7 @@ describe('list live contract', () => {
   });
 
   it('returns five valid apps for the grossing collection', async () => {
-    const items = (await list({ collection: 'GROSSING', num: 5 })) as ListItem[];
+    const items = (await list(throttled({ collection: 'GROSSING', num: 5 }))) as ListItem[];
 
     expect(items).toHaveLength(5);
     for (const item of items) {

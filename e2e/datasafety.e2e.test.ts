@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { datasafety } from '../src/index.js';
+import { liveDescribe, throttled } from './helpers.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
-describe('datasafety live contract', () => {
+liveDescribe('datasafety live contract', () => {
   it('returns collected data, security practices, and a privacy policy url', async () => {
-    const result = await datasafety({ appId: TRANSLATE });
+    const result = await datasafety(throttled({ appId: TRANSLATE }));
 
     expect(result.collectedData.length).toBeGreaterThan(0);
     for (const entry of result.collectedData) {

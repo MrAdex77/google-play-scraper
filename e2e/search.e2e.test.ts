@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { search, type App, type SearchResult } from '../src/index.js';
+import { liveDescribe, throttled } from './helpers.js';
 
-describe('search live contract', () => {
+liveDescribe('search live contract', () => {
   it('returns unique valid apps for a broad term', async () => {
-    const results = (await search({ term: 'panda', num: 30 })) as SearchResult[];
+    const results = (await search(throttled({ term: 'panda', num: 30 }))) as SearchResult[];
 
     expect(results.length).toBeGreaterThan(10);
     expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
@@ -22,7 +23,7 @@ describe('search live contract', () => {
   });
 
   it('surfaces the Where Am I game when searching for it', async () => {
-    const results = (await search({ term: 'where am i', num: 30 })) as SearchResult[];
+    const results = (await search(throttled({ term: 'where am i', num: 30 }))) as SearchResult[];
 
     const game = results.find((item) => item.appId === 'com.adex77.WhereAmI');
     expect(game).toBeDefined();
@@ -32,7 +33,9 @@ describe('search live contract', () => {
   });
 
   it('returns only free apps when the price filter is free', async () => {
-    const results = (await search({ term: 'vpn', price: 'free', num: 20 })) as SearchResult[];
+    const results = (await search(
+      throttled({ term: 'vpn', price: 'free', num: 20 }),
+    )) as SearchResult[];
 
     expect(results.length).toBeGreaterThan(0);
     for (const item of results) {
@@ -42,7 +45,7 @@ describe('search live contract', () => {
   });
 
   it('resolves full app details when fullDetail is set', async () => {
-    const results = (await search({ term: 'panda', num: 3, fullDetail: true })) as App[];
+    const results = (await search(throttled({ term: 'panda', num: 3, fullDetail: true }))) as App[];
 
     expect(results).toHaveLength(3);
     for (const item of results) {
