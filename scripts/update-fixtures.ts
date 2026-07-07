@@ -52,7 +52,9 @@ function searchHtmlRecorder(term: string, file: string): Recorder {
 const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
+  appPageRecorder('com.adex77.WhereAmI', 'app/whereami.html'),
   searchHtmlRecorder('panda', 'search/panda.html'),
+  searchHtmlRecorder('where am i', 'search/where-am-i.html'),
 ];
 
 async function main(): Promise<void> {
