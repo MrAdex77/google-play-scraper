@@ -2,17 +2,25 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BASE_URL } from '../src/constants.js';
-import { buildBatchBody } from '../src/core/batchexecute.js';
+import { buildBatchBody, parseBatchResponse } from '../src/core/batchexecute.js';
 import { createHttpClient, type HttpClient } from '../src/core/http.js';
 import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.js';
 import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.js';
-import { category, collection } from '../src/constants.js';
+import { category, collection, sort } from '../src/constants.js';
 import { developerUrl } from '../src/features/developer/specs.js';
 import {
   findSimilarClusterPath,
   similarClusterUrl,
   similarDetailsUrl,
 } from '../src/features/similar/specs.js';
+import {
+  buildInitialReviewsBody,
+  buildPaginatedReviewsBody,
+  REVIEWS_RESPONSE_PATHS,
+  REVIEWS_RPC_ID,
+  reviewsUrl,
+} from '../src/features/reviews/specs.js';
+import { getPath } from '../src/core/path.js';
 import { parseScriptData } from '../src/core/scriptData.js';
 
 interface Recorder {
@@ -128,6 +136,33 @@ function similarRecorder(appId: string, detailsFile: string, clusterFile: string
   };
 }
 
+function reviewsRecorder(appId: string, initialFile: string, page2File: string): Recorder {
+  return {
+    name: 'reviews',
+    async run(client) {
+      const initialText = await client.request({
+        url: reviewsUrl('en', 'us'),
+        method: 'POST',
+        body: buildInitialReviewsBody(sort.NEWEST, appId),
+      });
+      await writeFixture(initialFile, initialText);
+
+      const payload = parseBatchResponse(initialText, REVIEWS_RPC_ID);
+      const token = getPath(payload, REVIEWS_RESPONSE_PATHS.token);
+      if (typeof token !== 'string') {
+        throw new Error(`no reviews pagination token for "${appId}"`);
+      }
+
+      const page2Text = await client.request({
+        url: reviewsUrl('en', 'us'),
+        method: 'POST',
+        body: buildPaginatedReviewsBody(sort.NEWEST, appId, token),
+      });
+      await writeFixture(page2File, page2Text);
+    },
+  };
+}
+
 const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
@@ -142,6 +177,11 @@ const recorders: Recorder[] = [
     'com.google.android.apps.translate',
     'similar/translate-details.html',
     'similar/translate-cluster.html',
+  ),
+  reviewsRecorder(
+    'com.google.android.apps.translate',
+    'reviews/translate-initial.txt',
+    'reviews/translate-page2.txt',
   ),
 ];
 
