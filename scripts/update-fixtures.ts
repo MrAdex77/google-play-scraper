@@ -34,9 +34,27 @@ function appPageRecorder(appId: string, file: string): Recorder {
   };
 }
 
+function searchUrl(term: string): string {
+  const params = new URLSearchParams({ c: 'apps', q: term, hl: 'en', gl: 'us', price: '0' });
+  return `${BASE_URL}/store/search?${params.toString()}`;
+}
+
+function searchHtmlRecorder(term: string, file: string): Recorder {
+  return {
+    name: 'search',
+    async run(client) {
+      const html = await client.request({ url: searchUrl(term) });
+      await writeFixture(file, html);
+    },
+  };
+}
+
 const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
+  appPageRecorder('com.adex77.WhereAmI', 'app/whereami.html'),
+  searchHtmlRecorder('panda', 'search/panda.html'),
+  searchHtmlRecorder('where am i', 'search/where-am-i.html'),
 ];
 
 async function main(): Promise<void> {

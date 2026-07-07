@@ -17,8 +17,13 @@ export { app } from './features/app/app.js';
 export type { AppOptions } from './features/app/app.js';
 export type { App } from './features/app/schema.js';
 
+export { search } from './features/search/search.js';
+export type { SearchOptions } from './features/search/search.js';
+export type { SearchResult } from './features/search/schema.js';
+
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
+import { search } from './features/search/search.js';
 
 const gplay = {
   BASE_URL,
@@ -29,6 +34,7 @@ const gplay = {
   permission,
   sort,
   app,
+  search,
 };
 
 export default gplay;
