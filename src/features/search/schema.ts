@@ -1,18 +1,5 @@
-import { z } from 'zod';
+import { appItemSchema, type AppItem } from '../../core/appItem.js';
 
-export const searchResultSchema = z.object({
-  title: z.string(),
-  appId: z.string(),
-  url: z.string(),
-  icon: z.string(),
-  developer: z.string(),
-  developerId: z.string().optional(),
-  currency: z.string().optional(),
-  price: z.number(),
-  free: z.boolean(),
-  summary: z.string().optional(),
-  scoreText: z.string().optional(),
-  score: z.number().min(0).max(5).optional(),
-});
+export const searchResultSchema = appItemSchema;
 
-export type SearchResult = z.infer<typeof searchResultSchema>;
+export type SearchResult = AppItem;

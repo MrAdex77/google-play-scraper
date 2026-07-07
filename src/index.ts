@@ -24,10 +24,19 @@ export type { SearchResult } from './features/search/schema.js';
 export { suggest } from './features/suggest/suggest.js';
 export type { SuggestOptions } from './features/suggest/suggest.js';
 
+export { list } from './features/list/list.js';
+export type { ListOptions } from './features/list/list.js';
+export type { ListItem } from './features/list/schema.js';
+
+export { categories } from './features/categories/categories.js';
+export type { CategoriesOptions } from './features/categories/categories.js';
+
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
 import { search } from './features/search/search.js';
 import { suggest } from './features/suggest/suggest.js';
+import { list } from './features/list/list.js';
+import { categories } from './features/categories/categories.js';
 
 const gplay = {
   BASE_URL,
@@ -40,6 +49,8 @@ const gplay = {
   app,
   search,
   suggest,
+  list,
+  categories,
 };
 
 export default gplay;

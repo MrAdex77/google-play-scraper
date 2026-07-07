@@ -1,0 +1,55 @@
+import { describe, expect, it } from 'vitest';
+import { list, type ListItem } from '../src/index.js';
+
+const assertValidItem = (item: ListItem): void => {
+  expect(item.appId.length).toBeGreaterThan(0);
+  expect(item.title.length).toBeGreaterThan(0);
+  expect(item.url.startsWith('https://play.google.com')).toBe(true);
+  expect(typeof item.price).toBe('number');
+  expect(typeof item.free).toBe('boolean');
+  if (item.score !== undefined) {
+    expect(item.score).toBeGreaterThanOrEqual(0);
+    expect(item.score).toBeLessThanOrEqual(5);
+  }
+};
+
+describe('list live contract', () => {
+  it('returns exactly ten free games for the top free game collection', async () => {
+    const items = (await list({
+      collection: 'TOP_FREE',
+      category: 'GAME',
+      num: 10,
+    })) as ListItem[];
+
+    expect(items).toHaveLength(10);
+    for (const item of items) {
+      assertValidItem(item);
+      expect(item.free).toBe(true);
+      expect(item.price).toBe(0);
+    }
+  });
+
+  it('returns paid applications with a price above zero', async () => {
+    const items = (await list({
+      collection: 'TOP_PAID',
+      category: 'APPLICATION',
+      num: 5,
+    })) as ListItem[];
+
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      assertValidItem(item);
+      expect(item.price).toBeGreaterThan(0);
+      expect(item.free).toBe(false);
+    }
+  });
+
+  it('returns five valid apps for the grossing collection', async () => {
+    const items = (await list({ collection: 'GROSSING', num: 5 })) as ListItem[];
+
+    expect(items).toHaveLength(5);
+    for (const item of items) {
+      assertValidItem(item);
+    }
+  });
+});

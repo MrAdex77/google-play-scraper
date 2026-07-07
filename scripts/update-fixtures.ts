@@ -5,6 +5,8 @@ import { BASE_URL } from '../src/constants.js';
 import { buildBatchBody } from '../src/core/batchexecute.js';
 import { createHttpClient, type HttpClient } from '../src/core/http.js';
 import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.js';
+import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.js';
+import { category, collection } from '../src/constants.js';
 
 interface Recorder {
   name: string;
@@ -66,6 +68,30 @@ function suggestRecorder(term: string, file: string): Recorder {
   };
 }
 
+function listRecorder(
+  collectionValue: keyof typeof collection,
+  categoryValue: keyof typeof category,
+  num: number,
+  file: string,
+): Recorder {
+  return {
+    name: 'list',
+    async run(client) {
+      const body = buildListBody({
+        num: num.toString(),
+        collection: CLUSTER_NAMES[collection[collectionValue]],
+        category: category[categoryValue],
+      });
+      const response = await client.request({
+        url: listUrl('en', 'us'),
+        method: 'POST',
+        body,
+      });
+      await writeFixture(file, response);
+    },
+  };
+}
+
 const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
@@ -73,6 +99,7 @@ const recorders: Recorder[] = [
   searchHtmlRecorder('panda', 'search/panda.html'),
   searchHtmlRecorder('where am i', 'search/where-am-i.html'),
   suggestRecorder('pand', 'suggest/pand.txt'),
+  listRecorder('TOP_FREE', 'GAME', 100, 'list/topfree-game.txt'),
 ];
 
 async function main(): Promise<void> {
