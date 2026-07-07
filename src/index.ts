@@ -39,6 +39,10 @@ export { similar } from './features/similar/similar.js';
 export type { SimilarOptions } from './features/similar/similar.js';
 export type { SimilarApp } from './features/similar/schema.js';
 
+export { reviews } from './features/reviews/reviews.js';
+export type { ReviewsOptions } from './features/reviews/reviews.js';
+export type { Review, ReviewsResult } from './features/reviews/schema.js';
+
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
 import { search } from './features/search/search.js';
@@ -47,6 +51,7 @@ import { list } from './features/list/list.js';
 import { categories } from './features/categories/categories.js';
 import { developer } from './features/developer/developer.js';
 import { similar } from './features/similar/similar.js';
+import { reviews } from './features/reviews/reviews.js';
 
 const gplay = {
   BASE_URL,
@@ -63,6 +68,7 @@ const gplay = {
   categories,
   developer,
   similar,
+  reviews,
 };
 
 export default gplay;
