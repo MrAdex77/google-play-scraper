@@ -50,6 +50,7 @@
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:e2e": "vitest run --project e2e",
+    "check:package": "pnpm build && publint && attw --pack .",
     "fixtures:update": "tsx scripts/update-fixtures.ts",
     "example": "tsx examples/all-methods.ts",
     "prepare": "husky",
@@ -70,6 +71,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.4",
     "@commitlint/cli": "^21.2.0",
     "@commitlint/config-conventional": "^21.2.0",
     "@eslint/js": "^10",
@@ -80,6 +82,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "prettier": "^3.9.4",
+    "publint": "^0.3.21",
     "tsdown": "^0.22.3",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3",
