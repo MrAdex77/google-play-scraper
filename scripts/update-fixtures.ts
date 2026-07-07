@@ -7,6 +7,13 @@ import { createHttpClient, type HttpClient } from '../src/core/http.js';
 import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.js';
 import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.js';
 import { category, collection } from '../src/constants.js';
+import { developerUrl } from '../src/features/developer/specs.js';
+import {
+  findSimilarClusterPath,
+  similarClusterUrl,
+  similarDetailsUrl,
+} from '../src/features/similar/specs.js';
+import { parseScriptData } from '../src/core/scriptData.js';
 
 interface Recorder {
   name: string;
@@ -92,6 +99,35 @@ function listRecorder(
   };
 }
 
+function developerRecorder(devId: string, file: string): Recorder {
+  return {
+    name: 'developer',
+    async run(client) {
+      const html = await client.request({ url: developerUrl(devId, 'en', 'us') });
+      await writeFixture(file, html);
+    },
+  };
+}
+
+function similarRecorder(appId: string, detailsFile: string, clusterFile: string): Recorder {
+  return {
+    name: 'similar',
+    async run(client) {
+      const detailsHtml = await client.request({ url: similarDetailsUrl(appId, 'us') });
+      await writeFixture(detailsFile, detailsHtml);
+
+      const clusterPath = findSimilarClusterPath(parseScriptData(detailsHtml));
+      if (clusterPath === undefined) {
+        throw new Error(`no similar cluster found for "${appId}"`);
+      }
+      const clusterHtml = await client.request({
+        url: similarClusterUrl(clusterPath, 'en', 'us'),
+      });
+      await writeFixture(clusterFile, clusterHtml);
+    },
+  };
+}
+
 const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
@@ -100,6 +136,13 @@ const recorders: Recorder[] = [
   searchHtmlRecorder('where am i', 'search/where-am-i.html'),
   suggestRecorder('pand', 'suggest/pand.txt'),
   listRecorder('TOP_FREE', 'GAME', 100, 'list/topfree-game.txt'),
+  developerRecorder('5700313618786177705', 'developer/google.html'),
+  developerRecorder('Mojang', 'developer/mojang.html'),
+  similarRecorder(
+    'com.google.android.apps.translate',
+    'similar/translate-details.html',
+    'similar/translate-cluster.html',
+  ),
 ];
 
 async function main(): Promise<void> {
