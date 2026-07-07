@@ -92,16 +92,6 @@ function listRecorder(
   };
 }
 
-function categoriesRecorder(file: string): Recorder {
-  return {
-    name: 'categories',
-    async run(client) {
-      const html = await client.request({ url: `${BASE_URL}/store/apps` });
-      await writeFixture(file, html);
-    },
-  };
-}
-
 const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
@@ -110,7 +100,6 @@ const recorders: Recorder[] = [
   searchHtmlRecorder('where am i', 'search/where-am-i.html'),
   suggestRecorder('pand', 'suggest/pand.txt'),
   listRecorder('TOP_FREE', 'GAME', 100, 'list/topfree-game.txt'),
-  categoriesRecorder('categories/store-home.html'),
 ];
 
 async function main(): Promise<void> {
