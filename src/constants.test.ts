@@ -31,9 +31,11 @@ describe('constants', () => {
     expect(category.APPLICATION).toBe('APPLICATION');
     expect(category.ANDROID_WEAR).toBe('ANDROID_WEAR');
     expect(category.FAMILY).toBe('FAMILY');
+    expect(category.FAMILY_PRETEND).toBe('FAMILY_PRETEND');
     expect(category.GAME).toBe('GAME');
     expect(category.GAME_WORD).toBe('GAME_WORD');
-    expect(Object.keys(category)).toHaveLength(54);
+    expect(Object.keys(category)).toHaveLength(60);
     expect(Object.keys(category).filter((key) => key.startsWith('GAME'))).toHaveLength(18);
+    expect(Object.keys(category).filter((key) => key.startsWith('FAMILY'))).toHaveLength(7);
   });
 });
