@@ -191,6 +191,37 @@ function dataSafetyRecorder(appId: string, file: string): Recorder {
   };
 }
 
+const SYNTHETIC_DETAILS_LIKE_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <title>details-like</title>
+  </head>
+  <body>
+    <script nonce="a">AF_initDataCallback({key: 'ds:4', hash: '1', data:[["from-ds4"]], sideChannel: {}});</script>
+    <script nonce="b">AF_initDataCallback({key: 'ds:5', hash: '2', data:[[["Panda App"], ["com.panda.app"]], [null, "5,000,000+"], {"nested": {"deep": "value"}}], sideChannel: {}});</script>
+    <script nonce="c">AF_initDataCallback({key: 'ds:9', hash: '3', data:[oops not valid json], sideChannel: {}});</script>
+    <script nonce="e">var somePrefix = 1; var AF_dataServiceRequests = {'ds:4': {id: 'rpcFour', request: [[null]]}, 'ds:5': {id: 'rpcFive', request: [[null]]}}; var AF_initDataChunkQueue = [];</script>
+  </body>
+</html>
+`;
+
+const SYNTHETIC_BATCH_CHUNKED = String.raw`)]}'
+
+347
+[["wrb.fr","rpcChunk","[[\"suggestion-one\"],[\"suggestion-two\"]]",null,null,null,"generic"],["di",42],["af.httprm",42,"c",13]]
+26
+[["e",4,null,null,131]]
+`;
+
+function syntheticRecorder(file: string, content: string): Recorder {
+  return {
+    name: 'synthetic',
+    async run() {
+      await writeFixture(file, content);
+    },
+  };
+}
+
 const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
@@ -213,10 +244,20 @@ const recorders: Recorder[] = [
   ),
   permissionsRecorder('com.google.android.apps.translate', 'permissions/translate.txt'),
   dataSafetyRecorder('com.google.android.apps.translate', 'datasafety/translate.html'),
+  syntheticRecorder('synthetic/details-like.html', SYNTHETIC_DETAILS_LIKE_HTML),
+  syntheticRecorder('synthetic/batch-chunked.txt', SYNTHETIC_BATCH_CHUNKED),
 ];
 
+function parseRequestedName(args: readonly string[]): string | undefined {
+  const onlyIndex = args.indexOf('--only');
+  if (onlyIndex !== -1) {
+    return args[onlyIndex + 1];
+  }
+  return args[0];
+}
+
 async function main(): Promise<void> {
-  const [, , requested] = process.argv;
+  const requested = parseRequestedName(process.argv.slice(2));
   const selected = requested
     ? recorders.filter((recorder) => recorder.name === requested)
     : recorders;
