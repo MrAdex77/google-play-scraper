@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { app } from '../src/index.js';
+import { liveDescribe, throttled } from './helpers.js';
 
-describe('app live contract', () => {
+liveDescribe('app live contract', () => {
   it('returns details for a popular free app', async () => {
     const appId = 'com.google.android.apps.translate';
-    const result = await app({ appId });
+    const result = await app(throttled({ appId }));
 
     expect(result.title.length).toBeGreaterThan(0);
     expect(result.appId).toBe(appId);
@@ -17,7 +18,7 @@ describe('app live contract', () => {
 
   it('returns details for a mobile geography game', async () => {
     const appId = 'com.adex77.WhereAmI';
-    const result = await app({ appId });
+    const result = await app(throttled({ appId }));
 
     expect(result.title).toBe('Where Am I? - GeoGuess Game');
     expect(result.appId).toBe(appId);
@@ -30,7 +31,7 @@ describe('app live contract', () => {
   });
 
   it('returns details for a paid app', async () => {
-    const result = await app({ appId: 'com.mojang.minecraftpe' });
+    const result = await app(throttled({ appId: 'com.mojang.minecraftpe' }));
 
     expect(result.title.length).toBeGreaterThan(0);
     expect(typeof result.score).toBe('number');
