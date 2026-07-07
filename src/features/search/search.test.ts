@@ -6,10 +6,14 @@ import { searchResultSchema, type SearchResult } from './schema.js';
 import type { App } from '../app/schema.js';
 import { ValidationError } from '../../core/errors.js';
 
-const pandaHtml = readFileSync(
-  fileURLToPath(new URL('../../../test/fixtures/search/panda.html', import.meta.url)),
-  'utf8',
-);
+const readFixture = (name: string): string =>
+  readFileSync(
+    fileURLToPath(new URL(`../../../test/fixtures/search/${name}`, import.meta.url)),
+    'utf8',
+  );
+
+const pandaHtml = readFixture('panda.html');
+const whereAmIHtml = readFixture('where-am-i.html');
 
 const fetchReturning = (body: string, status = 200): typeof fetch => {
   const impl: typeof fetch = () => Promise.resolve(new Response(body, { status }));
@@ -86,6 +90,21 @@ describe('search fixture parsing', () => {
     }
     expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
     expect(results.some((item) => item.free && item.price === 0)).toBe(true);
+  });
+
+  it('finds the Where Am I game among the where am i results', async () => {
+    const results = (await search({
+      term: 'where am i',
+      num: 30,
+      requestOptions: { fetchImpl: fetchReturning(whereAmIHtml) },
+    })) as SearchResult[];
+
+    const game = results.find((item) => item.appId === 'com.adex77.WhereAmI');
+    expect(game).toBeDefined();
+    expect(game?.title).toBe('Where Am I? - GeoGuess Game');
+    expect(game?.developer).toBe('Adex77');
+    expect(game?.free).toBe(true);
+    expect(game?.url).toBe('https://play.google.com/store/apps/details?id=com.adex77.WhereAmI');
   });
 
   it('prepends the exact match app as the first result', async () => {

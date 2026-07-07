@@ -21,6 +21,16 @@ describe('search live contract', () => {
     }
   });
 
+  it('surfaces the Where Am I game when searching for it', async () => {
+    const results = (await search({ term: 'where am i', num: 30 })) as SearchResult[];
+
+    const game = results.find((item) => item.appId === 'com.adex77.WhereAmI');
+    expect(game).toBeDefined();
+    expect(game?.title).toBe('Where Am I? - GeoGuess Game');
+    expect(game?.developer).toBe('Adex77');
+    expect(game?.free).toBe(true);
+  });
+
   it('returns only free apps when the price filter is free', async () => {
     const results = (await search({ term: 'vpn', price: 'free', num: 20 })) as SearchResult[];
 
