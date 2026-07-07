@@ -47,6 +47,10 @@ export { permissions } from './features/permissions/permissions.js';
 export type { PermissionsOptions } from './features/permissions/permissions.js';
 export type { AppPermission } from './features/permissions/schema.js';
 
+export { datasafety } from './features/datasafety/datasafety.js';
+export type { DataSafetyOptions } from './features/datasafety/datasafety.js';
+export type { DataEntry, DataSafety, SecurityPractice } from './features/datasafety/schema.js';
+
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
 import { search } from './features/search/search.js';
@@ -57,6 +61,7 @@ import { developer } from './features/developer/developer.js';
 import { similar } from './features/similar/similar.js';
 import { reviews } from './features/reviews/reviews.js';
 import { permissions } from './features/permissions/permissions.js';
+import { datasafety } from './features/datasafety/datasafety.js';
 
 const gplay = {
   BASE_URL,
@@ -75,6 +80,7 @@ const gplay = {
   similar,
   reviews,
   permissions,
+  datasafety,
 };
 
 export default gplay;
