@@ -1,0 +1,34 @@
+name: Live contract tests
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:e2e
+      - if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo
+            const open = await github.rest.issues.listForRepo({ owner, repo, state: 'open', labels: 'contract-breakage' })
+            if (open.data.length === 0) {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: 'Live contract tests are failing',
+                labels: ['contract-breakage'],
+                body: 'The scheduled run against Google Play failed. Google likely changed a page structure. Follow docs/RUNBOOK.md.'
+              })
+            }
