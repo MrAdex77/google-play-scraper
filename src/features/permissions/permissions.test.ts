@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { permissions, type PermissionsOptions } from './permissions.js';
+import { mapPermissions } from './specs.js';
 import { permissionSchema, type AppPermission } from './schema.js';
 import { permission } from '../../constants.js';
 import { ValidationError } from '../../core/errors.js';
@@ -60,6 +61,43 @@ describe('permissions fixture parsing', () => {
     for (const name of short) {
       expect(typeof name).toBe('string');
     }
+  });
+});
+
+describe('mapPermissions fallbacks', () => {
+  it('returns nothing for a non array payload', () => {
+    expect(mapPermissions('nope')).toEqual([]);
+    expect(mapPermissions(undefined)).toEqual([]);
+  });
+
+  it('skips sections that are not arrays', () => {
+    const payload: unknown[] = [];
+    payload[permission.COMMON] = 'not-a-section';
+    payload[permission.OTHER] = [[null, null, [[null, 'read contacts']]]];
+
+    expect(mapPermissions(payload)).toEqual([
+      { permission: 'read contacts', type: permission.OTHER },
+    ]);
+  });
+
+  it('skips groups without a permission list and entries without text', () => {
+    const payload: unknown[] = [];
+    payload[permission.COMMON] = [
+      [null, null, 'not-a-list'],
+      [
+        null,
+        null,
+        [
+          [null, ''],
+          [null, 'camera access'],
+          [null, 42],
+        ],
+      ],
+    ];
+
+    expect(mapPermissions(payload)).toEqual([
+      { permission: 'camera access', type: permission.COMMON },
+    ]);
   });
 });
 

@@ -133,6 +133,22 @@ describe('extract', () => {
     expect(specError.message).toContain('installs');
   });
 
+  it('prefixes nested zod issue messages with their field path', () => {
+    let thrown: unknown;
+    try {
+      extract(
+        [{ name: 42 }],
+        { entry: { paths: [[0]], schema: z.object({ name: z.string() }) } },
+        'nested',
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(SpecError);
+    const failure = (thrown as SpecError).failures[0];
+    expect(failure?.message).toContain('name:');
+  });
+
   it('captures a thrown Error message from a transform', () => {
     const source = loadScriptData();
     let thrown: unknown;

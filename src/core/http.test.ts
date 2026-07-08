@@ -121,6 +121,28 @@ describe('createHttpClient', () => {
     expect((error as RateLimitError).status).toBe(429);
   });
 
+  it('ignores unparseable and negative Retry-After headers and still retries', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(fakeResponse({ status: 429, headers: { 'Retry-After': 'soon' } }))
+      .mockResolvedValueOnce(fakeResponse({ status: 429, headers: { 'Retry-After': '-5' } }))
+      .mockResolvedValueOnce(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl });
+
+    const pending = client.request({ url: 'https://x' });
+    await vi.runAllTimersAsync();
+
+    await expect(pending).resolves.toBe('ok');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('builds a client around the global fetch when nothing is injected', () => {
+    const client = createHttpClient();
+    expect(typeof client.request).toBe('function');
+  });
+
   it('retries network rejections and surfaces an HttpError with the cause', async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, 'random').mockReturnValue(0);

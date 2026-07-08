@@ -57,4 +57,23 @@ liveDescribe('list live contract', () => {
       assertValidItem(item);
     }
   });
+
+  it('returns valid apps across social, productivity, and trivia game categories', async () => {
+    const categories = ['SOCIAL', 'PRODUCTIVITY', 'GAME_TRIVIA'] as const;
+
+    for (const category of categories) {
+      const items = (await list(
+        throttled({
+          collection: 'TOP_FREE',
+          category,
+          num: 5,
+        }),
+      )) as ListItem[];
+
+      expect(items.length).toBeGreaterThan(0);
+      for (const item of items) {
+        assertValidItem(item);
+      }
+    }
+  });
 });

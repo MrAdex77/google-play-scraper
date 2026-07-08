@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { app, type AppOptions } from './app.js';
+import { getPath } from '../../core/path.js';
 import { parseScriptData } from '../../core/scriptData.js';
 import { NotFoundError, SpecError, ValidationError } from '../../core/errors.js';
 
@@ -77,6 +78,74 @@ describe('app', () => {
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.score).toBeLessThanOrEqual(5);
     expect(result.screenshots.length).toBeGreaterThan(0);
+  });
+
+  it('resolves version, update time, and changelog through the shifted fallback paths', async () => {
+    const appId = 'com.google.android.apps.translate';
+    const baseline = await app({
+      appId,
+      requestOptions: { fetchImpl: fetchReturning(translateHtml) },
+    });
+
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    details.push({ '141': details[140], '145': details[144], '146': details[145] });
+    details[140] = null;
+    details[144] = null;
+    details[145] = null;
+    const shiftedHtml = buildScriptData('ds:5', ds5);
+
+    const result = await app({
+      appId,
+      requestOptions: { fetchImpl: fetchReturning(shiftedHtml) },
+    });
+
+    expect(result.version).toBe(baseline.version);
+    expect(result.updated).toBe(baseline.updated);
+    expect(result.recentChanges).toBe(baseline.recentChanges);
+    expect(result.androidVersion).toBe(baseline.androidVersion);
+    expect(result.androidVersionText).toBe(baseline.androidVersionText);
+  });
+
+  it('reports VARY variants when the version block is absent everywhere', async () => {
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    details[140] = null;
+    details[69] = null;
+    const blankedHtml = buildScriptData('ds:5', ds5);
+
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(blankedHtml) },
+    });
+
+    expect(result.version).toBe('VARY');
+    expect(result.androidVersion).toBe('VARY');
+    expect(result.androidVersionText).toBe('Varies with device');
+    expect(result.developerEmail).toBeUndefined();
+    expect(result.developerLegalAddress).toBeUndefined();
+    expect(result.developerLegalPhoneNumber).toBeUndefined();
+  });
+
+  it('exposes the original price when a discount is active', async () => {
+    const data = parseScriptData(minecraftHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
+    const pricePair = offer[1] as unknown[];
+    pricePair[1] = [10_990_000];
+    const discountedHtml = buildScriptData('ds:5', ds5);
+
+    const result = await app({
+      appId: 'com.mojang.minecraftpe',
+      requestOptions: { fetchImpl: fetchReturning(discountedHtml) },
+    });
+
+    expect(result.originalPrice).toBe(10.99);
+    expect(result.price).toBeGreaterThan(0);
+    expect(result.free).toBe(false);
   });
 
   it('throws a SpecError naming the field when the title path is blank', async () => {

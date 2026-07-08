@@ -147,6 +147,100 @@ describe('search pagination', () => {
   });
 });
 
+const exactMatchNode = (id: string): unknown[] => {
+  const detail: unknown[] = [];
+  detail[0] = [`App ${id}`];
+  detail[68] = [
+    `Dev ${id}`,
+    [null, null, null, null, [null, null, `/store/apps/dev?id=${id}-dev`]],
+  ];
+  detail[73] = [[null, `Summary of ${id}`]];
+  detail[95] = [[null, null, null, [null, null, `https://icon.example/${id}`]]];
+  const node16: unknown[] = [];
+  node16[2] = detail;
+  node16[3] = { '12': [[id]] };
+  const node17: unknown[] = [
+    [[null, null, null, null, [null, null, `/store/apps/details?id=${id}`]]],
+  ];
+  const root: unknown[] = [];
+  root[16] = node16;
+  root[17] = node17;
+  return root;
+};
+
+const searchPageWithSection = (section: unknown[]): string =>
+  buildScriptData('ds:4', [[null, [section]]]);
+
+const sectionWithApps = (ids: string[]): unknown[] => {
+  const section: unknown[] = [];
+  section[22] = [ids.map((id) => [coreData(id)])];
+  return section;
+};
+
+describe('search malformed pages', () => {
+  it('returns no results when the sections block is not an array', async () => {
+    const html = buildScriptData('ds:4', [[null, 'not-sections']]);
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results).toEqual([]);
+  });
+
+  it('returns no results when no section carries apps', async () => {
+    const emptySection: unknown[] = [];
+    emptySection[22] = [[]];
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(emptySection)) },
+    })) as SearchResult[];
+
+    expect(results).toEqual([]);
+  });
+
+  it('skips a malformed exact match block and keeps the section apps', async () => {
+    const section = sectionWithApps(['a', 'b']);
+    section[23] = ['garbage'];
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+  });
+
+  it('does not duplicate an exact match already present in the results', async () => {
+    const section = sectionWithApps(['a', 'b']);
+    section[23] = exactMatchNode('a');
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+  });
+
+  it('prepends a priceless exact match with a derived developerId', async () => {
+    const section = sectionWithApps(['a']);
+    section[23] = exactMatchNode('x');
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(results[0]?.developerId).toBe('x-dev');
+    expect(results[0]?.price).toBe(0);
+    expect(results[0]?.url).toBe('https://play.google.com/store/apps/details?id=x');
+  });
+});
+
 describe('search options', () => {
   it('maps the price filter into the query string', async () => {
     const paid = recordingFetch(pandaHtml);

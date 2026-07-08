@@ -5,7 +5,7 @@ import { createDeveloper, developer, type DeveloperOptions } from './developer.j
 import { developerAppSchema, type DeveloperApp } from './schema.js';
 import { developerUrl } from './specs.js';
 import type { App } from '../app/schema.js';
-import { ValidationError } from '../../core/errors.js';
+import { SpecError, ValidationError } from '../../core/errors.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -53,6 +53,69 @@ const developerBatch = (ids: string[], nextToken: string | null): string => {
   const json = JSON.stringify(frame);
   return `)]}'\n\n${json.length.toString()}\n${json}`;
 };
+
+const buildDsThree = (data: unknown): string =>
+  `<script>AF_initDataCallback({key: 'ds:3', hash: '1', data:${JSON.stringify(data)}, sideChannel: {}});</script>`;
+
+const pricelessNameCore = (id: string): unknown[] => {
+  const core: unknown[] = [];
+  core[0] = [id];
+  core[1] = [null, null, null, [null, null, `https://icon.example/${id}`]];
+  core[3] = `App ${id}`;
+  core[10] = [null, null, null, null, [null, null, `/store/apps/details?id=${id}`]];
+  core[14] = `Dev ${id}`;
+  return core;
+};
+
+const namePageHtml = (ids: string[]): string => {
+  const section: unknown[] = [];
+  section[22] = [ids.map((id) => [pricelessNameCore(id)])];
+  return buildDsThree([[null, [section]]]);
+};
+
+describe('developer degraded pages', () => {
+  it('parses a priceless name page item as costing zero', async () => {
+    const items = (await developer({
+      devId: 'Adex77',
+      requestOptions: { fetchImpl: fetchReturning(namePageHtml(['com.adex77.WhereAmI'])) },
+    })) as DeveloperApp[];
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.appId).toBe('com.adex77.WhereAmI');
+    expect(items[0]?.price).toBe(0);
+    expect(items[0]?.free).toBe(false);
+    expect(items[0]?.currency).toBeUndefined();
+    expect(items[0]?.score).toBeUndefined();
+  });
+
+  it('throws a SpecError naming url when the link cell is missing', async () => {
+    const core = pricelessNameCore('com.adex77.WhereAmI');
+    core[10] = null;
+    const section: unknown[] = [];
+    section[22] = [[[core]]];
+    const html = buildDsThree([[null, [section]]]);
+
+    let thrown: unknown;
+    try {
+      await developer({ devId: 'Adex77', requestOptions: { fetchImpl: fetchReturning(html) } });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(SpecError);
+    const failedFields = (thrown as SpecError).failures.map((failure) => failure.field);
+    expect(failedFields).toContain('url');
+  });
+
+  it('returns an empty list when the developer page carries no apps', async () => {
+    const items = (await developer({
+      devId: '5700313618786177705',
+      requestOptions: { fetchImpl: fetchReturning(buildDsThree([[]])) },
+    })) as DeveloperApp[];
+
+    expect(items).toEqual([]);
+  });
+});
 
 describe('developer url selection', () => {
   it('routes an all-digit devId through the numeric dev path', () => {

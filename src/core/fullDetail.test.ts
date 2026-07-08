@@ -62,6 +62,22 @@ describe('resolveFullDetail', () => {
     expect(peak).toBeLessThanOrEqual(2);
   });
 
+  it('skips empty slots in a sparse items array', async () => {
+    const items = new Array<{ appId: string }>(3);
+    items[0] = { appId: 'first' };
+    items[2] = { appId: 'last' };
+    const seen: string[] = [];
+
+    const result = await resolveFullDetail(items, options, (params: GetAppParams) => {
+      seen.push(params.appId);
+      return Promise.resolve({ appId: params.appId });
+    });
+
+    expect(seen.sort()).toEqual(['first', 'last']);
+    expect(result[0]).toEqual({ appId: 'first' });
+    expect(result[2]).toEqual({ appId: 'last' });
+  });
+
   it('returns an empty array without invoking getApp for no items', async () => {
     let calls = 0;
     const result = await resolveFullDetail([], options, () => {

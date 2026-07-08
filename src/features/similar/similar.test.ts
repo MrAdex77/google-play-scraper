@@ -91,6 +91,86 @@ describe('similar fixture parsing', () => {
   });
 });
 
+const serviceTable = `<script>; var AF_dataServiceRequests = {'ds:3' : {id: 'ag2B9c'}}; var AF_initDataChunkQueue</script>`;
+
+const detailsWithClusters = (clusters: unknown): string => {
+  const root: unknown[] = [];
+  root[1] = [null, clusters];
+  const block = `<script>AF_initDataCallback({key: 'ds:3', hash: '1', data:${JSON.stringify(root)}, sideChannel: {}});</script>`;
+  return `${serviceTable}${block}`;
+};
+
+const clusterEntry = (title: string, path: unknown): unknown[] => {
+  const entry: unknown[] = [];
+  entry[21] = [null, [title, null, [null, null, null, null, [null, null, path]]]];
+  return entry;
+};
+
+describe('similar cluster fallbacks', () => {
+  it('returns undefined when the clusters block is not an array', () => {
+    const data = parseScriptData(detailsWithClusters('not-clusters'));
+    expect(findSimilarClusterPath(data)).toBeUndefined();
+  });
+
+  it('skips unrelated titles and non string paths', () => {
+    const clusters = [
+      clusterEntry('More by this developer', '/unrelated'),
+      clusterEntry('Similar apps', null),
+    ];
+    const data = parseScriptData(detailsWithClusters(clusters));
+    expect(findSimilarClusterPath(data)).toBeUndefined();
+  });
+
+  it('accepts a Similar games cluster', () => {
+    const clusters = [clusterEntry('Similar games', '/store/apps/collection/cluster?gsr=games')];
+    const data = parseScriptData(detailsWithClusters(clusters));
+    expect(findSimilarClusterPath(data)).toBe('/store/apps/collection/cluster?gsr=games');
+  });
+
+  it('parses a priceless cluster item as costing zero', async () => {
+    const core: unknown[] = [];
+    core[0] = ['com.priceless.app'];
+    core[1] = [null, null, null, [null, null, 'https://icon.example/priceless']];
+    core[3] = 'Priceless App';
+    core[10] = [null, null, null, null, [null, null, '/store/apps/details?id=com.priceless.app']];
+    core[14] = 'Priceless Dev';
+    const cluster: unknown[] = [];
+    cluster[21] = [[core]];
+    const clusterPage = `<script>AF_initDataCallback({key: 'ds:3', hash: '1', data:${JSON.stringify([[null, [cluster]]])}, sideChannel: {}});</script>`;
+    const details = detailsWithClusters([
+      clusterEntry('Similar apps', '/store/apps/collection/cluster?gsr=apps'),
+    ]);
+    const { fetchImpl } = sequenceFetch([details, clusterPage]);
+
+    const items = (await similar({
+      appId: SOURCE_APP_ID,
+      requestOptions: { fetchImpl },
+    })) as SimilarApp[];
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.appId).toBe('com.priceless.app');
+    expect(items[0]?.price).toBe(0);
+    expect(items[0]?.free).toBe(false);
+    expect(items[0]?.currency).toBeUndefined();
+  });
+
+  it('returns an empty list when the cluster page carries no apps', async () => {
+    const details = detailsWithClusters([
+      clusterEntry('Similar apps', '/store/apps/collection/cluster?gsr=apps'),
+    ]);
+    const emptyClusterPage = `<script>AF_initDataCallback({key: 'ds:3', hash: '1', data:[[]], sideChannel: {}});</script>`;
+    const { fetchImpl, count } = sequenceFetch([details, emptyClusterPage]);
+
+    const items = (await similar({
+      appId: SOURCE_APP_ID,
+      requestOptions: { fetchImpl },
+    })) as SimilarApp[];
+
+    expect(items).toEqual([]);
+    expect(count()).toBe(2);
+  });
+});
+
 describe('similar options', () => {
   it('rejects a missing appId through validation', async () => {
     await expect(similar({} as SimilarOptions)).rejects.toBeInstanceOf(ValidationError);
