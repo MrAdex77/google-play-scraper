@@ -186,3 +186,14 @@ describe('categoriesFromDetail', () => {
     expect(categoriesFromDetail([])).toEqual([]);
   });
 });
+
+describe('description sanitization', () => {
+  it('strips null bytes and control characters from parsed description text', () => {
+    expect(descriptionText('good\u0000 text\u0007')).toBe('good text');
+  });
+
+  it('strips control characters from the localized html description', () => {
+    const detail = detailWithDescriptions('Hallo\u0000 Welt', 'Hello');
+    expect(descriptionHtmlLocalized(detail)).toBe('Hallo Welt');
+  });
+});

@@ -80,6 +80,24 @@ describe('app', () => {
     expect(result.screenshots.length).toBeGreaterThan(0);
   });
 
+  it('sanitizes control characters out of the changelog and description', async () => {
+    const appId = 'com.google.android.apps.translate';
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const changelogHolder = (details[144] as unknown[])[1] as unknown[];
+    changelogHolder[1] = 'Bug\u0000 fixes\u0007 and speedups';
+    const dirtyHtml = buildScriptData('ds:5', ds5);
+
+    const result = await app({
+      appId,
+      requestOptions: { fetchImpl: fetchReturning(dirtyHtml) },
+    });
+
+    expect(result.recentChanges).toBe('Bug fixes and speedups');
+    expect(result.description.includes(String.fromCharCode(0))).toBe(false);
+  });
+
   it('resolves version, update time, and changelog through the shifted fallback paths', async () => {
     const appId = 'com.google.android.apps.translate';
     const baseline = await app({
