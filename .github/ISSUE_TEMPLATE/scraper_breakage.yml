@@ -1,0 +1,43 @@
+name: Scraper breakage
+description: A method started failing with SpecError or returns wrong data after a Google Play layout change
+title: 'breakage: '
+labels:
+  - scraper-breakage
+body:
+  - type: dropdown
+    id: method
+    attributes:
+      label: Affected method
+      options:
+        - app
+        - search
+        - suggest
+        - list
+        - developer
+        - similar
+        - reviews
+        - permissions
+        - datasafety
+        - categories
+    validations:
+      required: true
+  - type: input
+    id: app-id
+    attributes:
+      label: appId or options used
+      placeholder: com.google.android.apps.translate
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: SpecError output
+      description: Paste the full error, including every failing field and the paths that were tried.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: country-lang
+    attributes:
+      label: country and lang options
+      placeholder: country us, lang en
