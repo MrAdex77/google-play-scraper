@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { app, type AppOptions } from './app.js';
+import { getPath } from '../../core/path.js';
 import { parseScriptData } from '../../core/scriptData.js';
 import { NotFoundError, SpecError, ValidationError } from '../../core/errors.js';
 
@@ -112,6 +113,7 @@ describe('app', () => {
     const ds5 = data.blocks['ds:5'] as unknown[];
     const details = (ds5[1] as unknown[])[2] as unknown[];
     details[140] = null;
+    details[69] = null;
     const blankedHtml = buildScriptData('ds:5', ds5);
 
     const result = await app({
@@ -122,13 +124,16 @@ describe('app', () => {
     expect(result.version).toBe('VARY');
     expect(result.androidVersion).toBe('VARY');
     expect(result.androidVersionText).toBe('Varies with device');
+    expect(result.developerEmail).toBeUndefined();
+    expect(result.developerLegalAddress).toBeUndefined();
+    expect(result.developerLegalPhoneNumber).toBeUndefined();
   });
 
   it('exposes the original price when a discount is active', async () => {
     const data = parseScriptData(minecraftHtml);
     const ds5 = data.blocks['ds:5'] as unknown[];
     const details = (ds5[1] as unknown[])[2] as unknown[];
-    const offer = (details[57] as unknown[][][][])[0][0][0][0] as unknown[];
+    const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
     const pricePair = offer[1] as unknown[];
     pricePair[1] = [10_990_000];
     const discountedHtml = buildScriptData('ds:5', ds5);
