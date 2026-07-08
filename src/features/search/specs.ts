@@ -96,3 +96,24 @@ export function priceGoogleValue(value: PriceFilter): number {
       return 0;
   }
 }
+
+export function matchesPriceFilter(free: boolean, filter: PriceFilter): boolean {
+  switch (filter) {
+    case 'free':
+      return free;
+    case 'paid':
+      return !free;
+    default:
+      return true;
+  }
+}
+
+export function filterByPrice<T extends { free: boolean }>(
+  items: readonly T[],
+  filter: PriceFilter,
+): T[] {
+  if (filter === 'all') {
+    return [...items];
+  }
+  return items.filter((item) => matchesPriceFilter(item.free, filter));
+}

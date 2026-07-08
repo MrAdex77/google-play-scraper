@@ -13,6 +13,7 @@ import { searchResultSchema, type SearchResult } from './schema.js';
 import {
   CLUSTER_MAPPINGS,
   exactMatchSpecs,
+  filterByPrice,
   INITIAL_MAPPINGS,
   priceGoogleValue,
   searchItemSpecs,
@@ -105,7 +106,7 @@ export function createSearch(getApp: GetApp<App>) {
       context: SEARCH_CONTEXT,
     });
 
-    const sliced = items.slice(0, parsed.num);
+    const sliced = filterByPrice(items, parsed.price).slice(0, parsed.num);
 
     if (parsed.fullDetail) {
       return resolveFullDetail(sliced, parsed, getApp);
