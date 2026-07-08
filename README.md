@@ -1,9 +1,9 @@
-# google-play-client
+# @mradex77/google-play-scraper
 
-[![npm version](https://img.shields.io/npm/v/google-play-client.svg)](https://www.npmjs.com/package/google-play-client)
+[![npm version](https://img.shields.io/npm/v/@mradex77/google-play-scraper.svg)](https://www.npmjs.com/package/@mradex77/google-play-scraper)
 [![CI](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml)
 [![Live contract tests](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml)
-[![license](https://img.shields.io/npm/l/google-play-client.svg)](LICENSE)
+[![license](https://img.shields.io/npm/l/@mradex77/google-play-scraper.svg)](LICENSE)
 
 A modern TypeScript rewrite of the unmaintained [`google-play-scraper`](https://github.com/facundoolano/google-play-scraper). It scrapes public app data from Google Play — app details, search, suggestions, lists, developer pages, similar apps, reviews, permissions, and data safety. Ships as both ESM and CommonJS, returns fully typed results validated with [zod](https://zod.dev), runs on native `fetch` with no runtime HTTP dependency, and isolates every fragile Google Play array path behind a resilient spec layer that is exercised by daily live contract tests.
 
@@ -12,7 +12,7 @@ The public method names, options, and constants match the original library, so m
 ## Installation
 
 ```
-npm install google-play-client
+npm install @mradex77/google-play-scraper
 ```
 
 Requires Node.js 22.12 or newer.
@@ -22,14 +22,14 @@ Requires Node.js 22.12 or newer.
 The package exposes named exports and an aggregate default export. Use whichever style you prefer.
 
 ```typescript
-import gplay from 'google-play-client';
+import gplay from '@mradex77/google-play-scraper';
 
 const app = await gplay.app({ appId: 'com.google.android.apps.translate' });
 console.log(app.title, app.score);
 ```
 
 ```typescript
-import { app, type App } from 'google-play-client';
+import { app, type App } from '@mradex77/google-play-scraper';
 
 const details: App = await app({ appId: 'com.google.android.apps.translate' });
 console.log(details.installs);
@@ -38,7 +38,7 @@ console.log(details.installs);
 CommonJS works too:
 
 ```javascript
-const gplay = require('google-play-client').default;
+const gplay = require('@mradex77/google-play-scraper').default;
 
 gplay.search({ term: 'panda' }).then((results) => {
   console.log(results.length);
@@ -79,7 +79,7 @@ Retrieves the full detail of an application.
 | `appId` | `string` | required | The Google Play id (the `?id=` url parameter). |
 
 ```typescript
-import { app } from 'google-play-client';
+import { app } from '@mradex77/google-play-scraper';
 
 const details = await app({ appId: 'com.google.android.apps.translate' });
 ```
@@ -138,7 +138,7 @@ Retrieves apps that match a search term.
 | `fullDetail` | `boolean`                   | `false`  | When `true`, fetch and return the full `App` for each result. |
 
 ```typescript
-import { search } from 'google-play-client';
+import { search } from '@mradex77/google-play-scraper';
 
 const results = await search({ term: 'panda', num: 5 });
 ```
@@ -173,7 +173,7 @@ Given a partial term, returns up to five search completions.
 | `term` | `string` | required | The partial search query. |
 
 ```typescript
-import { suggest } from 'google-play-client';
+import { suggest } from '@mradex77/google-play-scraper';
 
 const suggestions = await suggest({ term: 'pand' });
 ```
@@ -197,7 +197,7 @@ Retrieves a ranked collection of apps, optionally scoped to a category and an ag
 | `fullDetail` | `boolean`    | `false`                | When `true`, return the full `App` for each result.      |
 
 ```typescript
-import { list, collection, category } from 'google-play-client';
+import { list, collection, category } from '@mradex77/google-play-scraper';
 
 const items = await list({
   collection: collection.TOP_FREE,
@@ -219,7 +219,7 @@ Returns other apps published by the same developer. The `devId` is either the nu
 | `fullDetail` | `boolean` | `false`  | When `true`, return the full `App` for each result. |
 
 ```typescript
-import { developer } from 'google-play-client';
+import { developer } from '@mradex77/google-play-scraper';
 
 const apps = await developer({ devId: '5700313618786177705' });
 ```
@@ -236,7 +236,7 @@ Returns apps related to a given app.
 | `fullDetail` | `boolean` | `false`  | When `true`, return the full `App` for each result. |
 
 ```typescript
-import { similar } from 'google-play-client';
+import { similar } from '@mradex77/google-play-scraper';
 
 const apps = await similar({ appId: 'com.google.android.apps.translate' });
 ```
@@ -256,7 +256,7 @@ Retrieves reviews for an app. Reviews always come back inside a `{ data, nextPag
 | `nextPaginationToken` | `string`  | none          | Continue from a token returned by a previous call.       |
 
 ```typescript
-import { reviews, sort } from 'google-play-client';
+import { reviews, sort } from '@mradex77/google-play-scraper';
 
 const first = await reviews({ appId: 'com.google.android.apps.translate', sort: sort.NEWEST });
 
@@ -301,7 +301,7 @@ Returns the permissions an app requests.
 | `short` | `boolean` | `false`  | When `true`, return a flat `string[]` of common permission names. |
 
 ```typescript
-import { permissions } from 'google-play-client';
+import { permissions } from '@mradex77/google-play-scraper';
 
 const detailed = await permissions({ appId: 'com.google.android.apps.translate' });
 const names = await permissions({ appId: 'com.google.android.apps.translate', short: true });
@@ -327,7 +327,7 @@ Returns the data safety section of an app.
 | `appId` | `string` | required | The Google Play id of the app. |
 
 ```typescript
-import { datasafety } from 'google-play-client';
+import { datasafety } from '@mradex77/google-play-scraper';
 
 const safety = await datasafety({ appId: 'com.google.android.apps.translate' });
 ```
@@ -359,7 +359,7 @@ Returns the Google Play category taxonomy as a list of category ids.
 | `requestOptions` | `object` | none    | See [common options](#common-options). |
 
 ```typescript
-import { categories } from 'google-play-client';
+import { categories } from '@mradex77/google-play-scraper';
 
 const ids = await categories();
 ```
@@ -388,7 +388,7 @@ Returns a client whose methods share an in-memory LRU cache, so identical calls 
 | `max`      | `number` | `1000`   | Maximum number of cached entries.              |
 
 ```typescript
-import { memoized } from 'google-play-client';
+import { memoized } from '@mradex77/google-play-scraper';
 
 const client = memoized({ maxAgeMs: 60000, max: 500 });
 
@@ -411,7 +411,7 @@ The library re-exports the same constant sets as the original, frozen and typed.
 | `permission` | `COMMON` (`0`), `OTHER` (`1`).                                                                                    |
 
 ```typescript
-import { category, collection, sort, age, permission } from 'google-play-client';
+import { category, collection, sort, age, permission } from '@mradex77/google-play-scraper';
 ```
 
 ## Error handling
@@ -430,7 +430,7 @@ Every failure surfaces as a typed subclass of `GooglePlayError`, so you can bran
 | `SpecError`       | `ParseError`      | Extraction fails; lists every failing field and the paths that were tried.                |
 
 ```typescript
-import { app, NotFoundError, SpecError } from 'google-play-client';
+import { app, NotFoundError, SpecError } from '@mradex77/google-play-scraper';
 
 try {
   const details = await app({ appId: 'com.does.not.exist' });
@@ -457,7 +457,7 @@ Pass `throttle` to cap requests per second, and `requestOptions` to override the
 | `retries`            | `number`                 | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.      |
 
 ```typescript
-import { app } from 'google-play-client';
+import { app } from '@mradex77/google-play-scraper';
 
 const details = await app({
   appId: 'com.google.android.apps.translate',

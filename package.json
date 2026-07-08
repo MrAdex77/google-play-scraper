@@ -1,5 +1,5 @@
 {
-  "name": "google-play-client",
+  "name": "@mradex77/google-play-scraper",
   "version": "0.0.0",
   "description": "TypeScript client for scraping public Google Play app data",
   "keywords": [
@@ -13,6 +13,9 @@
     "typescript"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
