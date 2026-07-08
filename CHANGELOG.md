@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/MrAdex77/google-play-scraper/compare/v0.1.0...v0.1.1) (2026-07-08)
+
+
+### Miscellaneous Chores
+
+* release 0.1.1 ([9556912](https://github.com/MrAdex77/google-play-scraper/commit/95569122782f79a0f08e82b9e11b76637475ad5c))
+
 ## 0.1.0 (2026-07-08)
 
 ### Features
