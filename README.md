@@ -517,6 +517,33 @@ const details = await app({
 
 Retries use exponential backoff and honor a `Retry-After` header when present.
 
+### Routing requests through a proxy
+
+The native `fetch` of Node.js ignores the `HTTP_PROXY` and `HTTPS_PROXY` environment variables by default. On Node.js 24 and newer, opt in when launching your process:
+
+```
+NODE_USE_ENV_PROXY=1 node app.js
+```
+
+For per-call control, or on Node.js 22, inject a proxied `fetch` from [undici](https://github.com/nodejs/undici) through `fetchImpl`:
+
+```typescript
+import { ProxyAgent, fetch as proxiedFetch, type RequestInit } from 'undici';
+import { app } from '@mradex77/google-play-scraper';
+
+const dispatcher = new ProxyAgent('http://user:password@proxy.example.com:8080');
+
+const fetchImpl = ((input: string | URL, init?: RequestInit) =>
+  proxiedFetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
+
+const details = await app({
+  appId: 'com.google.android.apps.translate',
+  requestOptions: { fetchImpl },
+});
+```
+
+`ProxyAgent` also accepts an options object when the proxy needs more configuration, such as a `token` carrying a preformatted `Proxy-Authorization` header or TLS settings for the proxy connection.
+
 ## Resilience
 
 Google Play serves its data as deeply nested, unlabeled arrays whose positions shift a few times a year. That is what breaks scrapers. Every positional path in this library lives as a typed constant in a `specs.ts` file per feature, never inline in logic, and each field is resolved through an ordered list of candidate paths so a single moved index does not take the whole call down. Extraction collects all field failures in one pass and throws a single `SpecError` naming every broken field and the paths that were tried, which is exactly the input the maintenance runbook needs. Unknown data enters as `unknown` and only leaves through a zod schema, so a layout change fails loudly at the boundary rather than three layers up.
@@ -544,7 +571,7 @@ Call [reviews](#reviews) with the app id. Use `paginate: true` and the returned 
 
 ### How do I avoid getting rate limited or blocked?
 
-Set the `throttle` option to cap requests per second, keep the default retry behavior, and reuse results through the [memoized](#memoized) client. If you run large jobs, spread them out over time. A `RateLimitError` or `BlockedError` tells you exactly when Google started pushing back.
+Set the `throttle` option to cap requests per second, keep the default retry behavior, and reuse results through the [memoized](#memoized) client. If you run large jobs, spread them out over time or [route them through a proxy](#routing-requests-through-a-proxy). A `RateLimitError` or `BlockedError` tells you exactly when Google started pushing back.
 
 ### Does this library work in the browser?
 
