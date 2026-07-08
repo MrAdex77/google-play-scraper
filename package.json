@@ -1,17 +1,38 @@
 {
   "name": "@mradex77/google-play-scraper",
   "version": "0.1.1",
-  "description": "TypeScript client for scraping public Google Play app data",
+  "description": "Google Play scraper for Node.js with a fully typed TypeScript API. Fetch app details, search results, top charts, reviews, permissions and data safety from the Play Store.",
   "keywords": [
     "google-play",
     "google-play-scraper",
+    "google-play-api",
     "play-store",
+    "play-store-api",
+    "playstore",
     "scraper",
+    "web-scraping",
     "android",
+    "android-apps",
     "app-store",
+    "app-data",
+    "app-reviews",
+    "reviews",
     "aso",
-    "typescript"
+    "app-store-optimization",
+    "market-research",
+    "typescript",
+    "nodejs",
+    "zod"
   ],
+  "homepage": "https://github.com/MrAdex77/google-play-scraper#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrAdex77/google-play-scraper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MrAdex77/google-play-scraper/issues"
+  },
+  "author": "MrAdex77 (https://github.com/MrAdex77)",
   "license": "MIT",
   "publishConfig": {
     "access": "public"

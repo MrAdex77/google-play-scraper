@@ -1,0 +1,41 @@
+name: Bug report
+description: Something does not work as documented
+title: 'bug: '
+labels:
+  - bug
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: 0.1.1
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: 22.12.0
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: The smallest snippet that reproduces the problem, including the method and options used.
+      render: typescript
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Paste the full error output. For a SpecError, include the listed fields and paths.
+    validations:
+      required: true
