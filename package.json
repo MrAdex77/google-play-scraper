@@ -91,7 +91,7 @@
   },
   "dependencies": {
     "cheerio": "1.2.0",
-    "lru-cache": "^11.5.1",
+    "lru-cache": "^11.5.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
