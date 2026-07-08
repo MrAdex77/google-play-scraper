@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { createSearch, search, type SearchOptions } from './search.js';
+import { filterByPrice, matchesPriceFilter } from './specs.js';
 import { searchResultSchema, type SearchResult } from './schema.js';
 import type { App } from '../app/schema.js';
 import { ValidationError } from '../../core/errors.js';
@@ -238,6 +239,84 @@ describe('search malformed pages', () => {
     expect(results[0]?.developerId).toBe('x-dev');
     expect(results[0]?.price).toBe(0);
     expect(results[0]?.url).toBe('https://play.google.com/store/apps/details?id=x');
+  });
+});
+
+const paidCoreData = (id: string): unknown[] => {
+  const core = coreData(id);
+  core[8] = [null, [[990000, 'USD']]];
+  return core;
+};
+
+const mixedPageHtml = (freeIds: string[], paidIds: string[]): string => {
+  const apps = [...freeIds.map((id) => [coreData(id)]), ...paidIds.map((id) => [paidCoreData(id)])];
+  const section: unknown[] = [];
+  section[22] = [apps];
+  return buildScriptData('ds:4', [[null, [section]]]);
+};
+
+describe('search price filtering', () => {
+  it('keeps only paid apps when price is paid even if the page mixes both', async () => {
+    const html = mixedPageHtml(['free1', 'free2'], ['paid1', 'paid2']);
+
+    const results = (await search({
+      term: 'panda',
+      price: 'paid',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['paid1', 'paid2']);
+    expect(results.every((item) => !item.free)).toBe(true);
+  });
+
+  it('keeps only free apps when price is free', async () => {
+    const html = mixedPageHtml(['free1'], ['paid1', 'paid2']);
+
+    const results = (await search({
+      term: 'panda',
+      price: 'free',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['free1']);
+    expect(results.every((item) => item.free)).toBe(true);
+  });
+
+  it('returns both free and paid apps when price is all', async () => {
+    const html = mixedPageHtml(['free1'], ['paid1']);
+
+    const results = (await search({
+      term: 'panda',
+      price: 'all',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId).sort()).toEqual(['free1', 'paid1']);
+  });
+});
+
+describe('filterByPrice', () => {
+  const items = [
+    { free: true, appId: 'a' },
+    { free: false, appId: 'b' },
+    { free: true, appId: 'c' },
+  ];
+
+  it('drops paid entries for the free filter and free entries for the paid filter', () => {
+    expect(filterByPrice(items, 'free').map((item) => item.appId)).toEqual(['a', 'c']);
+    expect(filterByPrice(items, 'paid').map((item) => item.appId)).toEqual(['b']);
+  });
+
+  it('returns a copy of every entry for the all filter', () => {
+    const result = filterByPrice(items, 'all');
+    expect(result).toEqual(items);
+    expect(result).not.toBe(items);
+  });
+
+  it('matches individual entries through matchesPriceFilter', () => {
+    expect(matchesPriceFilter(true, 'free')).toBe(true);
+    expect(matchesPriceFilter(true, 'paid')).toBe(false);
+    expect(matchesPriceFilter(false, 'all')).toBe(true);
   });
 });
 
