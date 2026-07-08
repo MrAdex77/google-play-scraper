@@ -21,6 +21,15 @@ describe('parseScriptData', () => {
     expect(data.serviceRequests).toEqual({ 'ds:4': 'rpcFour', 'ds:5': 'rpcFive' });
   });
 
+  it('skips script blocks missing their key or payload', () => {
+    const keyless = `<script>AF_initDataCallback({hash: '1', data:[1], sideChannel: {}});</script>`;
+    const payloadless = `<script>AF_initDataCallback({key: 'ds:7', hash: '1'});</script>`;
+    const valid = `<script>AF_initDataCallback({key: 'ds:8', hash: '1', data:[8], sideChannel: {}});</script>`;
+    const data = parseScriptData(`${keyless}${payloadless}${valid}`);
+    expect(Object.keys(data.blocks)).toEqual(['ds:8']);
+    expect(data.blocks['ds:8']).toEqual([8]);
+  });
+
   it('returns empty records when the markers are absent', () => {
     const data = parseScriptData('<html><body>nothing here</body></html>');
     expect(data.blocks).toEqual({});

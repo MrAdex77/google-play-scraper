@@ -48,6 +48,17 @@ describe('error taxonomy', () => {
     expect(error.message).toContain('country');
   });
 
+  it('uses the bare issue message when a zod issue has no path', () => {
+    const result = z.string().safeParse(42);
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    const error = ValidationError.fromZod(result.error, 'suggest');
+    const issueMessage = result.error.issues[0]?.message ?? '';
+    expect(error.message).toBe(`suggest: ${issueMessage}`);
+  });
+
   it('names every failed field in a SpecError message', () => {
     const failures: SpecFailure[] = [
       { field: 'title', paths: [[0, 0, 1]], message: 'expected string' },

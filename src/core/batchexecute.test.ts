@@ -67,6 +67,16 @@ describe('parseBatchResponse', () => {
     expect(parseBatchResponse(text, 'rpcWhole')).toEqual([1, 2, 3]);
   });
 
+  it('skips frames that are not arrays before matching the envelope', () => {
+    const text = `)]}'\n[5,["wrb.fr","rpcMixed","[true]",null,null,null,"generic"]]`;
+    expect(parseBatchResponse(text, 'rpcMixed')).toEqual([true]);
+  });
+
+  it('skips unparsable lines and matches the envelope on a later line', () => {
+    const text = `)]}'\n[not json\n[["wrb.fr","rpcLater","[7]",null,null,null,"generic"]]`;
+    expect(parseBatchResponse(text, 'rpcLater')).toEqual([7]);
+  });
+
   it('throws a ParseError when no envelope matches the rpc id', () => {
     expect(() => parseBatchResponse(chunked, 'unknown-rpc')).toThrow(ParseError);
   });
