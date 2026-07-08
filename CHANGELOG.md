@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.1.1...v0.2.0) (2026-07-08)
+
+
+### Features
+
+* **core:** add control-character text sanitizer ([e0ad03c](https://github.com/MrAdex77/google-play-scraper/commit/e0ad03c40d21dd1cdeda70afd8795d255641adbb))
+
+
+### Bug Fixes
+
+* **app:** strip control characters from description and changelog ([4835a58](https://github.com/MrAdex77/google-play-scraper/commit/4835a58e4649dae5750f322e72645e8457396591))
+* **developer:** fall back to alternate layout when apps are empty ([ca3c6b4](https://github.com/MrAdex77/google-play-scraper/commit/ca3c6b422f2a02215d88822c08248ca5b81d0219))
+* **developer:** fall back to alternate layout when apps are empty ([03fd28f](https://github.com/MrAdex77/google-play-scraper/commit/03fd28ff14595baac3ad39884f2437222aa5b1fe))
+* **reviews:** strip control characters from review text ([06260cf](https://github.com/MrAdex77/google-play-scraper/commit/06260cf4c78a1ada393868d94734681471e569ef))
+* **search:** enforce price filter client-side ([7bd2b69](https://github.com/MrAdex77/google-play-scraper/commit/7bd2b694279d88e19b20b427c2e7128bdb3e015f))
+* **search:** enforce price filter client-side ([2a56f47](https://github.com/MrAdex77/google-play-scraper/commit/2a56f4776ce6ffc855c5a5d1bd7a22ada31003a4))
+
 ## [0.1.1](https://github.com/MrAdex77/google-play-scraper/compare/v0.1.0...v0.1.1) (2026-07-08)
 
 
