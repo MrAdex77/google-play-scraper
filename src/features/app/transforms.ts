@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { getPath } from '../../core/path.js';
+import { sanitizeText } from '../../core/text.js';
 import type { AppCategory } from './schema.js';
 
 const COMMENT_ROOTS = ['ds:8', 'ds:9'] as const;
@@ -10,7 +11,7 @@ export function descriptionHtmlLocalized(value: unknown): string | undefined {
   const translated = getPath(value, [12, 0, 0, 1]);
   const original = getPath(value, [72, 0, 1]);
   const resolved = typeof translated === 'string' && translated.length > 0 ? translated : original;
-  return typeof resolved === 'string' ? resolved : undefined;
+  return sanitizeText(resolved);
 }
 
 export function descriptionText(html: unknown): string | undefined {
@@ -18,7 +19,7 @@ export function descriptionText(html: unknown): string | undefined {
     return undefined;
   }
   const document = cheerio.load(`<div>${html.replace(/<br>/g, '\r\n')}</div>`);
-  return document('div').text();
+  return sanitizeText(document('div').text());
 }
 
 export function priceText(value: unknown): string {

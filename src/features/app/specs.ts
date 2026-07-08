@@ -1,4 +1,5 @@
 import { getPath } from '../../core/path.js';
+import { sanitizeText } from '../../core/text.js';
 import type { SpecMap } from '../../core/spec.js';
 import { appSchema } from './schema.js';
 import {
@@ -182,6 +183,7 @@ export const appSpecs = {
       ['ds:5', 1, 2, -1, '145', 1, 1],
     ],
     schema: shape.recentChanges,
+    transform: sanitizeText,
   },
   comments: { paths: [[]], schema: shape.comments, transform: extractComments },
   preregister: {

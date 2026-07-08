@@ -1,6 +1,7 @@
 import { BASE_URL } from '../../constants.js';
 import type { Path } from '../../core/path.js';
 import type { SpecMap } from '../../core/spec.js';
+import { sanitizeText } from '../../core/text.js';
 import { reviewSchema } from './schema.js';
 
 export const REVIEWS_RPC_ID = 'UsvDTd';
@@ -57,6 +58,10 @@ function emptyToUndefined(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
+function cleanReplyText(value: unknown): string | undefined {
+  return emptyToUndefined(sanitizeText(value));
+}
+
 function buildCriteria(entry: unknown): RawCriteria {
   if (!Array.isArray(entry)) {
     return { criteria: undefined, rating: null };
@@ -79,9 +84,9 @@ export const reviewItemSpecs = {
   date: { paths: [[5]], schema: shape.date, transform: generateDate },
   score: { paths: [[2]], schema: shape.score },
   title: { paths: [[0]], schema: shape.title, transform: alwaysNull },
-  text: { paths: [[4]], schema: shape.text },
+  text: { paths: [[4]], schema: shape.text, transform: sanitizeText },
   replyDate: { paths: [[7, 2]], schema: shape.replyDate, transform: generateDate },
-  replyText: { paths: [[7, 1]], schema: shape.replyText, transform: emptyToUndefined },
+  replyText: { paths: [[7, 1]], schema: shape.replyText, transform: cleanReplyText },
   version: { paths: [[10]], schema: shape.version, transform: emptyToUndefined },
   thumbsUp: { paths: [[6]], schema: shape.thumbsUp },
   criterias: { paths: [[12, 0]], schema: shape.criterias, transform: mapCriterias },
