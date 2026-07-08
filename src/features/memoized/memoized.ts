@@ -35,7 +35,31 @@ type Memoizer = <Args, Result>(
   fn: AsyncMethod<Args, Result>,
 ) => AsyncMethod<Args, Result>;
 
+function createKeyBuilder(): (name: string, options: unknown) => string {
+  const identities = new WeakMap<WeakKey, number>();
+  let nextIdentity = 0;
+
+  const identityOf = (value: WeakKey): number => {
+    let identity = identities.get(value);
+    if (identity === undefined) {
+      nextIdentity += 1;
+      identity = nextIdentity;
+      identities.set(value, identity);
+    }
+    return identity;
+  };
+
+  const encode = (value: unknown): unknown =>
+    typeof value === 'function' || value instanceof AbortSignal
+      ? `identity:${identityOf(value).toString()}`
+      : value;
+
+  return (name, options) =>
+    `${name}:${JSON.stringify(options, (_property, value: unknown) => encode(value))}`;
+}
+
 function createMemoizer(maxAgeMs: number, max: number): Memoizer {
+  const keyFor = createKeyBuilder();
   const lifecycle = new LRUCache<string, () => void>({
     max,
     ttl: maxAgeMs,
@@ -50,7 +74,7 @@ function createMemoizer(maxAgeMs: number, max: number): Memoizer {
     const store = new Map<string, Promise<Result>>();
 
     return (options: Args): Promise<Result> => {
-      const key = `${name}:${JSON.stringify(options)}`;
+      const key = keyFor(name, options);
 
       if (lifecycle.has(key)) {
         const cached = store.get(key);
