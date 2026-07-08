@@ -50,6 +50,19 @@ describe('suggest', () => {
     expect(results).toEqual([]);
   });
 
+  it('returns an empty array when the suggestion entries are not an array', async () => {
+    const payload = JSON.stringify([['not-entries']]);
+    const frame = JSON.stringify([
+      ['wrb.fr', SUGGEST_RPC_ID, payload, null, null, null, 'generic'],
+    ]);
+    const results = await suggest({
+      term: 'pand',
+      requestOptions: { fetchImpl: fetchReturning(`)]}'\n\n${frame}`) },
+    });
+
+    expect(results).toEqual([]);
+  });
+
   it('posts a body that decodes back to the expected payload', async () => {
     const { fetchImpl, bodies } = recordingFetch(pandFixture);
 
