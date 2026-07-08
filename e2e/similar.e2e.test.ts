@@ -3,6 +3,19 @@ import { similar, type SimilarApp } from '../src/index.js';
 import { liveDescribe, throttled } from './helpers.js';
 
 liveDescribe('similar live contract', () => {
+  it('returns similar games for the Where Am I geography game', async () => {
+    const sourceAppId = 'com.adex77.WhereAmI';
+    const items = (await similar(throttled({ appId: sourceAppId }))) as SimilarApp[];
+
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.some((item) => item.appId === sourceAppId)).toBe(false);
+    for (const item of items) {
+      expect(item.appId.length).toBeGreaterThan(0);
+      expect(item.title.length).toBeGreaterThan(0);
+      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+    }
+  });
+
   it('returns related apps that exclude the source app', async () => {
     const sourceAppId = 'com.google.android.apps.translate';
     const items = (await similar(throttled({ appId: sourceAppId }))) as SimilarApp[];

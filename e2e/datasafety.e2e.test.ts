@@ -22,4 +22,18 @@ liveDescribe('datasafety live contract', () => {
 
     expect(result.privacyPolicyUrl?.startsWith('http')).toBe(true);
   });
+
+  it('returns a typed safety report for the Where Am I geography game', async () => {
+    const result = await datasafety(throttled({ appId: 'com.adex77.WhereAmI' }));
+
+    expect(Array.isArray(result.sharedData)).toBe(true);
+    expect(Array.isArray(result.collectedData)).toBe(true);
+    expect(Array.isArray(result.securityPractices)).toBe(true);
+    for (const entry of [...result.sharedData, ...result.collectedData]) {
+      expect(entry.data.length).toBeGreaterThan(0);
+      expect(typeof entry.optional).toBe('boolean');
+      expect(entry.type.length).toBeGreaterThan(0);
+    }
+    expect(result.privacyPolicyUrl?.startsWith('http')).toBe(true);
+  });
 });

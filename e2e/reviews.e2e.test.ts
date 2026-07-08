@@ -5,6 +5,19 @@ import { liveDescribe, throttled } from './helpers.js';
 const TRANSLATE = 'com.google.android.apps.translate';
 
 liveDescribe('reviews live contract', () => {
+  it('returns a valid first page for the Where Am I geography game', async () => {
+    const result = await reviews(throttled({ appId: 'com.adex77.WhereAmI', paginate: true }));
+
+    expect(result.data.length).toBeGreaterThan(0);
+    for (const review of result.data) {
+      expect(review.id.length).toBeGreaterThan(0);
+      expect(review.userName.length).toBeGreaterThan(0);
+      expect(review.score).toBeGreaterThanOrEqual(1);
+      expect(review.score).toBeLessThanOrEqual(5);
+      expect(Number.isNaN(Date.parse(review.date))).toBe(false);
+    }
+  });
+
   it('accumulates exactly the requested number of reviews with unique ids', async () => {
     const result = await reviews(throttled({ appId: TRANSLATE, num: 200 }));
 

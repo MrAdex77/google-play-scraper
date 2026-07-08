@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { app } from '../src/index.js';
+import { app, NotFoundError } from '../src/index.js';
 import { liveDescribe, throttled } from './helpers.js';
 
 liveDescribe('app live contract', () => {
@@ -39,5 +39,32 @@ liveDescribe('app live contract', () => {
     expect(result.score).toBeLessThanOrEqual(5);
     expect(result.free).toBe(false);
     expect(result.price).toBeGreaterThan(0);
+  });
+
+  it('returns categorized details for a social app', async () => {
+    const result = await app(throttled({ appId: 'com.instagram.android' }));
+
+    expect(result.title).toContain('Instagram');
+    expect(result.genreId).toBe('SOCIAL');
+    expect(result.categories.some((category) => category.id === 'SOCIAL')).toBe(true);
+    expect(typeof result.adSupported).toBe('boolean');
+    expect(result.installs?.endsWith('+')).toBe(true);
+  });
+
+  it('localizes the geography game details for another language and country', async () => {
+    const result = await app(
+      throttled({ appId: 'com.adex77.WhereAmI', lang: 'pl', country: 'pl' }),
+    );
+
+    expect(result.appId).toBe('com.adex77.WhereAmI');
+    expect(result.title.length).toBeGreaterThan(0);
+    expect(result.description.length).toBeGreaterThan(0);
+    expect(result.free).toBe(true);
+  });
+
+  it('rejects a nonexistent package with a NotFoundError', async () => {
+    await expect(
+      app(throttled({ appId: 'com.adex77.definitely.not.a.real.app' })),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

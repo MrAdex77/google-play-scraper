@@ -20,6 +20,17 @@ liveDescribe('permissions live contract', () => {
     }
   });
 
+  it('returns typed entries for the Where Am I geography game', async () => {
+    const result = await permissions(throttled({ appId: 'com.adex77.WhereAmI' }));
+
+    expect(result.length).toBeGreaterThan(0);
+    for (const entry of result) {
+      const item = entry as { permission: string; type: number };
+      expect(item.permission.length).toBeGreaterThan(0);
+      expect([permission.COMMON, permission.OTHER]).toContain(item.type);
+    }
+  });
+
   it('returns plain permission strings when short', async () => {
     const result = await permissions(throttled({ appId: TRANSLATE, short: true }));
 

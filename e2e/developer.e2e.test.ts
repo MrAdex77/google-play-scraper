@@ -24,4 +24,15 @@ liveDescribe('developer live contract', () => {
 
     expect(items.map((item) => item.appId)).toContain('com.mojang.minecraftpe');
   });
+
+  it('includes the Where Am I game when resolving the Adex77 name id', async () => {
+    const items = (await developer(throttled({ devId: 'Adex77' }))) as DeveloperApp[];
+
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.map((item) => item.appId)).toContain('com.adex77.WhereAmI');
+    for (const item of items) {
+      expect(item.developer).toBe('Adex77');
+      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+    }
+  });
 });
