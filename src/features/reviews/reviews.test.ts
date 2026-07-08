@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { reviews, type ReviewsOptions } from './reviews.js';
+import { REVIEWS_RPC_ID } from './specs.js';
 import { reviewSchema } from './schema.js';
-import { ValidationError } from '../../core/errors.js';
+import { SpecError, ValidationError } from '../../core/errors.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -104,6 +105,129 @@ describe('reviews manual pagination', () => {
 
     expect(bodies).toHaveLength(1);
     expect(bodies[0]).toContain(providedToken);
+  });
+});
+
+const reviewEntry = (id: string): unknown[] => {
+  const entry: unknown[] = [];
+  entry[0] = id;
+  entry[1] = [`User ${id}`, [null, null, null, [null, null, 'https://avatar.example/user.png']]];
+  entry[2] = 5;
+  entry[4] = `Review text ${id}`;
+  entry[5] = [1700000000, 123456789];
+  entry[6] = 12;
+  entry[10] = '9.9.9';
+  return entry;
+};
+
+const reviewsBatch = (entries: unknown, token: string | null): string => {
+  const payload = [entries, [null, token]];
+  const frame = [['wrb.fr', REVIEWS_RPC_ID, JSON.stringify(payload), null, null, null, 'generic']];
+  const json = JSON.stringify(frame);
+  return `)]}'\n\n${json.length.toString()}\n${json}`;
+};
+
+describe('reviews degraded payloads', () => {
+  it('stops accumulating when the server repeats a pagination token', async () => {
+    const { fetchImpl, count } = sequenceFetch([
+      reviewsBatch([reviewEntry('r1'), reviewEntry('r2')], 'repeated-token'),
+      reviewsBatch([reviewEntry('r3')], 'repeated-token'),
+    ]);
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      num: 100,
+      requestOptions: { fetchImpl },
+    });
+
+    expect(count()).toBe(2);
+    expect(result.data.map((review) => review.id)).toEqual(['r1', 'r2', 'r3']);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('treats an empty token as the final page', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([reviewEntry('r1')], '')) },
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('maps criteria entries and empty replies through their fallbacks', async () => {
+    const entry = reviewEntry('r1');
+    entry[7] = [null, '', [1700000100, 0]];
+    entry[12] = [
+      [
+        ['speed', [4]],
+        ['design', []],
+        ['comfort', 'not-a-holder'],
+      ],
+    ];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    const review = result.data[0];
+    expect(review?.criterias).toEqual([
+      { criteria: 'speed', rating: 4 },
+      { criteria: 'design', rating: null },
+      { criteria: 'comfort', rating: null },
+    ]);
+    expect(review?.replyText).toBeUndefined();
+    expect(review?.replyDate).toBeDefined();
+    expect(review?.userImage).toBe('https://avatar.example/user.png');
+    expect(review?.version).toBe('9.9.9');
+  });
+
+  it('returns an empty page when the reviews block is missing', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch(null, null)) },
+    });
+
+    expect(result.data).toEqual([]);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('drops a reply date that does not resolve to a valid time', async () => {
+    const entry = reviewEntry('r1');
+    entry[7] = [null, 'thanks', ['garbage-seconds', 0]];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    expect(result.data[0]?.replyDate).toBeUndefined();
+    expect(result.data[0]?.replyText).toBe('thanks');
+  });
+
+  it('surfaces a SpecError when a criteria entry is not an array', async () => {
+    const entry = reviewEntry('r1');
+    entry[12] = [['bogus-criteria']];
+
+    let thrown: unknown;
+    try {
+      await reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(SpecError);
+    const failedFields = (thrown as SpecError).failures.map((failure) => failure.field);
+    expect(failedFields).toContain('criterias');
   });
 });
 
