@@ -185,6 +185,21 @@ describe('reviews degraded payloads', () => {
     expect(review?.version).toBe('9.9.9');
   });
 
+  it('strips control characters from review text and reply text', async () => {
+    const entry = reviewEntry('r1');
+    entry[4] = 'Great\u0000 app\u0007 loved it';
+    entry[7] = [null, 'Thank\u0000 you', [1700000100, 0]];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    expect(result.data[0]?.text).toBe('Great app loved it');
+    expect(result.data[0]?.replyText).toBe('Thank you');
+  });
+
   it('returns an empty page when the reviews block is missing', async () => {
     const result = await reviews({
       appId: TRANSLATE,
