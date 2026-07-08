@@ -1,6 +1,6 @@
 {
   "name": "@mradex77/google-play-scraper",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "TypeScript client for scraping public Google Play app data",
   "keywords": [
     "google-play",
