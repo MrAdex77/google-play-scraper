@@ -32,18 +32,46 @@ const DEVELOPER_CONTEXT = 'developer';
 
 type DeveloperItem = Extracted<typeof numericItemSpecs>;
 
+interface DeveloperLayout {
+  mappings: typeof NUMERIC_INITIAL_MAPPINGS;
+  itemSpecs: typeof numericItemSpecs;
+}
+
+const NUMERIC_LAYOUT: DeveloperLayout = {
+  mappings: NUMERIC_INITIAL_MAPPINGS,
+  itemSpecs: numericItemSpecs,
+};
+
+const NAME_LAYOUT: DeveloperLayout = {
+  mappings: NAME_INITIAL_MAPPINGS,
+  itemSpecs: nameItemSpecs,
+};
+
+function extractLayout(
+  blocks: Record<string, unknown>,
+  layout: DeveloperLayout,
+): { apps: DeveloperItem[]; token: string | undefined } | undefined {
+  const appsData = getPath(blocks, layout.mappings.apps);
+  if (!Array.isArray(appsData) || appsData.length === 0) {
+    return undefined;
+  }
+  const apps = appsData.map((item) => extract(item, layout.itemSpecs, DEVELOPER_CONTEXT));
+  const token = getPath(blocks, layout.mappings.token);
+  return { apps, token: typeof token === 'string' ? token : undefined };
+}
+
 function extractInitial(
   blocks: Record<string, unknown>,
   numeric: boolean,
 ): { apps: DeveloperItem[]; token: string | undefined } {
-  const mappings = numeric ? NUMERIC_INITIAL_MAPPINGS : NAME_INITIAL_MAPPINGS;
-  const itemSpecs = numeric ? numericItemSpecs : nameItemSpecs;
-  const appsData = getPath(blocks, mappings.apps);
-  const apps = Array.isArray(appsData)
-    ? appsData.map((item) => extract(item, itemSpecs, DEVELOPER_CONTEXT))
-    : [];
-  const token = getPath(blocks, mappings.token);
-  return { apps, token: typeof token === 'string' ? token : undefined };
+  const ordered = numeric ? [NUMERIC_LAYOUT, NAME_LAYOUT] : [NAME_LAYOUT, NUMERIC_LAYOUT];
+  for (const layout of ordered) {
+    const extracted = extractLayout(blocks, layout);
+    if (extracted !== undefined) {
+      return extracted;
+    }
+  }
+  return { apps: [], token: undefined };
 }
 
 export function createDeveloper(getApp: GetApp<App>) {

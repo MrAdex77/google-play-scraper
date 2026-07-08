@@ -107,6 +107,16 @@ describe('developer degraded pages', () => {
     expect(failedFields).toContain('url');
   });
 
+  it('falls back to the name layout when a numeric dev page serves it instead', async () => {
+    const items = (await developer({
+      devId: '7502834977667077022',
+      requestOptions: { fetchImpl: fetchReturning(namePageHtml(['com.adex77.WhereAmI'])) },
+    })) as DeveloperApp[];
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.appId).toBe('com.adex77.WhereAmI');
+  });
+
   it('returns an empty list when the developer page carries no apps', async () => {
     const items = (await developer({
       devId: '5700313618786177705',
