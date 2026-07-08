@@ -3,9 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { createList, list, type ListOptions } from './list.js';
 import { listItemSchema, type ListItem } from './schema.js';
-import { buildListBody, CLUSTER_NAMES } from './specs.js';
+import { buildListBody, CLUSTER_NAMES, LIST_RPC_ID } from './specs.js';
 import type { App } from '../app/schema.js';
-import { ValidationError } from '../../core/errors.js';
+import { SpecError, ValidationError } from '../../core/errors.js';
 
 const topFreeGame = readFileSync(
   fileURLToPath(new URL('../../../test/fixtures/list/topfree-game.txt', import.meta.url)),
@@ -25,6 +25,72 @@ const recordingFetch = (body: string): { fetchImpl: typeof fetch; bodies: string
   };
   return { fetchImpl, bodies };
 };
+
+const listBatch = (payload: unknown): string => {
+  const frame = [['wrb.fr', LIST_RPC_ID, JSON.stringify(payload), null, null, null, 'generic']];
+  const json = JSON.stringify(frame);
+  return `)]}'\n\n${json.length.toString()}\n${json}`;
+};
+
+const pricelessListCore = (id: string): unknown[] => {
+  const core: unknown[] = [];
+  core[0] = [id];
+  core[1] = [null, null, null, [null, null, `https://icon.example/${id}`]];
+  core[3] = `App ${id}`;
+  core[10] = [null, null, null, null, [null, null, `/store/apps/details?id=${id}`]];
+  core[14] = `Dev ${id}`;
+  return core;
+};
+
+const listPayload = (ids: string[]): unknown => {
+  const cluster: unknown[] = [];
+  cluster[28] = [ids.map((id) => [pricelessListCore(id)])];
+  const container: unknown[] = [];
+  container[1] = [cluster];
+  return [container];
+};
+
+describe('list degraded payloads', () => {
+  it('returns an empty list when the payload carries no apps', async () => {
+    const items = (await list({
+      requestOptions: { fetchImpl: fetchReturning(listBatch([])) },
+    })) as ListItem[];
+
+    expect(items).toEqual([]);
+  });
+
+  it('throws a SpecError naming url when the link cell is missing', async () => {
+    const core = pricelessListCore('com.free.app');
+    core[10] = null;
+    const cluster: unknown[] = [];
+    cluster[28] = [[[core]]];
+    const container: unknown[] = [];
+    container[1] = [cluster];
+
+    let thrown: unknown;
+    try {
+      await list({ requestOptions: { fetchImpl: fetchReturning(listBatch([container])) } });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(SpecError);
+    const failedFields = (thrown as SpecError).failures.map((failure) => failure.field);
+    expect(failedFields).toContain('url');
+  });
+
+  it('parses a priceless item as costing zero without a currency', async () => {
+    const items = (await list({
+      requestOptions: { fetchImpl: fetchReturning(listBatch(listPayload(['com.free.app']))) },
+    })) as ListItem[];
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.appId).toBe('com.free.app');
+    expect(items[0]?.price).toBe(0);
+    expect(items[0]?.free).toBe(false);
+    expect(items[0]?.currency).toBeUndefined();
+  });
+});
 
 describe('list fixture parsing', () => {
   it('decodes the recorded collection into at least fifty validated apps', async () => {
