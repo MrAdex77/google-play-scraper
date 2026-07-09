@@ -493,13 +493,13 @@ try {
 
 Pass `throttle` to cap requests per second, and `requestOptions` to override the HTTP layer:
 
-| requestOptions field | Type                     | Description                                                    |
-| -------------------- | ------------------------ | -------------------------------------------------------------- |
-| `headers`            | `Record<string, string>` | Extra headers merged into every request.                       |
-| `fetchImpl`          | `typeof fetch`           | A custom `fetch` implementation, useful for proxies and tests. |
-| `timeoutMs`          | `number`                 | Timeout per request, up to `120000`. Default `30000`.          |
-| `retries`            | `number`                 | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.      |
-| `signal`             | `AbortSignal`            | Cancels the call, including in-flight retries and pagination.  |
+| requestOptions field | Type                     | Description                                                                                                                                                          |
+| -------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `headers`            | `Record<string, string>` | Extra headers merged into every request.                                                                                                                             |
+| `fetchImpl`          | `typeof fetch`           | A custom `fetch` implementation, useful for proxies and tests. Combine with [`createCountryFetch`](#routing-by-country) to route each storefront country separately. |
+| `timeoutMs`          | `number`                 | Timeout per request, up to `120000`. Default `30000`.                                                                                                                |
+| `retries`            | `number`                 | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.                                                                                                            |
+| `signal`             | `AbortSignal`            | Cancels the call, including in-flight retries and pagination.                                                                                                        |
 
 ```typescript
 import { app } from '@mradex77/google-play-scraper';
@@ -544,6 +544,37 @@ const details = await app({
 ```
 
 `ProxyAgent` also accepts an options object when the proxy needs more configuration, such as a `token` carrying a preformatted `Proxy-Authorization` header or TLS settings for the proxy connection.
+
+### Routing by country
+
+`createCountryFetch` builds a `fetch` implementation that picks a route per storefront country, so requests for each `country` option go through their own proxy. It reads the `gl` query parameter that Google Play requests carry, matches it against `perCountry` (ISO 3166-1 alpha-2, case insensitive), and falls back to `fallback` or the global `fetch` when no route matches:
+
+```typescript
+import { ProxyAgent, fetch as undiciFetch, type RequestInit } from 'undici';
+import { app, createCountryFetch } from '@mradex77/google-play-scraper';
+
+const throughProxy = (proxyUrl: string): typeof fetch => {
+  const dispatcher = new ProxyAgent(proxyUrl);
+  return ((input: string | URL, init?: RequestInit) =>
+    undiciFetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
+};
+
+const fetchImpl = createCountryFetch({
+  perCountry: {
+    us: throughProxy('http://us-proxy.internal:8080'),
+    de: throughProxy('http://user:password@de-proxy.internal:8080'),
+  },
+  fallback: throughProxy('http://default-proxy.internal:8080'),
+});
+
+const details = await app({
+  appId: 'com.google.android.apps.translate',
+  country: 'de',
+  requestOptions: { fetchImpl },
+});
+```
+
+Routes accept any `typeof fetch`, so the same helper also works for per-country rate limiting, logging or fixtures in tests. Omit `fallback` to send unmatched countries through a direct connection. The only request without a `gl` parameter is the `datasafety` page fetch, which always uses the fallback route.
 
 Pass an `AbortSignal` to cancel long running calls, such as a `reviews` fetch that walks many pages. An aborted call rejects with the signal's reason and is never retried:
 
