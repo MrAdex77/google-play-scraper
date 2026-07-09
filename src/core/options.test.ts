@@ -42,4 +42,22 @@ describe('parseOptions', () => {
 
     expect(act).toThrow(ValidationError);
   });
+
+  it('accepts an abort signal in request options', () => {
+    const controller = new AbortController();
+    const parsed = parseOptions(
+      baseOptionsSchema,
+      { requestOptions: { signal: controller.signal } },
+      'listApps',
+    );
+
+    expect(parsed.requestOptions?.signal).toBe(controller.signal);
+  });
+
+  it('rejects a value that is not an abort signal', () => {
+    const act = (): unknown =>
+      parseOptions(baseOptionsSchema, { requestOptions: { signal: {} } }, 'listApps');
+
+    expect(act).toThrow(ValidationError);
+  });
 });

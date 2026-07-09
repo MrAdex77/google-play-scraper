@@ -20,6 +20,7 @@ export interface HttpClientConfig {
   retries?: number;
   timeoutMs?: number;
   headers?: Record<string, string>;
+  signal?: AbortSignal;
 }
 
 export interface HttpClient {
@@ -114,6 +115,11 @@ function mapStatusToError(status: number, url: string): GooglePlayError {
   return new HttpError(`Request to ${url} failed with status ${status.toString()}`, status, url);
 }
 
+function buildRequestSignal(timeoutMs: number, signal: AbortSignal | undefined): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
+}
+
 function hostIsConsent(finalUrl: string): boolean {
   if (!finalUrl) {
     return false;
@@ -139,6 +145,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
   const fetchImpl = config.fetchImpl ?? fetch;
   const retries = config.retries ?? DEFAULT_RETRIES;
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const callerSignal = config.signal;
   const limiter = config.throttle !== undefined ? createRateLimiter(config.throttle) : undefined;
 
   const request = async (req: HttpRequest): Promise<string> => {
@@ -154,7 +161,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
           method,
           headers,
           body: req.body,
-          signal: AbortSignal.timeout(timeoutMs),
+          signal: buildRequestSignal(timeoutMs, callerSignal),
         });
 
         if (response.ok) {
@@ -171,6 +178,9 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
         throw mapStatusToError(response.status, req.url);
       } catch (error) {
         if (error instanceof GooglePlayError) {
+          throw error;
+        }
+        if (callerSignal?.aborted) {
           throw error;
         }
         if (attempt < retries) {
@@ -197,5 +207,6 @@ export function clientFromOptions(opts: {
     retries: opts.requestOptions?.retries,
     timeoutMs: opts.requestOptions?.timeoutMs,
     headers: opts.requestOptions?.headers,
+    signal: opts.requestOptions?.signal,
   });
 }

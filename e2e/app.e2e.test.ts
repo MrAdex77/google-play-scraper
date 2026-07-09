@@ -67,4 +67,18 @@ liveDescribe('app live contract', () => {
       app(throttled({ appId: 'com.adex77.definitely.not.a.real.app' })),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
+
+  it('rejects when the caller signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      app(
+        throttled({
+          appId: 'com.google.android.apps.translate',
+          requestOptions: { signal: controller.signal },
+        }),
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
 });

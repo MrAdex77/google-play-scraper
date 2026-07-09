@@ -18,6 +18,27 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:e2e
+      - if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo
+            const open = await github.rest.issues.listForRepo({ owner, repo, state: 'open', labels: 'contract-breakage' })
+            for (const issue of open.data) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: 'The scheduled run against Google Play is passing again. Closing.'
+              })
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed'
+              })
+            }
       - if: failure()
         uses: actions/github-script@v7
         with:
