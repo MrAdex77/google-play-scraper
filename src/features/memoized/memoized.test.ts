@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { memoized } from './memoized.js';
 import { category } from '../../constants.js';
 import { NotFoundError } from '../../core/errors.js';
+import type { RequestOptions } from '../../core/options.js';
 import type { App } from '../app/schema.js';
 
 const readFixture = (dir: string, name: string): string =>
@@ -68,6 +69,34 @@ describe('memoized', () => {
     expect(fetch.state.calls).toBe(1);
 
     await client.app({ appId: 'com.b', requestOptions: requestOptionsFor(fetch.fetchImpl) });
+    expect(fetch.state.calls).toBe(2);
+  });
+
+  it('refetches when a different fetch implementation is injected', async () => {
+    const client = memoized();
+    const first = countingAppFetch();
+    const second = countingAppFetch();
+
+    await client.app({ appId: 'com.a', requestOptions: requestOptionsFor(first.fetchImpl) });
+    await client.app({ appId: 'com.a', requestOptions: requestOptionsFor(second.fetchImpl) });
+
+    expect(first.state.calls).toBe(1);
+    expect(second.state.calls).toBe(1);
+  });
+
+  it('keys entries by abort signal identity', async () => {
+    const client = memoized();
+    const fetch = countingAppFetch();
+    const requestOptionsWith = (signal: AbortSignal): RequestOptions =>
+      ({ fetchImpl: fetch.fetchImpl, signal }) as RequestOptions;
+    const first = new AbortController();
+    const second = new AbortController();
+
+    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith(first.signal) });
+    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith(first.signal) });
+    expect(fetch.state.calls).toBe(1);
+
+    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith(second.signal) });
     expect(fetch.state.calls).toBe(2);
   });
 
