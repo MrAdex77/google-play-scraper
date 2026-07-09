@@ -26,10 +26,24 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test:coverage
-      - run: |
+      - id: coverage
+        run: |
+          pct=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+          echo "pct=$pct" >> "$GITHUB_OUTPUT"
           {
             echo '### Coverage (Node ${{ matrix.node }})'
             jq -r '.total | "| Metric | Coverage |", "| --- | --- |", "| Statements | \(.statements.pct)% |", "| Branches | \(.branches.pct)% |", "| Functions | \(.functions.pct)% |", "| Lines | \(.lines.pct)% |"' coverage/coverage-summary.json
           } >> "$GITHUB_STEP_SUMMARY"
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.node == 24 && vars.COVERAGE_GIST_ID != ''
+        uses: schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ vars.COVERAGE_GIST_ID }}
+          filename: google-play-scraper-coverage.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.pct }}%
+          valColorRange: ${{ steps.coverage.outputs.pct }}
+          minColorRange: 50
+          maxColorRange: 90
       - run: pnpm build
       - run: pnpm check:package
