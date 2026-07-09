@@ -499,6 +499,7 @@ Pass `throttle` to cap requests per second, and `requestOptions` to override the
 | `fetchImpl`          | `typeof fetch`           | A custom `fetch` implementation, useful for proxies and tests. |
 | `timeoutMs`          | `number`                 | Timeout per request, up to `120000`. Default `30000`.          |
 | `retries`            | `number`                 | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.      |
+| `signal`             | `AbortSignal`            | Cancels the call, including in-flight retries and pagination.  |
 
 ```typescript
 import { app } from '@mradex77/google-play-scraper';
@@ -516,6 +517,21 @@ const details = await app({
 ```
 
 Retries use exponential backoff and honor a `Retry-After` header when present.
+
+Pass an `AbortSignal` to cancel long running calls, such as a `reviews` fetch that walks many pages. An aborted call rejects with the signal's reason and is never retried:
+
+```typescript
+import { reviews } from '@mradex77/google-play-scraper';
+
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 10000);
+
+const result = await reviews({
+  appId: 'com.google.android.apps.translate',
+  num: 5000,
+  requestOptions: { signal: controller.signal },
+});
+```
 
 ## Resilience
 

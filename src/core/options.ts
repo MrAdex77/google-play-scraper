@@ -6,6 +6,7 @@ export const requestOptionsSchema = z.object({
   fetchImpl: z.custom<typeof fetch>((value) => typeof value === 'function').optional(),
   timeoutMs: z.number().int().positive().max(120000).optional(),
   retries: z.number().int().min(0).max(5).optional(),
+  signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal).optional(),
 });
 
 export type RequestOptions = z.infer<typeof requestOptionsSchema>;

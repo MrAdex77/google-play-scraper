@@ -28,6 +28,14 @@ const lastInit = (fetchImpl: ReturnType<typeof vi.fn>): RequestInit => {
 const headersOf = (fetchImpl: ReturnType<typeof vi.fn>): Record<string, string> =>
   lastInit(fetchImpl).headers as Record<string, string>;
 
+const abortAwareFetch = () =>
+  vi.fn((_input: string | URL | Request, init?: RequestInit) => {
+    const signal = init?.signal;
+    return signal?.aborted
+      ? Promise.reject(signal.reason as Error)
+      : Promise.resolve(fakeResponse({ body: 'ok' }));
+  });
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -207,6 +215,66 @@ describe('createHttpClient', () => {
 
     await expect(client.request({ url: 'https://x' })).resolves.toBe('via-options');
     expect(headersOf(fetchImpl)['X-Trace']).toBe('on');
+  });
+
+  it('rejects without retrying when the caller signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchImpl = abortAwareFetch();
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+
+    expect((error as DOMException).name).toBe('AbortError');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops retrying when the caller aborts mid flight', async () => {
+    const controller = new AbortController();
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal;
+          signal?.addEventListener('abort', () => {
+            reject(signal.reason as Error);
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    controller.abort();
+
+    const error = await settled;
+    expect((error as DOMException).name).toBe('AbortError');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends a combined signal that fires when the caller aborts', async () => {
+    const controller = new AbortController();
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    await client.request({ url: 'https://x' });
+
+    const requestSignal = lastInit(fetchImpl).signal;
+    expect(requestSignal?.aborted).toBe(false);
+    controller.abort();
+    expect(requestSignal?.aborted).toBe(true);
+  });
+
+  it('threads the signal from public request options', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchImpl = abortAwareFetch();
+    const client = clientFromOptions({
+      requestOptions: { fetchImpl, signal: controller.signal },
+    });
+
+    const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+
+    expect((error as DOMException).name).toBe('AbortError');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('throws BlockedError for a consent host and for a captcha body', async () => {
