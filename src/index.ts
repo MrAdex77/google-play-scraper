@@ -13,6 +13,9 @@ export {
 } from './core/errors.js';
 export type { SpecFailure } from './core/errors.js';
 
+export { createCountryFetch } from './core/countryFetch.js';
+export type { CountryFetchSettings } from './core/countryFetch.js';
+
 export { app } from './features/app/app.js';
 export type { AppOptions } from './features/app/app.js';
 export type { App } from './features/app/schema.js';
