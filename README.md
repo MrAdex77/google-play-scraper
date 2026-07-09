@@ -4,6 +4,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/@mradex77/google-play-scraper.svg)](https://www.npmjs.com/package/@mradex77/google-play-scraper)
 [![CI](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml)
 [![Live contract tests](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml)
+[![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/MrAdex77/GIST_ID/raw/google-play-scraper-coverage.json)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml)
 [![types](https://img.shields.io/npm/types/@mradex77/google-play-scraper.svg)](https://www.npmjs.com/package/@mradex77/google-play-scraper)
 [![node](https://img.shields.io/node/v/@mradex77/google-play-scraper.svg)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/@mradex77/google-play-scraper.svg)](LICENSE)
