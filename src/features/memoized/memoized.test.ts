@@ -87,8 +87,10 @@ describe('memoized', () => {
   it('keys entries by abort signal identity', async () => {
     const client = memoized();
     const fetch = countingAppFetch();
-    const requestOptionsWith = (signal: AbortSignal): RequestOptions =>
-      ({ fetchImpl: fetch.fetchImpl, signal }) as RequestOptions;
+    const requestOptionsWith = (signal: AbortSignal): RequestOptions => ({
+      fetchImpl: fetch.fetchImpl,
+      signal,
+    });
     const first = new AbortController();
     const second = new AbortController();
 
