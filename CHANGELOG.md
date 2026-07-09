@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.2.0...v0.3.0) (2026-07-09)
+
+
+### Features
+
+* **core:** add createCountryFetch per-country fetch router ([d13623f](https://github.com/MrAdex77/google-play-scraper/commit/d13623fa5189071f415e61d756dd01d0f1e4363f))
+* **core:** support caller abort signals in request options ([c527622](https://github.com/MrAdex77/google-play-scraper/commit/c527622505acf3a985175e19a30ccf6491fdce60))
+
+
+### Bug Fixes
+
+* **memoized:** key cached calls by function and signal identity ([d95e76d](https://github.com/MrAdex77/google-play-scraper/commit/d95e76d5a673252a5d4b922af54508e05307efdf))
+
 ## [0.2.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.1.1...v0.2.0) (2026-07-08)
 
 
