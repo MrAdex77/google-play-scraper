@@ -101,6 +101,19 @@ async function showApps(): Promise<void> {
   field('Resolved', `${count(fulfilled)} of ${count(result.length)} (batch still resolved)`);
 }
 
+async function showAvailability(): Promise<void> {
+  heading('availability()', 'in which countries an app is published');
+  const client = createClient({ throttle: 5 });
+  const result = await client.availability({
+    appId: TEST_APP_ID,
+    countries: ['us', 'pl', 'de'],
+  });
+  Object.entries(result.countries).forEach(([country, entry]) => {
+    const detail = entry.status === 'error' ? `error — ${entry.message}` : entry.status;
+    field(country, detail);
+  });
+}
+
 async function showSearch(): Promise<void> {
   heading('search()', 'apps matching a query');
   const results = await search({ term: SEARCH_TERM, num: 5 });
@@ -233,6 +246,7 @@ async function main(): Promise<void> {
   console.log(`Google Play client — example run for ${TEST_APP_ID}`);
   const details = await run('app()', showApp);
   await run('apps()', showApps);
+  await run('availability()', showAvailability);
   await run('search()', showSearch);
   await run('suggest()', showSuggest);
   await run('list()', showList);
