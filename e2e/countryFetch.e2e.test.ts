@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { app, createCountryFetch, search } from '../src/index.js';
-import { liveDescribe, throttled } from './helpers.js';
+import { createCountryFetch } from '../src/index.js';
+import { liveClient, liveDescribe } from './helpers.js';
 
 const trackedFetch = (calls: string[], label: string): typeof fetch => {
   return (input, init) => {
@@ -18,7 +18,7 @@ liveDescribe('createCountryFetch live contract', () => {
     });
 
     const appId = 'com.google.android.apps.translate';
-    const result = await app(throttled({ appId, country: 'us', requestOptions: { fetchImpl } }));
+    const result = await liveClient.app({ appId, country: 'us', requestOptions: { fetchImpl } });
 
     expect(result.appId).toBe(appId);
     expect(result.title.length).toBeGreaterThan(0);
@@ -32,9 +32,12 @@ liveDescribe('createCountryFetch live contract', () => {
       fallback: trackedFetch(calls, 'fallback'),
     });
 
-    const results = await search(
-      throttled({ term: 'maps', country: 'de', num: 30, requestOptions: { fetchImpl } }),
-    );
+    const results = await liveClient.search({
+      term: 'maps',
+      country: 'de',
+      num: 30,
+      requestOptions: { fetchImpl },
+    });
 
     expect(results.length).toBeGreaterThan(20);
     expect(calls.length).toBeGreaterThan(0);

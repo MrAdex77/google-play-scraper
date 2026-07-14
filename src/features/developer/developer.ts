@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { clientFromOptions } from '../../core/http.js';
+import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { clusterItemSpecs } from '../../core/clusterItem.js';
@@ -74,12 +74,15 @@ function extractInitial(
   return { apps: [], token: undefined };
 }
 
-export function createDeveloper(getApp: GetApp<App>) {
+export function createDeveloper(
+  getApp: GetApp<App>,
+  resolveClient: ResolveClient = clientFromOptions,
+) {
   return async function developer(options: DeveloperOptions): Promise<DeveloperApp[] | App[]> {
     const parsed = parseOptions(developerOptionsSchema, options, DEVELOPER_CONTEXT);
     const numeric = isNumericDevId(parsed.devId);
 
-    const client = clientFromOptions(parsed);
+    const client = resolveClient(parsed);
     const html = await client.request({
       url: developerUrl(parsed.devId, parsed.lang, parsed.country),
     });

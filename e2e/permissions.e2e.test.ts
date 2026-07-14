@@ -1,12 +1,12 @@
 import { expect, it } from 'vitest';
-import { permission, permissions } from '../src/index.js';
-import { liveDescribe, throttled } from './helpers.js';
+import { permission } from '../src/index.js';
+import { liveClient, liveDescribe } from './helpers.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
 liveDescribe('permissions live contract', () => {
   it('returns typed permission entries with common and other types', async () => {
-    const result = await permissions(throttled({ appId: TRANSLATE }));
+    const result = await liveClient.permissions({ appId: TRANSLATE });
 
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(3);
@@ -21,7 +21,7 @@ liveDescribe('permissions live contract', () => {
   });
 
   it('returns typed entries for the Where Am I geography game', async () => {
-    const result = await permissions(throttled({ appId: 'com.adex77.WhereAmI' }));
+    const result = await liveClient.permissions({ appId: 'com.adex77.WhereAmI' });
 
     expect(result.length).toBeGreaterThan(0);
     for (const entry of result) {
@@ -32,7 +32,7 @@ liveDescribe('permissions live contract', () => {
   });
 
   it('returns plain permission strings when short', async () => {
-    const result = await permissions(throttled({ appId: TRANSLATE, short: true }));
+    const result = await liveClient.permissions({ appId: TRANSLATE, short: true });
 
     expect(result.length).toBeGreaterThan(3);
     for (const name of result) {

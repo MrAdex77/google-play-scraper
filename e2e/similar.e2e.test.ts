@@ -1,11 +1,11 @@
 import { expect, it } from 'vitest';
-import { similar, type SimilarApp } from '../src/index.js';
-import { liveDescribe, throttled } from './helpers.js';
+import { type SimilarApp } from '../src/index.js';
+import { liveClient, liveDescribe } from './helpers.js';
 
 liveDescribe('similar live contract', () => {
   it('returns similar games for the Where Am I geography game', async () => {
     const sourceAppId = 'com.adex77.WhereAmI';
-    const items = (await similar(throttled({ appId: sourceAppId }))) as SimilarApp[];
+    const items = (await liveClient.similar({ appId: sourceAppId })) as SimilarApp[];
 
     expect(items.length).toBeGreaterThan(0);
     expect(items.some((item) => item.appId === sourceAppId)).toBe(false);
@@ -18,7 +18,7 @@ liveDescribe('similar live contract', () => {
 
   it('returns related apps that exclude the source app', async () => {
     const sourceAppId = 'com.google.android.apps.translate';
-    const items = (await similar(throttled({ appId: sourceAppId }))) as SimilarApp[];
+    const items = (await liveClient.similar({ appId: sourceAppId })) as SimilarApp[];
 
     expect(items.length).toBeGreaterThanOrEqual(5);
     expect(items.some((item) => item.appId === sourceAppId)).toBe(false);

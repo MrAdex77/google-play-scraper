@@ -14,9 +14,12 @@ export interface HttpRequest {
   headers?: Record<string, string>;
 }
 
+export type Limiter = () => Promise<void>;
+
 export interface HttpClientConfig {
   fetchImpl?: typeof fetch;
   throttle?: number;
+  limiter?: Limiter;
   retries?: number;
   timeoutMs?: number;
   headers?: Record<string, string>;
@@ -26,6 +29,11 @@ export interface HttpClientConfig {
 export interface HttpClient {
   request(req: HttpRequest): Promise<string>;
 }
+
+export type ResolveClient = (opts: {
+  throttle?: number;
+  requestOptions?: RequestOptions;
+}) => HttpClient;
 
 const DEFAULT_RETRIES = 2;
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -48,7 +56,7 @@ const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded;charset=UTF-8';
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
 
-function createRateLimiter(rate: number): () => Promise<void> {
+export function createRateLimiter(rate: number): Limiter {
   let timestamps: number[] = [];
   let tail: Promise<void> = Promise.resolve();
 
@@ -146,7 +154,9 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
   const retries = config.retries ?? DEFAULT_RETRIES;
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const callerSignal = config.signal;
-  const limiter = config.throttle !== undefined ? createRateLimiter(config.throttle) : undefined;
+  const limiter =
+    config.limiter ??
+    (config.throttle !== undefined ? createRateLimiter(config.throttle) : undefined);
 
   const request = async (req: HttpRequest): Promise<string> => {
     const method = req.method ?? 'GET';

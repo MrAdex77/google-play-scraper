@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clientFromOptions, createHttpClient } from './http.js';
+import { clientFromOptions, createHttpClient, createRateLimiter } from './http.js';
 import { BlockedError, HttpError, NotFoundError, RateLimitError } from './errors.js';
 
 interface FakeResponseInit {
@@ -184,6 +184,51 @@ describe('createHttpClient', () => {
     await pending;
 
     expect(calls).toEqual([0, 0, 1000, 1000, 2000]);
+  });
+
+  it('serializes two clients that share one injected limiter to the shared rate', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const calls: number[] = [];
+    const fetchImpl = vi.fn(() => {
+      calls.push(Date.now() - start);
+      return Promise.resolve(fakeResponse({ body: 'ok' }));
+    });
+    const limiter = createRateLimiter(2);
+    const first = createHttpClient({ fetchImpl, limiter });
+    const second = createHttpClient({ fetchImpl, limiter });
+
+    const pending = Promise.all([
+      first.request({ url: 'https://a' }),
+      first.request({ url: 'https://a' }),
+      second.request({ url: 'https://b' }),
+      second.request({ url: 'https://b' }),
+      first.request({ url: 'https://a' }),
+    ]);
+    await vi.runAllTimersAsync();
+    await pending;
+
+    expect(calls).toEqual([0, 0, 1000, 1000, 2000]);
+  });
+
+  it('prefers an injected limiter over the throttle config', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const calls: number[] = [];
+    const fetchImpl = vi.fn(() => {
+      calls.push(Date.now() - start);
+      return Promise.resolve(fakeResponse({ body: 'ok' }));
+    });
+    const limiter = createRateLimiter(1);
+    const client = createHttpClient({ fetchImpl, limiter, throttle: 5 });
+
+    const pending = Promise.all(
+      Array.from({ length: 3 }, () => client.request({ url: 'https://x' })),
+    );
+    await vi.runAllTimersAsync();
+    await pending;
+
+    expect(calls).toEqual([0, 1000, 2000]);
   });
 
   it('maps other non ok statuses to a generic HttpError without retrying', async () => {

@@ -5,7 +5,7 @@ import {
   collection as collectionConstants,
 } from '../../constants.js';
 import { parseBatchResponse } from '../../core/batchexecute.js';
-import { clientFromOptions } from '../../core/http.js';
+import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.js';
@@ -34,11 +34,11 @@ export type ListOptions = z.input<typeof listOptionsSchema>;
 
 const LIST_CONTEXT = 'list';
 
-export function createList(getApp: GetApp<App>) {
+export function createList(getApp: GetApp<App>, resolveClient: ResolveClient = clientFromOptions) {
   return async function list(options: ListOptions): Promise<ListItem[] | App[]> {
     const parsed = parseOptions(listOptionsSchema, options, LIST_CONTEXT);
 
-    const client = clientFromOptions(parsed);
+    const client = resolveClient(parsed);
     const body = buildListBody({
       num: parsed.num.toString(),
       collection: CLUSTER_NAMES[parsed.collection],

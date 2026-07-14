@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { list, type ListItem } from '../src/index.js';
-import { liveDescribe, throttled } from './helpers.js';
+import { type ListItem } from '../src/index.js';
+import { liveClient, liveDescribe } from './helpers.js';
 
 const assertValidItem = (item: ListItem): void => {
   expect(item.appId.length).toBeGreaterThan(0);
@@ -16,13 +16,11 @@ const assertValidItem = (item: ListItem): void => {
 
 liveDescribe('list live contract', () => {
   it('returns exactly ten free games for the top free game collection', async () => {
-    const items = (await list(
-      throttled({
-        collection: 'TOP_FREE',
-        category: 'GAME',
-        num: 10,
-      }),
-    )) as ListItem[];
+    const items = (await liveClient.list({
+      collection: 'TOP_FREE',
+      category: 'GAME',
+      num: 10,
+    })) as ListItem[];
 
     expect(items).toHaveLength(10);
     for (const item of items) {
@@ -33,13 +31,11 @@ liveDescribe('list live contract', () => {
   });
 
   it('returns paid applications with a price above zero', async () => {
-    const items = (await list(
-      throttled({
-        collection: 'TOP_PAID',
-        category: 'APPLICATION',
-        num: 5,
-      }),
-    )) as ListItem[];
+    const items = (await liveClient.list({
+      collection: 'TOP_PAID',
+      category: 'APPLICATION',
+      num: 5,
+    })) as ListItem[];
 
     expect(items.length).toBeGreaterThan(0);
     for (const item of items) {
@@ -50,7 +46,7 @@ liveDescribe('list live contract', () => {
   });
 
   it('returns five valid apps for the grossing collection', async () => {
-    const items = (await list(throttled({ collection: 'GROSSING', num: 5 }))) as ListItem[];
+    const items = (await liveClient.list({ collection: 'GROSSING', num: 5 })) as ListItem[];
 
     expect(items).toHaveLength(5);
     for (const item of items) {
@@ -62,13 +58,11 @@ liveDescribe('list live contract', () => {
     const categories = ['SOCIAL', 'PRODUCTIVITY', 'GAME_TRIVIA'] as const;
 
     for (const category of categories) {
-      const items = (await list(
-        throttled({
-          collection: 'TOP_FREE',
-          category,
-          num: 5,
-        }),
-      )) as ListItem[];
+      const items = (await liveClient.list({
+        collection: 'TOP_FREE',
+        category,
+        num: 5,
+      })) as ListItem[];
 
       expect(items.length).toBeGreaterThan(0);
       for (const item of items) {

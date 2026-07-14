@@ -1,11 +1,11 @@
 import { expect, it } from 'vitest';
-import { app, NotFoundError } from '../src/index.js';
-import { liveDescribe, throttled } from './helpers.js';
+import { NotFoundError } from '../src/index.js';
+import { liveClient, liveDescribe } from './helpers.js';
 
 liveDescribe('app live contract', () => {
   it('returns details for a popular free app', async () => {
     const appId = 'com.google.android.apps.translate';
-    const result = await app(throttled({ appId }));
+    const result = await liveClient.app({ appId });
 
     expect(result.title.length).toBeGreaterThan(0);
     expect(result.appId).toBe(appId);
@@ -18,7 +18,7 @@ liveDescribe('app live contract', () => {
 
   it('returns details for a mobile geography game', async () => {
     const appId = 'com.adex77.WhereAmI';
-    const result = await app(throttled({ appId }));
+    const result = await liveClient.app({ appId });
 
     expect(result.title).toBe('Where Am I? - GeoGuess Game');
     expect(result.appId).toBe(appId);
@@ -31,7 +31,7 @@ liveDescribe('app live contract', () => {
   });
 
   it('returns details for a paid app', async () => {
-    const result = await app(throttled({ appId: 'com.mojang.minecraftpe' }));
+    const result = await liveClient.app({ appId: 'com.mojang.minecraftpe' });
 
     expect(result.title.length).toBeGreaterThan(0);
     expect(typeof result.score).toBe('number');
@@ -42,7 +42,7 @@ liveDescribe('app live contract', () => {
   });
 
   it('returns categorized details for a social app', async () => {
-    const result = await app(throttled({ appId: 'com.instagram.android' }));
+    const result = await liveClient.app({ appId: 'com.instagram.android' });
 
     expect(result.title).toContain('Instagram');
     expect(result.genreId).toBe('SOCIAL');
@@ -52,9 +52,11 @@ liveDescribe('app live contract', () => {
   });
 
   it('localizes the geography game details for another language and country', async () => {
-    const result = await app(
-      throttled({ appId: 'com.adex77.WhereAmI', lang: 'pl', country: 'pl' }),
-    );
+    const result = await liveClient.app({
+      appId: 'com.adex77.WhereAmI',
+      lang: 'pl',
+      country: 'pl',
+    });
 
     expect(result.appId).toBe('com.adex77.WhereAmI');
     expect(result.title.length).toBeGreaterThan(0);
@@ -64,7 +66,7 @@ liveDescribe('app live contract', () => {
 
   it('rejects a nonexistent package with a NotFoundError', async () => {
     await expect(
-      app(throttled({ appId: 'com.adex77.definitely.not.a.real.app' })),
+      liveClient.app({ appId: 'com.adex77.definitely.not.a.real.app' }),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
@@ -73,12 +75,10 @@ liveDescribe('app live contract', () => {
     controller.abort();
 
     await expect(
-      app(
-        throttled({
-          appId: 'com.google.android.apps.translate',
-          requestOptions: { signal: controller.signal },
-        }),
-      ),
+      liveClient.app({
+        appId: 'com.google.android.apps.translate',
+        requestOptions: { signal: controller.signal },
+      }),
     ).rejects.toMatchObject({ name: 'AbortError' });
   });
 });

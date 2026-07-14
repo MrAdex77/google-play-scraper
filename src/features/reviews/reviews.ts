@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { sort } from '../../constants.js';
 import { parseBatchResponse } from '../../core/batchexecute.js';
-import { clientFromOptions, type HttpClient } from '../../core/http.js';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { extract, type Extracted } from '../../core/spec.js';
@@ -106,9 +106,13 @@ async function accumulateReviews(
   });
 }
 
-export async function reviews(options: ReviewsOptions): Promise<ReviewsResult> {
-  const parsed = parseOptions(reviewsOptionsSchema, options, REVIEWS_CONTEXT);
-  const client = clientFromOptions(parsed);
+export function createReviews(resolveClient: ResolveClient = clientFromOptions) {
+  return async function reviews(options: ReviewsOptions): Promise<ReviewsResult> {
+    const parsed = parseOptions(reviewsOptionsSchema, options, REVIEWS_CONTEXT);
+    const client = resolveClient(parsed);
 
-  return parsed.paginate ? fetchSinglePage(client, parsed) : accumulateReviews(client, parsed);
+    return parsed.paginate ? fetchSinglePage(client, parsed) : accumulateReviews(client, parsed);
+  };
 }
+
+export const reviews = createReviews();
