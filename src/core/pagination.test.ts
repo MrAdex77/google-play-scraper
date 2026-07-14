@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { buildClusterBody, clusterUrl, CLUSTER_PAGE_SIZE, fetchClusterApps } from './pagination.js';
+import {
+  buildClusterBody,
+  clusterPages,
+  clusterUrl,
+  CLUSTER_PAGE_SIZE,
+  fetchClusterApps,
+} from './pagination.js';
 import { BATCH_URL } from './batchexecute.js';
 import type { HttpClient, HttpRequest } from './http.js';
 import type { SpecMap } from './spec.js';
@@ -51,6 +57,109 @@ describe('buildClusterBody', () => {
     expect(body).toContain(`%2C${CLUSTER_PAGE_SIZE.toString()}%5D%5D`);
     expect(body).toContain('%5C%22TOKEN123%5C%22');
     expect(body.startsWith('f.req=')).toBe(true);
+  });
+});
+
+const collectPages = async <T>(generator: AsyncGenerator<T[]>): Promise<T[][]> => {
+  const pages: T[][] = [];
+  for await (const page of generator) {
+    pages.push(page);
+  }
+  return pages;
+};
+
+describe('clusterPages', () => {
+  it('yields the initial page first, then each fetched continuation page', async () => {
+    const { client, requests } = queuedClient([
+      batchResponse([['a'], ['b']], 't2'),
+      batchResponse([['c'], ['d']], null),
+    ]);
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [{ id: 'seed' }],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+      }),
+    );
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([
+      ['seed'],
+      ['a', 'b'],
+      ['c', 'd'],
+    ]);
+    expect(requests).toHaveLength(2);
+  });
+
+  it('skips the initial yield when there are no initial apps', async () => {
+    const { client } = queuedClient([batchResponse([['a']], null)]);
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+      }),
+    );
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
+  });
+
+  it('ends when a page returns no continuation token', async () => {
+    const { client, requests } = queuedClient([batchResponse([['a']], null)]);
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+      }),
+    );
+
+    expect(pages).toHaveLength(1);
+    expect(requests).toHaveLength(1);
+  });
+
+  it('stops when the server repeats a pagination token', async () => {
+    const { client, requests } = queuedClient([
+      batchResponse([['a']], 'repeated-token'),
+      batchResponse([['b']], 'repeated-token'),
+    ]);
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [],
+        initialToken: 'repeated-token',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+      }),
+    );
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
+    expect(requests).toHaveLength(1);
   });
 });
 
