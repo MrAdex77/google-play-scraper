@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { categories, list, type ListItem } from '../src/index.js';
-import { liveDescribe, throttled } from './helpers.js';
+import { categories, type ListItem } from '../src/index.js';
+import { liveClient, liveDescribe } from './helpers.js';
 
 liveDescribe('categories live contract', () => {
   it('returns more than thirty uppercase categories including GAME and APPLICATION', async () => {
@@ -21,13 +21,11 @@ liveDescribe('categories live contract', () => {
 
     for (const cat of sample) {
       expect(all).toContain(cat);
-      const items = (await list(
-        throttled({
-          collection: 'TOP_FREE',
-          category: cat,
-          num: 3,
-        }),
-      )) as ListItem[];
+      const items = (await liveClient.list({
+        collection: 'TOP_FREE',
+        category: cat,
+        num: 3,
+      })) as ListItem[];
       expect(items.length).toBeGreaterThan(0);
       expect(items[0]!.appId.length).toBeGreaterThan(0);
     }
