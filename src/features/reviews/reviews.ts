@@ -34,12 +34,17 @@ export type ReviewsOptions = z.input<typeof reviewsOptionsSchema>;
 type ParsedReviewsOptions = z.infer<typeof reviewsOptionsSchema>;
 type ReviewItem = Extracted<typeof reviewItemSpecs>;
 
-interface ReviewsPage {
+export type ReviewPageQuery = Pick<
+  ParsedReviewsOptions,
+  'appId' | 'sort' | 'lang' | 'country' | 'nextPaginationToken'
+>;
+
+export interface ReviewsPage {
   reviews: ReviewItem[];
   token: string | undefined;
 }
 
-function reviewsBody(options: ParsedReviewsOptions, token: string | undefined): string {
+function reviewsBody(options: ReviewPageQuery, token: string | undefined): string {
   return token === undefined
     ? buildInitialReviewsBody(options.sort, options.appId)
     : buildPaginatedReviewsBody(options.sort, options.appId, token);
@@ -47,7 +52,7 @@ function reviewsBody(options: ParsedReviewsOptions, token: string | undefined): 
 
 async function fetchReviewsPage(
   client: HttpClient,
-  options: ParsedReviewsOptions,
+  options: ReviewPageQuery,
   token: string | undefined,
 ): Promise<ReviewsPage> {
   const text = await client.request({
@@ -79,25 +84,38 @@ async function fetchSinglePage(
   });
 }
 
+export async function* reviewPages(
+  client: HttpClient,
+  options: ReviewPageQuery,
+): AsyncGenerator<ReviewsPage, void, undefined> {
+  const seenTokens = new Set<string>();
+  let token = options.nextPaginationToken;
+
+  for (;;) {
+    const page = await fetchReviewsPage(client, options, token);
+    yield page;
+
+    if (page.token === undefined || seenTokens.has(page.token)) {
+      return;
+    }
+    seenTokens.add(page.token);
+    token = page.token;
+  }
+}
+
 async function accumulateReviews(
   client: HttpClient,
   options: ParsedReviewsOptions,
 ): Promise<ReviewsResult> {
   const collected: ReviewItem[] = [];
-  const seenTokens = new Set<string>();
-  let token = options.nextPaginationToken;
 
-  while (collected.length < options.num) {
-    const page = await fetchReviewsPage(client, options, token);
+  for await (const page of reviewPages(client, options)) {
     for (const review of page.reviews) {
       collected.push(review);
     }
-
-    if (page.token === undefined || seenTokens.has(page.token)) {
+    if (collected.length >= options.num) {
       break;
     }
-    seenTokens.add(page.token);
-    token = page.token;
   }
 
   return reviewsResultSchema.parse({

@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { reviews, type ReviewsOptions } from './reviews.js';
+import { reviewPages, reviews, type ReviewPageQuery, type ReviewsOptions } from './reviews.js';
 import { REVIEWS_RPC_ID } from './specs.js';
 import { reviewSchema } from './schema.js';
+import { createHttpClient } from '../../core/http.js';
+import { sort } from '../../constants.js';
 import { SpecError, ValidationError } from '../../core/errors.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -243,6 +245,51 @@ describe('reviews degraded payloads', () => {
     expect(thrown).toBeInstanceOf(SpecError);
     const failedFields = (thrown as SpecError).failures.map((failure) => failure.field);
     expect(failedFields).toContain('criterias');
+  });
+});
+
+const pageQuery = (overrides: Partial<ReviewPageQuery> = {}): ReviewPageQuery => ({
+  appId: TRANSLATE,
+  sort: sort.NEWEST,
+  lang: 'en',
+  country: 'us',
+  nextPaginationToken: undefined,
+  ...overrides,
+});
+
+describe('reviewPages generator', () => {
+  it('yields one page per fetch until the token runs out', async () => {
+    const { fetchImpl, count } = sequenceFetch([
+      reviewsBatch([reviewEntry('r1')], 'token-2'),
+      reviewsBatch([reviewEntry('r2')], null),
+    ]);
+    const client = createHttpClient({ fetchImpl });
+
+    const ids: string[][] = [];
+    for await (const page of reviewPages(client, pageQuery())) {
+      ids.push(page.reviews.map((review) => review.id));
+    }
+
+    expect(ids).toEqual([['r1'], ['r2']]);
+    expect(count()).toBe(2);
+  });
+
+  it('stops after the repeated token page without a further fetch', async () => {
+    const { fetchImpl, count } = sequenceFetch([
+      reviewsBatch([reviewEntry('r1')], 'loop'),
+      reviewsBatch([reviewEntry('r2')], 'loop'),
+    ]);
+    const client = createHttpClient({ fetchImpl });
+
+    const ids: string[] = [];
+    for await (const page of reviewPages(client, pageQuery())) {
+      for (const review of page.reviews) {
+        ids.push(review.id);
+      }
+    }
+
+    expect(ids).toEqual(['r1', 'r2']);
+    expect(count()).toBe(2);
   });
 });
 
