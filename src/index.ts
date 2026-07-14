@@ -46,6 +46,18 @@ export { reviews } from './features/reviews/reviews.js';
 export type { ReviewsOptions } from './features/reviews/reviews.js';
 export type { Review, ReviewsResult } from './features/reviews/schema.js';
 
+export { reviewsIterator } from './features/reviews/reviewsIterator.js';
+export type { ReviewsIteratorOptions } from './features/reviews/reviewsIterator.js';
+
+export { reviewsAll } from './features/reviews/reviewsAll.js';
+export type { ReviewsAllOptions } from './features/reviews/reviewsAll.js';
+
+export { searchIterator } from './features/search/searchIterator.js';
+export type { SearchIteratorOptions } from './features/search/searchIterator.js';
+
+export { developerIterator } from './features/developer/developerIterator.js';
+export type { DeveloperIteratorOptions } from './features/developer/developerIterator.js';
+
 export { permissions } from './features/permissions/permissions.js';
 export type { PermissionsOptions } from './features/permissions/permissions.js';
 export type { AppPermission } from './features/permissions/schema.js';
@@ -69,6 +81,10 @@ import { categories } from './features/categories/categories.js';
 import { developer } from './features/developer/developer.js';
 import { similar } from './features/similar/similar.js';
 import { reviews } from './features/reviews/reviews.js';
+import { reviewsIterator } from './features/reviews/reviewsIterator.js';
+import { reviewsAll } from './features/reviews/reviewsAll.js';
+import { searchIterator } from './features/search/searchIterator.js';
+import { developerIterator } from './features/developer/developerIterator.js';
 import { permissions } from './features/permissions/permissions.js';
 import { datasafety } from './features/datasafety/datasafety.js';
 import { memoized } from './features/memoized/memoized.js';
@@ -94,10 +110,18 @@ export interface GooglePlayClient {
   datasafety: typeof datasafety;
 }
 
-const gplay: GooglePlayClient & {
-  memoized: typeof memoized;
-  createClient: typeof createClient;
-} = {
+export interface GooglePlayIterators {
+  reviewsIterator: typeof reviewsIterator;
+  reviewsAll: typeof reviewsAll;
+  searchIterator: typeof searchIterator;
+  developerIterator: typeof developerIterator;
+}
+
+const gplay: GooglePlayClient &
+  GooglePlayIterators & {
+    memoized: typeof memoized;
+    createClient: typeof createClient;
+  } = {
   BASE_URL,
   age,
   category,
@@ -113,6 +137,10 @@ const gplay: GooglePlayClient & {
   developer,
   similar,
   reviews,
+  reviewsIterator,
+  reviewsAll,
+  searchIterator,
+  developerIterator,
   permissions,
   datasafety,
   memoized,

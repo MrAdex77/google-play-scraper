@@ -15,10 +15,23 @@ import { createDeveloper, type DeveloperOptions } from './features/developer/dev
 import { createList, type ListOptions } from './features/list/list.js';
 import { createPermissions, type PermissionsOptions } from './features/permissions/permissions.js';
 import { createReviews, type ReviewsOptions } from './features/reviews/reviews.js';
+import {
+  createReviewsIterator,
+  type ReviewsIteratorOptions,
+} from './features/reviews/reviewsIterator.js';
+import { createReviewsAll, type ReviewsAllOptions } from './features/reviews/reviewsAll.js';
 import { createSearch, type SearchOptions } from './features/search/search.js';
+import {
+  createSearchIterator,
+  type SearchIteratorOptions,
+} from './features/search/searchIterator.js';
 import { createSimilar, type SimilarOptions } from './features/similar/similar.js';
+import {
+  createDeveloperIterator,
+  type DeveloperIteratorOptions,
+} from './features/developer/developerIterator.js';
 import { createSuggest, type SuggestOptions } from './features/suggest/suggest.js';
-import type { GooglePlayClient } from './index.js';
+import type { GooglePlayClient, GooglePlayIterators } from './index.js';
 
 export const clientOptionsSchema = z.object({
   lang: z.string().min(2).max(7).optional(),
@@ -41,7 +54,7 @@ function mergeRequestOptions(
   return { ...base, ...override };
 }
 
-export function createClient(options?: ClientOptions): GooglePlayClient {
+export function createClient(options?: ClientOptions): GooglePlayClient & GooglePlayIterators {
   const parsed = parseOptions(clientOptionsSchema, options ?? {}, CLIENT_CONTEXT);
   const limiter: Limiter | undefined =
     parsed.throttle !== undefined ? createRateLimiter(parsed.throttle) : undefined;
@@ -81,6 +94,10 @@ export function createClient(options?: ClientOptions): GooglePlayClient {
   const boundSimilar = createSimilar(boundApp, resolveClient);
   const boundSuggest = createSuggest(resolveClient);
   const boundReviews = createReviews(resolveClient);
+  const boundReviewsIterator = createReviewsIterator(resolveClient);
+  const boundReviewsAll = createReviewsAll(resolveClient);
+  const boundSearchIterator = createSearchIterator(resolveClient);
+  const boundDeveloperIterator = createDeveloperIterator(resolveClient);
   const boundPermissions = createPermissions(resolveClient);
   const boundDatasafety = createDatasafety(resolveClient);
 
@@ -100,6 +117,13 @@ export function createClient(options?: ClientOptions): GooglePlayClient {
     developer: (callOptions: DeveloperOptions) => boundDeveloper(mergeDefaults(callOptions)),
     similar: (callOptions: SimilarOptions) => boundSimilar(mergeDefaults(callOptions)),
     reviews: (callOptions: ReviewsOptions) => boundReviews(mergeDefaults(callOptions)),
+    reviewsIterator: (callOptions: ReviewsIteratorOptions) =>
+      boundReviewsIterator(mergeDefaults(callOptions)),
+    reviewsAll: (callOptions: ReviewsAllOptions) => boundReviewsAll(mergeDefaults(callOptions)),
+    searchIterator: (callOptions: SearchIteratorOptions) =>
+      boundSearchIterator(mergeDefaults(callOptions)),
+    developerIterator: (callOptions: DeveloperIteratorOptions) =>
+      boundDeveloperIterator(mergeDefaults(callOptions)),
     permissions: (callOptions: PermissionsOptions) => boundPermissions(mergeDefaults(callOptions)),
     datasafety: (callOptions: DataSafetyOptions) => boundDatasafety(mergeDefaults(callOptions)),
   };
