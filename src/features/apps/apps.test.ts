@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apps, createApps } from './apps.js';
+import { createClient } from '../../client.js';
+import { memoized } from '../memoized/memoized.js';
 import type { GetApp } from '../../core/fullDetail.js';
 import { GooglePlayError, NotFoundError, ValidationError } from '../../core/errors.js';
 import type { App } from '../app/schema.js';
@@ -22,7 +24,25 @@ const fetchReturning = (body: string, status = 200): typeof fetch => {
   return impl;
 };
 
+interface CountingFetch {
+  fetchImpl: typeof fetch;
+  state: { calls: number };
+}
+
+const countingAppFetch = (): CountingFetch => {
+  const state = { calls: 0 };
+  const fetchImpl: typeof fetch = () => {
+    state.calls += 1;
+    return Promise.resolve(new Response(translateHtml, { status: 200 }));
+  };
+  return { fetchImpl, state };
+};
+
 describe('apps', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('resolves ids in order with fully parsed app objects', async () => {
     const appIds = ['com.one', 'com.two', 'com.three'];
 
@@ -103,5 +123,37 @@ describe('apps', () => {
 
     const tooMany = Array.from({ length: 251 }, (_unused, index) => `com.app${index.toString()}`);
     await expect(apps({ appIds: tooMany })).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('caps the request rate at the shared client limiter despite a higher concurrency', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const startTimes: number[] = [];
+    const fetchImpl: typeof fetch = () => {
+      startTimes.push(Date.now() - start);
+      return Promise.resolve(new Response(translateHtml, { status: 200 }));
+    };
+    const client = createClient({ throttle: 2, requestOptions: { fetchImpl } });
+
+    const pending = client.apps({
+      appIds: ['com.a', 'com.b', 'com.c', 'com.d'],
+      concurrency: 5,
+    });
+    await vi.runAllTimersAsync();
+    await pending;
+
+    expect(startTimes.sort((first, second) => first - second)).toEqual([0, 0, 1000, 1000]);
+  });
+
+  it('fetches a repeated id once across memoized batches', async () => {
+    const client = memoized();
+    const fetch = countingAppFetch();
+    const requestOptions = { fetchImpl: fetch.fetchImpl };
+
+    await client.apps({ appIds: ['com.a', 'com.b'], requestOptions });
+    expect(fetch.state.calls).toBe(2);
+
+    await client.apps({ appIds: ['com.b', 'com.c'], requestOptions });
+    expect(fetch.state.calls).toBe(3);
   });
 });
