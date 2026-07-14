@@ -3,6 +3,7 @@ import {
   categories,
   category,
   collection,
+  createClient,
   datasafety,
   developer,
   list,
@@ -171,6 +172,18 @@ async function showMemoized(): Promise<void> {
   field('Same result', first.value.title === second.value.title);
 }
 
+async function showSharedClient(): Promise<void> {
+  heading('createClient()', 'a client that shares one limiter and defaults');
+  const client = createClient({ country: 'us', throttle: 2 });
+  const { value, ms } = await timed(() =>
+    Promise.all([client.app({ appId: TEST_APP_ID }), client.similar({ appId: TEST_APP_ID })]),
+  );
+  const [details, related] = value;
+  field('Default country', details.url.includes('gl=us') ? 'us (inherited)' : 'not inherited');
+  field('Similar apps', related.length);
+  field('Shared limiter', `2 calls in ${ms.toFixed(0)} ms through one client`);
+}
+
 async function main(): Promise<void> {
   console.log(`Google Play client — example run for ${TEST_APP_ID}`);
   const details = await run('app()', showApp);
@@ -186,6 +199,7 @@ async function main(): Promise<void> {
   await run('permissions()', showPermissions);
   await run('datasafety()', showDataSafety);
   await run('memoized()', showMemoized);
+  await run('createClient()', showSharedClient);
   console.log(`\n${divider}\nDone.`);
 }
 
