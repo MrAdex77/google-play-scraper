@@ -20,6 +20,15 @@ export const baseOptionsSchema = z.object({
 
 export type BaseOptions = z.infer<typeof baseOptionsSchema>;
 
+export function normalizeCountry(country: string): string {
+  return country.toLowerCase();
+}
+
+export function hasUniqueCountriesIgnoringCase(countries: readonly string[]): boolean {
+  const normalized = countries.map(normalizeCountry);
+  return new Set(normalized).size === normalized.length;
+}
+
 export function parseOptions<Schema extends z.ZodType>(
   schema: Schema,
   input: unknown,
