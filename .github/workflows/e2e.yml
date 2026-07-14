@@ -18,6 +18,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:e2e --reporter=default --reporter=json --outputFile.json=e2e-report.json
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: e2e-report
+          path: e2e-report.json
       - if: success()
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
