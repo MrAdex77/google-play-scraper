@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { BASE_URL } from '../../constants.js';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { fetchClusterApps } from '../../core/pagination.js';
@@ -30,14 +30,44 @@ export const searchOptionsSchema = baseOptionsSchema.extend({
 
 export type SearchOptions = z.input<typeof searchOptionsSchema>;
 
-const SEARCH_URL = `${BASE_URL}/store/search`;
-const SEARCH_CONTEXT = 'search';
+type ParsedSearchOptions = z.infer<typeof searchOptionsSchema>;
+
+export const SEARCH_URL = `${BASE_URL}/store/search`;
+export const SEARCH_CONTEXT = 'search';
 
 type SearchItem = Extracted<typeof searchPageItemSpecs>;
+
+export type SearchQuery = Pick<
+  ParsedSearchOptions,
+  'term' | 'lang' | 'country' | 'price' | 'throttle' | 'requestOptions'
+>;
 
 interface FirstPage {
   apps: SearchItem[];
   token: string | undefined;
+}
+
+export interface SearchFirstPage {
+  client: HttpClient;
+  page: FirstPage;
+}
+
+export async function fetchSearchFirstPage(
+  query: SearchQuery,
+  resolveClient: ResolveClient,
+): Promise<SearchFirstPage> {
+  const params = new URLSearchParams({
+    c: 'apps',
+    q: query.term,
+    hl: query.lang,
+    gl: query.country,
+    price: priceGoogleValue(query.price).toString(),
+  });
+
+  const client = resolveClient(query);
+  const html = await client.request({ url: `${SEARCH_URL}?${params.toString()}` });
+  const data = parseScriptData(html);
+  return { client, page: firstPage(data) };
 }
 
 function prependExactMatch(data: ScriptData, apps: SearchItem[]): SearchItem[] {
@@ -82,19 +112,7 @@ export function createSearch(
 ) {
   return async function search(options: SearchOptions): Promise<SearchResult[] | App[]> {
     const parsed = parseOptions(searchOptionsSchema, options, SEARCH_CONTEXT);
-
-    const params = new URLSearchParams({
-      c: 'apps',
-      q: parsed.term,
-      hl: parsed.lang,
-      gl: parsed.country,
-      price: priceGoogleValue(parsed.price).toString(),
-    });
-
-    const client = resolveClient(parsed);
-    const html = await client.request({ url: `${SEARCH_URL}?${params.toString()}` });
-    const data = parseScriptData(html);
-    const page = firstPage(data);
+    const { client, page } = await fetchSearchFirstPage(parsed, resolveClient);
 
     const items = await fetchClusterApps({
       client,
