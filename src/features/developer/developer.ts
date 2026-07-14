@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { clusterItemSpecs } from '../../core/clusterItem.js';
@@ -28,9 +28,22 @@ export const developerOptionsSchema = baseOptionsSchema.extend({
 
 export type DeveloperOptions = z.input<typeof developerOptionsSchema>;
 
-const DEVELOPER_CONTEXT = 'developer';
+type ParsedDeveloperOptions = z.infer<typeof developerOptionsSchema>;
+
+export const DEVELOPER_CONTEXT = 'developer';
 
 type DeveloperItem = Extracted<typeof numericItemSpecs>;
+
+export type DeveloperQuery = Pick<
+  ParsedDeveloperOptions,
+  'devId' | 'lang' | 'country' | 'throttle' | 'requestOptions'
+>;
+
+export interface DeveloperFirstPage {
+  client: HttpClient;
+  apps: DeveloperItem[];
+  token: string | undefined;
+}
 
 interface DeveloperLayout {
   mappings: typeof NUMERIC_INITIAL_MAPPINGS;
@@ -74,28 +87,35 @@ function extractInitial(
   return { apps: [], token: undefined };
 }
 
+export async function fetchDeveloperFirstPage(
+  query: DeveloperQuery,
+  resolveClient: ResolveClient,
+): Promise<DeveloperFirstPage> {
+  const numeric = isNumericDevId(query.devId);
+  const client = resolveClient(query);
+  const html = await client.request({
+    url: developerUrl(query.devId, query.lang, query.country),
+  });
+  const data = parseScriptData(html);
+  const initial = extractInitial(data.blocks, numeric);
+  return { client, apps: initial.apps, token: initial.token };
+}
+
 export function createDeveloper(
   getApp: GetApp<App>,
   resolveClient: ResolveClient = clientFromOptions,
 ) {
   return async function developer(options: DeveloperOptions): Promise<DeveloperApp[] | App[]> {
     const parsed = parseOptions(developerOptionsSchema, options, DEVELOPER_CONTEXT);
-    const numeric = isNumericDevId(parsed.devId);
-
-    const client = resolveClient(parsed);
-    const html = await client.request({
-      url: developerUrl(parsed.devId, parsed.lang, parsed.country),
-    });
-    const data = parseScriptData(html);
-    const initial = extractInitial(data.blocks, numeric);
+    const { client, apps, token } = await fetchDeveloperFirstPage(parsed, resolveClient);
 
     const items = await fetchClusterApps({
       client,
       lang: parsed.lang,
       country: parsed.country,
       num: parsed.num,
-      initialApps: initial.apps,
-      initialToken: initial.token,
+      initialApps: apps,
+      initialToken: token,
       itemSpecs: clusterItemSpecs,
       appsPath: CLUSTER_MAPPINGS.apps,
       tokenPath: CLUSTER_MAPPINGS.token,

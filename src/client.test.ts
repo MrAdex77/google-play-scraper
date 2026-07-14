@@ -11,6 +11,7 @@ const readFixture = (path: string): string =>
 
 const translateHtml = readFixture('app/translate.html');
 const pandaHtml = readFixture('search/panda.html');
+const mojangHtml = readFixture('developer/mojang.html');
 const reviewsInitial = readFixture('reviews/translate-initial.txt');
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -81,6 +82,65 @@ describe('createClient', () => {
     await pending;
 
     expect(calls.map((call) => call.ms).sort((a, b) => a - b)).toEqual([0, 0, 1000, 1000]);
+  });
+
+  it('shares the limiter between an iterator page fetch and a concurrent app call', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const calls: TimedCall[] = [];
+    const fetchImpl = timingFetch(calls, start);
+    const client = createClient({ throttle: 2, requestOptions: { fetchImpl } });
+
+    const firstReviewPage = (): Promise<unknown> =>
+      client.reviewsIterator({ appId: TRANSLATE }).next();
+
+    const pending = Promise.all([
+      client.app({ appId: TRANSLATE }),
+      client.app({ appId: TRANSLATE }),
+      firstReviewPage(),
+      firstReviewPage(),
+    ]);
+    await vi.runAllTimersAsync();
+    await pending;
+
+    expect(calls.map((call) => call.ms).sort((a, b) => a - b)).toEqual([0, 0, 1000, 1000]);
+  });
+
+  it('binds the search, developer, and reviewsAll iterators to the shared client', async () => {
+    const fetchImpl: typeof fetch = (input) => {
+      const url = urlOf(input);
+      if (url.includes('/store/search')) {
+        return Promise.resolve(respond(pandaHtml));
+      }
+      if (url.includes('/store/apps/dev')) {
+        return Promise.resolve(respond(mojangHtml));
+      }
+      return Promise.resolve(respond(reviewsInitial));
+    };
+    const client = createClient({ requestOptions: { fetchImpl } });
+
+    const firstSearch = await client.searchIterator({ term: 'panda' }).next();
+    const firstDeveloper = await client.developerIterator({ devId: 'Mojang' }).next();
+    const bulkReviews = await client.reviewsAll({ appId: TRANSLATE, maxReviews: 5 });
+
+    expect(firstSearch.done).toBe(false);
+    expect(firstDeveloper.done).toBe(false);
+    expect(bulkReviews).toHaveLength(5);
+  });
+
+  it('applies client language and country defaults to iterator calls', async () => {
+    const urls: string[] = [];
+    const fetchImpl: typeof fetch = (input) => {
+      urls.push(urlOf(input));
+      return Promise.resolve(respond(reviewsInitial));
+    };
+    const client = createClient({ lang: 'pl', country: 'pl', requestOptions: { fetchImpl } });
+
+    const result = await client.reviewsIterator({ appId: TRANSLATE }).next();
+
+    expect(result.done).toBe(false);
+    expect(urls[0]).toContain('hl=pl');
+    expect(urls[0]).toContain('gl=pl');
   });
 
   it('applies client defaults, lets a per-call value win, and ignores explicit undefined', async () => {

@@ -42,6 +42,7 @@ This is a modern TypeScript rewrite of the popular but unmaintained [`google-pla
 - [Common options](#common-options)
 - [Shared client](#shared-client)
 - [Methods](#methods)
+- [Streaming and bulk reads](#streaming-and-bulk-reads)
 - [Constants](#constants)
 - [Error handling](#error-handling)
 - [Throttling and requestOptions](#throttling-and-requestoptions)
@@ -471,6 +472,84 @@ await client.app({ appId: 'com.google.android.apps.translate' });
 ```
 
 The returned client exposes every method above plus the exported constants.
+
+## Streaming and bulk reads
+
+`reviews()`, `search()`, and `developer()` collect a fixed `num` of items before they
+resolve. When you want to walk results lazily and stop exactly when you have seen enough,
+use the async iterators. They fetch nothing until the first `for await`, and they stop
+fetching the moment the consumer `break`s, so "first ten reviews then stop" costs exactly
+one page request.
+
+The iterators are available both as standalone functions and as methods on
+[`createClient`](#shared-client), where they share the client's limiter and defaults.
+
+### reviewsIterator
+
+Streams reviews one at a time across pages.
+
+```typescript
+import { reviewsIterator } from '@mradex77/google-play-scraper';
+
+for await (const review of reviewsIterator({ appId: 'com.whatsapp' })) {
+  if (review.score < 3) {
+    break;
+  }
+  console.log(review.userName, review.score);
+}
+```
+
+Pass `nextPaginationToken` to resume a stream where a previous run left off. The token
+comes from a prior `reviews({ paginate: true })` call or from persisted state:
+
+```typescript
+const page = await reviews({ appId: 'com.whatsapp', paginate: true });
+
+const resumed = reviewsIterator({
+  appId: 'com.whatsapp',
+  nextPaginationToken: page.nextPaginationToken ?? undefined,
+});
+```
+
+### reviewsAll
+
+Drains `reviewsIterator` into an array. Popular apps hold millions of reviews, so pass
+`maxReviews` to cap the read; the generator never fetches a page beyond the one that
+contains the last item you asked for. Combine it with a client `throttle` to stay within
+Google Play's rate limits.
+
+```typescript
+import { createClient } from '@mradex77/google-play-scraper';
+
+const client = createClient({ throttle: 5 });
+const recent = await client.reviewsAll({ appId: 'com.whatsapp', maxReviews: 2000 });
+```
+
+Without `maxReviews`, `reviewsAll` walks the entire review history, which can be very large.
+
+### searchIterator and developerIterator
+
+```typescript
+import { searchIterator, developerIterator } from '@mradex77/google-play-scraper';
+
+for await (const result of searchIterator({ term: 'geography quiz' })) {
+  console.log(result.appId);
+}
+
+for await (const item of developerIterator({ devId: 'Google LLC' })) {
+  console.log(item.title);
+}
+```
+
+### Non-goals
+
+- **No `listIterator`.** `list()` sends a single batchexecute RPC that returns up to `num`
+  items in one response; there is no server-side pagination token to iterate. Faking an
+  iterator over one response would misrepresent the network behavior.
+- **Iterators do not accept `fullDetail` or `num`.** Streaming consumers call
+  `client.app()` per item when they need full details, and the consumer controls the end
+  by breaking; baking N+1 lookups or a fixed count into a generator hides its real cost.
+  Use `reviewsAll({ maxReviews })` for the bounded case.
 
 ## Constants
 

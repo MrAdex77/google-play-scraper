@@ -144,6 +144,30 @@ async function showReviews(): Promise<void> {
   });
 }
 
+async function showStreaming(): Promise<void> {
+  heading('reviewsIterator() / reviewsAll()', 'streaming and bulk review reads');
+
+  let pageFetches = 0;
+  const countingFetch: typeof fetch = (input, init) => {
+    pageFetches += 1;
+    return fetch(input, init);
+  };
+  const client = createClient({ throttle: 5, requestOptions: { fetchImpl: countingFetch } });
+
+  const streamed: number[] = [];
+  for await (const review of client.reviewsIterator({ appId: TEST_APP_ID })) {
+    streamed.push(review.score);
+    if (streamed.length === 10) {
+      break;
+    }
+  }
+  field('Streamed reviews', streamed.length);
+  field('Pages fetched before break', pageFetches);
+
+  const bulk = await client.reviewsAll({ appId: TEST_APP_ID, maxReviews: 200 });
+  field('reviewsAll(maxReviews: 200)', `${count(bulk.length)} reviews collected`);
+}
+
 async function showPermissions(): Promise<void> {
   heading('permissions()', 'permissions requested by an app');
   const entries = await permissions({ appId: TEST_APP_ID });
@@ -196,6 +220,7 @@ async function main(): Promise<void> {
   }
   await run('similar()', showSimilar);
   await run('reviews()', showReviews);
+  await run('reviewsIterator()/reviewsAll()', showStreaming);
   await run('permissions()', showPermissions);
   await run('datasafety()', showDataSafety);
   await run('memoized()', showMemoized);

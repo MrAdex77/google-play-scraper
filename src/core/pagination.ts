@@ -22,11 +22,10 @@ function asToken(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-export interface FetchClusterAppsParams<M extends SpecMap> {
+export interface ClusterPagesParams<M extends SpecMap> {
   client: HttpClient;
   lang: string;
   country: string;
-  num: number;
   initialApps: Extracted<M>[];
   initialToken: string | undefined;
   itemSpecs: M;
@@ -35,26 +34,50 @@ export interface FetchClusterAppsParams<M extends SpecMap> {
   context: string;
 }
 
-export async function fetchClusterApps<M extends SpecMap>(
-  params: FetchClusterAppsParams<M>,
-): Promise<Extracted<M>[]> {
-  const { client, lang, country, num, itemSpecs, appsPath, tokenPath, context } = params;
-  const collected: Extracted<M>[] = [...params.initialApps];
+export interface FetchClusterAppsParams<M extends SpecMap> extends ClusterPagesParams<M> {
+  num: number;
+}
+
+export async function* clusterPages<M extends SpecMap>(
+  params: ClusterPagesParams<M>,
+): AsyncGenerator<Extracted<M>[], void, undefined> {
+  const { client, lang, country, itemSpecs, appsPath, tokenPath, context } = params;
+
+  if (params.initialApps.length > 0) {
+    yield params.initialApps;
+  }
+
+  const seenTokens = new Set<string>();
   let token = asToken(params.initialToken);
 
-  while (collected.length < num && token !== undefined) {
+  while (token !== undefined && !seenTokens.has(token)) {
+    seenTokens.add(token);
     const body = buildClusterBody(CLUSTER_PAGE_SIZE, token);
     const text = await client.request({ url: clusterUrl(lang, country), method: 'POST', body });
     const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
 
     const apps = getPath(payload, appsPath);
     if (!Array.isArray(apps) || apps.length === 0) {
+      return;
+    }
+    yield apps.map((item) => extract(item, itemSpecs, context));
+    token = asToken(getPath(payload, tokenPath));
+  }
+}
+
+export async function fetchClusterApps<M extends SpecMap>(
+  params: FetchClusterAppsParams<M>,
+): Promise<Extracted<M>[]> {
+  const { num, ...pageParams } = params;
+  const collected: Extracted<M>[] = [];
+
+  for await (const page of clusterPages(pageParams)) {
+    for (const item of page) {
+      collected.push(item);
+    }
+    if (collected.length >= num) {
       break;
     }
-    for (const item of apps) {
-      collected.push(extract(item, itemSpecs, context));
-    }
-    token = asToken(getPath(payload, tokenPath));
   }
 
   return collected.slice(0, num);
