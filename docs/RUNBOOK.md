@@ -5,11 +5,16 @@ fixtures still parse but the live pages no longer match the paths in `specs.ts`.
 This runbook turns that break into a fifteen minute patch.
 
 1. **Signal.** The scheduled `Live contract tests` workflow fails and an issue
-   labeled `contract-breakage` appears, or users report a `SpecError`.
+   labeled `contract-breakage` appears, or users report a `SpecError`. The issue
+   names every failing suite in its title and lists each failing test with the
+   `SpecError` field lines (broken fields and the paths that were tried) inline,
+   so triage starts without opening the run log.
 
 2. **Refresh and reproduce.** Run `pnpm fixtures:update`, then `pnpm test`. The
    failing tests throw `SpecError`s that name every broken field and the paths
-   that were tried.
+   that were tried. Scope the refresh to the features named in the issue title
+   with `pnpm fixtures:update <feature>` (for example `pnpm fixtures:update app`)
+   to skip re-recording unaffected suites.
 
 3. **Repair the paths.** Open the matching `src/features/<name>/specs.ts`, inspect
    the refreshed fixture (search the expected value in the raw HTML or batch
