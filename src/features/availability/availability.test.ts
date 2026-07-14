@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { availability } from './availability.js';
 import { availabilityResultSchema } from './schema.js';
+import { createClient } from '../../client.js';
+import { memoized } from '../memoized/memoized.js';
 import { createCountryFetch } from '../../core/countryFetch.js';
 import { ValidationError } from '../../core/errors.js';
 
@@ -122,6 +124,42 @@ describe('availability', () => {
     });
 
     expect(peak).toBe(3);
+  });
+
+  it('respects the shared client limiter across probes', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const startTimes: number[] = [];
+    const fetchImpl: typeof fetch = () => {
+      startTimes.push(Date.now() - start);
+      return Promise.resolve(fakeResponse({ status: 200 }));
+    };
+    const client = createClient({ throttle: 2, requestOptions: { fetchImpl, retries: 0 } });
+
+    const pending = client.availability({
+      appId: 'com.example.app',
+      countries: ['us', 'gb', 'de', 'fr'],
+      concurrency: 5,
+    });
+    await vi.runAllTimersAsync();
+    await pending;
+
+    expect(startTimes.sort((first, second) => first - second)).toEqual([0, 0, 1000, 1000]);
+  });
+
+  it('serves a repeated availability call from the memoized cache', async () => {
+    const client = memoized();
+    let calls = 0;
+    const fetchImpl: typeof fetch = () => {
+      calls += 1;
+      return Promise.resolve(fakeResponse({ status: 200 }));
+    };
+    const requestOptions = { fetchImpl, retries: 0 };
+
+    await client.availability({ appId: 'com.example.app', countries: ['us'], requestOptions });
+    await client.availability({ appId: 'com.example.app', countries: ['us'], requestOptions });
+
+    expect(calls).toBe(1);
   });
 
   it('routes each country through its own fetch via createCountryFetch', async () => {

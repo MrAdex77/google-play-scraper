@@ -23,6 +23,10 @@ export type { App } from './features/app/schema.js';
 export { apps } from './features/apps/apps.js';
 export type { AppsEntry, AppsOptions } from './features/apps/apps.js';
 
+export { availability } from './features/availability/availability.js';
+export type { AvailabilityOptions } from './features/availability/availability.js';
+export type { AvailabilityResult, CountryAvailability } from './features/availability/schema.js';
+
 export { search } from './features/search/search.js';
 export type { SearchOptions } from './features/search/search.js';
 export type { SearchResult } from './features/search/schema.js';
@@ -78,6 +82,7 @@ export type { ClientOptions } from './client.js';
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
 import { apps } from './features/apps/apps.js';
+import { availability } from './features/availability/availability.js';
 import { search } from './features/search/search.js';
 import { suggest } from './features/suggest/suggest.js';
 import { list } from './features/list/list.js';
@@ -104,6 +109,7 @@ export interface GooglePlayClient {
   sort: typeof sort;
   app: typeof app;
   apps: typeof apps;
+  availability: typeof availability;
   search: typeof search;
   suggest: typeof suggest;
   list: typeof list;
@@ -136,6 +142,7 @@ const gplay: GooglePlayClient &
   sort,
   app,
   apps,
+  availability,
   search,
   suggest,
   list,
