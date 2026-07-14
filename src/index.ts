@@ -57,6 +57,9 @@ export type { DataEntry, DataSafety, SecurityPractice } from './features/datasaf
 export { memoized } from './features/memoized/memoized.js';
 export type { MemoizedOptions } from './features/memoized/memoized.js';
 
+export { createClient } from './client.js';
+export type { ClientOptions } from './client.js';
+
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
 import { search } from './features/search/search.js';
@@ -69,6 +72,7 @@ import { reviews } from './features/reviews/reviews.js';
 import { permissions } from './features/permissions/permissions.js';
 import { datasafety } from './features/datasafety/datasafety.js';
 import { memoized } from './features/memoized/memoized.js';
+import { createClient } from './client.js';
 
 export interface GooglePlayClient {
   BASE_URL: typeof BASE_URL;
@@ -90,7 +94,10 @@ export interface GooglePlayClient {
   datasafety: typeof datasafety;
 }
 
-const gplay: GooglePlayClient & { memoized: typeof memoized } = {
+const gplay: GooglePlayClient & {
+  memoized: typeof memoized;
+  createClient: typeof createClient;
+} = {
   BASE_URL,
   age,
   category,
@@ -109,6 +116,7 @@ const gplay: GooglePlayClient & { memoized: typeof memoized } = {
   permissions,
   datasafety,
   memoized,
+  createClient,
 };
 
 export default gplay;
