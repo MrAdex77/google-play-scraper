@@ -90,7 +90,7 @@ gplay.search({ term: 'panda' }).then((results) => {
 });
 ```
 
-More runnable examples live in [examples/](examples/).
+More runnable examples live in [examples/](https://github.com/MrAdex77/google-play-scraper/tree/main/examples).
 
 ## Common options
 
