@@ -40,6 +40,7 @@ This is a modern TypeScript rewrite of the popular but unmaintained [`google-pla
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Common options](#common-options)
+- [Shared client](#shared-client)
 - [Methods](#methods)
 - [Constants](#constants)
 - [Error handling](#error-handling)
@@ -100,6 +101,34 @@ Every method accepts a single options object. These options are available on all
 | `country`        | `string` | `'us'`  | Two letter country code. Needed for apps available only in some regions.             |
 | `throttle`       | `number` | none    | Maximum requests per second across a single call.                                    |
 | `requestOptions` | `object` | none    | HTTP overrides. See [Throttling and requestOptions](#throttling-and-requestoptions). |
+
+## Shared client
+
+The top-level functions each build their own HTTP client, so a `throttle` passed to one call only limits the requests made inside that single call, such as the pagination pages of one `search()`, `list()`, `developer()`, or `reviews()`. Ten parallel `app()` calls with `throttle: 1` each get their own limiter and still reach Google Play at the same time.
+
+`createClient` fixes this by sharing one rate limiter, one set of request options, and one pair of `lang`/`country` defaults across every method of the client:
+
+```typescript
+import { createClient } from '@mradex77/google-play-scraper';
+
+const client = createClient({ country: 'pl', lang: 'pl', throttle: 5 });
+
+const ids = ['com.foo', 'com.bar', 'com.baz'];
+const details = await Promise.all(ids.map((appId) => client.app({ appId })));
+```
+
+That whole batch never exceeds five requests per second in total, across every method of the client, including the `fullDetail` app lookups made by `search`, `list`, `developer`, and `similar`.
+
+Precedence rules:
+
+1. A client-level `throttle` creates one shared limiter that every method call goes through, including pagination pages and `fullDetail` lookups.
+2. A per-call `throttle` passed to a client method is superseded by the client limiter. When the client was created without `throttle`, a per-call value behaves exactly like the top-level functions do today (a call-scoped limiter).
+3. `requestOptions` merge shallowly, with per-call keys winning: `{ ...client, ...call }`.
+4. Per-call `lang` and `country` win over the client defaults; the built-in `en`/`us` defaults apply last.
+
+Every method from the [reference below](#methods) is available on the client, alongside the exported constants. Two clients created with `createClient` are fully independent and never share a limiter.
+
+> A per-call `throttle` on the top-level functions only rate-limits the requests within that single call, such as its pagination pages. Reach for `createClient` when you need one limit to span many calls.
 
 ## Methods
 
