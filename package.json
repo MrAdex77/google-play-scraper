@@ -75,6 +75,7 @@
     "test:coverage": "vitest run --project unit --coverage",
     "test:e2e": "vitest run --project e2e",
     "check:package": "pnpm build && publint && attw --pack .",
+    "docs:api": "typedoc",
     "fixtures:update": "tsx scripts/update-fixtures.ts",
     "example": "tsx examples/all-methods.ts",
     "prepare": "husky",
@@ -109,6 +110,7 @@
     "publint": "^0.3.21",
     "tsdown": "^0.22.4",
     "tsx": "^4.23.0",
+    "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.63.0",
     "vitest": "^4.1.10"

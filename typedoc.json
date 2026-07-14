@@ -1,0 +1,20 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/api",
+  "readme": "README.md",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "githubPages": true,
+  "hideGenerator": true,
+  "navigationLinks": {
+    "GitHub": "https://github.com/MrAdex77/google-play-scraper",
+    "npm": "https://www.npmjs.com/package/@mradex77/google-play-scraper"
+  },
+  "validation": {
+    "notExported": true,
+    "invalidLink": true
+  },
+  "treatWarningsAsErrors": true
+}

@@ -2,6 +2,7 @@ plan
 CLAUDE.md
 node_modules
 dist
+docs/api
 coverage
 .reference
 *.log

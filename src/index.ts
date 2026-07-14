@@ -13,70 +13,91 @@ export {
 } from './core/errors.js';
 export type { SpecFailure } from './core/errors.js';
 
-export { createCountryFetch } from './core/countryFetch.js';
+export { createCountryFetch, countryFetchSettingsSchema } from './core/countryFetch.js';
 export type { CountryFetchSettings } from './core/countryFetch.js';
 
-export { app } from './features/app/app.js';
+export { appItemSchema } from './core/appItem.js';
+export type { AppItem } from './core/appItem.js';
+
+export { app, appOptionsSchema } from './features/app/app.js';
 export type { AppOptions } from './features/app/app.js';
+export { appSchema } from './features/app/schema.js';
 export type { App } from './features/app/schema.js';
 
-export { apps } from './features/apps/apps.js';
+export { apps, appsOptionsSchema } from './features/apps/apps.js';
 export type { AppsEntry, AppsOptions } from './features/apps/apps.js';
 
-export { availability } from './features/availability/availability.js';
+export { availability, availabilityOptionsSchema } from './features/availability/availability.js';
 export type { AvailabilityOptions } from './features/availability/availability.js';
+export {
+  availabilityResultSchema,
+  countryAvailabilitySchema,
+} from './features/availability/schema.js';
 export type { AvailabilityResult, CountryAvailability } from './features/availability/schema.js';
 
-export { search } from './features/search/search.js';
+export { search, searchOptionsSchema } from './features/search/search.js';
 export type { SearchOptions } from './features/search/search.js';
 export type { SearchResult } from './features/search/schema.js';
 
-export { suggest } from './features/suggest/suggest.js';
+export { suggest, suggestOptionsSchema } from './features/suggest/suggest.js';
 export type { SuggestOptions } from './features/suggest/suggest.js';
 
-export { list } from './features/list/list.js';
+export { list, listOptionsSchema } from './features/list/list.js';
 export type { ListOptions } from './features/list/list.js';
 export type { ListItem } from './features/list/schema.js';
 
-export { categories } from './features/categories/categories.js';
+export { categories, categoriesOptionsSchema } from './features/categories/categories.js';
 export type { CategoriesOptions } from './features/categories/categories.js';
 
-export { developer } from './features/developer/developer.js';
+export { developer, developerOptionsSchema } from './features/developer/developer.js';
 export type { DeveloperOptions } from './features/developer/developer.js';
 export type { DeveloperApp } from './features/developer/schema.js';
 
-export { similar } from './features/similar/similar.js';
+export { similar, similarOptionsSchema } from './features/similar/similar.js';
 export type { SimilarOptions } from './features/similar/similar.js';
 export type { SimilarApp } from './features/similar/schema.js';
 
-export { reviews } from './features/reviews/reviews.js';
+export { reviews, reviewsOptionsSchema } from './features/reviews/reviews.js';
 export type { ReviewsOptions } from './features/reviews/reviews.js';
+export { reviewSchema, reviewsResultSchema } from './features/reviews/schema.js';
 export type { Review, ReviewsResult } from './features/reviews/schema.js';
 
-export { reviewsIterator } from './features/reviews/reviewsIterator.js';
+export {
+  reviewsIterator,
+  reviewsIteratorOptionsSchema,
+} from './features/reviews/reviewsIterator.js';
 export type { ReviewsIteratorOptions } from './features/reviews/reviewsIterator.js';
 
-export { reviewsAll } from './features/reviews/reviewsAll.js';
+export { reviewsAll, reviewsAllOptionsSchema } from './features/reviews/reviewsAll.js';
 export type { ReviewsAllOptions } from './features/reviews/reviewsAll.js';
 
-export { searchIterator } from './features/search/searchIterator.js';
+export { searchIterator, searchIteratorOptionsSchema } from './features/search/searchIterator.js';
 export type { SearchIteratorOptions } from './features/search/searchIterator.js';
 
-export { developerIterator } from './features/developer/developerIterator.js';
+export {
+  developerIterator,
+  developerIteratorOptionsSchema,
+} from './features/developer/developerIterator.js';
 export type { DeveloperIteratorOptions } from './features/developer/developerIterator.js';
 
-export { permissions } from './features/permissions/permissions.js';
+export { permissions, permissionsOptionsSchema } from './features/permissions/permissions.js';
 export type { PermissionsOptions } from './features/permissions/permissions.js';
+export { permissionSchema } from './features/permissions/schema.js';
 export type { AppPermission } from './features/permissions/schema.js';
 
-export { datasafety } from './features/datasafety/datasafety.js';
+export { datasafety, dataSafetyOptionsSchema } from './features/datasafety/datasafety.js';
 export type { DataSafetyOptions } from './features/datasafety/datasafety.js';
+export {
+  dataEntrySchema,
+  dataSafetySchema,
+  securityPracticeSchema,
+} from './features/datasafety/schema.js';
 export type { DataEntry, DataSafety, SecurityPractice } from './features/datasafety/schema.js';
 
 export { memoized } from './features/memoized/memoized.js';
 export type { MemoizedOptions } from './features/memoized/memoized.js';
 
-export { createClient } from './client.js';
+export { createClient, clientOptionsSchema } from './client.js';
 export type { ClientOptions } from './client.js';
 
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
