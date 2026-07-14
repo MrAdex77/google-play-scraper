@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { BASE_URL } from '../../constants.js';
-import { clientFromOptions } from '../../core/http.js';
+import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { fetchClusterApps } from '../../core/pagination.js';
@@ -76,7 +76,10 @@ function firstPage(data: ScriptData): FirstPage {
   return { apps: [], token: undefined };
 }
 
-export function createSearch(getApp: GetApp<App>) {
+export function createSearch(
+  getApp: GetApp<App>,
+  resolveClient: ResolveClient = clientFromOptions,
+) {
   return async function search(options: SearchOptions): Promise<SearchResult[] | App[]> {
     const parsed = parseOptions(searchOptionsSchema, options, SEARCH_CONTEXT);
 
@@ -88,7 +91,7 @@ export function createSearch(getApp: GetApp<App>) {
       price: priceGoogleValue(parsed.price).toString(),
     });
 
-    const client = clientFromOptions(parsed);
+    const client = resolveClient(parsed);
     const html = await client.request({ url: `${SEARCH_URL}?${params.toString()}` });
     const data = parseScriptData(html);
     const page = firstPage(data);

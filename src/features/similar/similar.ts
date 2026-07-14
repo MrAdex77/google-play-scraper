@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { clientFromOptions } from '../../core/http.js';
+import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { clusterItemSpecs } from '../../core/clusterItem.js';
@@ -43,11 +43,14 @@ function extractClusterPage(blocks: Record<string, unknown>): {
   return { apps, token: typeof token === 'string' ? token : undefined };
 }
 
-export function createSimilar(getApp: GetApp<App>) {
+export function createSimilar(
+  getApp: GetApp<App>,
+  resolveClient: ResolveClient = clientFromOptions,
+) {
   return async function similar(options: SimilarOptions): Promise<SimilarApp[] | App[]> {
     const parsed = parseOptions(similarOptionsSchema, options, SIMILAR_CONTEXT);
 
-    const client = clientFromOptions(parsed);
+    const client = resolveClient(parsed);
     const detailsHtml = await client.request({
       url: similarDetailsUrl(parsed.appId, parsed.country),
     });
