@@ -80,6 +80,27 @@ async function showApp(): Promise<App> {
   return details;
 }
 
+async function showApps(): Promise<void> {
+  heading('apps()', 'batch details for many ids with per-id failure capture');
+  const client = createClient({ throttle: 5 });
+  const appIds = [
+    TEST_APP_ID,
+    'com.instagram.android',
+    'com.spotify.music',
+    'com.definitely.not.a.real.app',
+  ];
+  const result = await client.apps({ appIds, concurrency: 3 });
+  result.forEach((entry) => {
+    if (entry.status === 'fulfilled') {
+      field(entry.appId, `fulfilled — ${entry.app.title}`);
+    } else {
+      field(entry.appId, `rejected — ${entry.error.name}`);
+    }
+  });
+  const fulfilled = result.filter((entry) => entry.status === 'fulfilled').length;
+  field('Resolved', `${count(fulfilled)} of ${count(result.length)} (batch still resolved)`);
+}
+
 async function showSearch(): Promise<void> {
   heading('search()', 'apps matching a query');
   const results = await search({ term: SEARCH_TERM, num: 5 });
@@ -211,6 +232,7 @@ async function showSharedClient(): Promise<void> {
 async function main(): Promise<void> {
   console.log(`Google Play client — example run for ${TEST_APP_ID}`);
   const details = await run('app()', showApp);
+  await run('apps()', showApps);
   await run('search()', showSearch);
   await run('suggest()', showSuggest);
   await run('list()', showList);
