@@ -20,6 +20,9 @@ export { app } from './features/app/app.js';
 export type { AppOptions } from './features/app/app.js';
 export type { App } from './features/app/schema.js';
 
+export { apps } from './features/apps/apps.js';
+export type { AppsEntry, AppsOptions } from './features/apps/apps.js';
+
 export { search } from './features/search/search.js';
 export type { SearchOptions } from './features/search/search.js';
 export type { SearchResult } from './features/search/schema.js';
@@ -74,6 +77,7 @@ export type { ClientOptions } from './client.js';
 
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
+import { apps } from './features/apps/apps.js';
 import { search } from './features/search/search.js';
 import { suggest } from './features/suggest/suggest.js';
 import { list } from './features/list/list.js';
@@ -99,6 +103,7 @@ export interface GooglePlayClient {
   permission: typeof permission;
   sort: typeof sort;
   app: typeof app;
+  apps: typeof apps;
   search: typeof search;
   suggest: typeof suggest;
   list: typeof list;
@@ -130,6 +135,7 @@ const gplay: GooglePlayClient &
   permission,
   sort,
   app,
+  apps,
   search,
   suggest,
   list,

@@ -9,6 +9,7 @@ import {
 } from './core/http.js';
 import { parseOptions, requestOptionsSchema, type RequestOptions } from './core/options.js';
 import { createApp, type AppOptions } from './features/app/app.js';
+import { createApps, type AppsOptions } from './features/apps/apps.js';
 import { categories, type CategoriesOptions } from './features/categories/categories.js';
 import { createDatasafety, type DataSafetyOptions } from './features/datasafety/datasafety.js';
 import { createDeveloper, type DeveloperOptions } from './features/developer/developer.js';
@@ -88,6 +89,7 @@ export function createClient(options?: ClientOptions): GooglePlayClient & Google
   };
 
   const boundApp = createApp(resolveClient);
+  const boundApps = createApps(boundApp);
   const boundSearch = createSearch(boundApp, resolveClient);
   const boundList = createList(boundApp, resolveClient);
   const boundDeveloper = createDeveloper(boundApp, resolveClient);
@@ -110,6 +112,7 @@ export function createClient(options?: ClientOptions): GooglePlayClient & Google
     permission,
     sort,
     app: (callOptions: AppOptions) => boundApp(mergeDefaults(callOptions)),
+    apps: (callOptions: AppsOptions) => boundApps(mergeDefaults(callOptions)),
     search: (callOptions: SearchOptions) => boundSearch(mergeDefaults(callOptions)),
     suggest: (callOptions: SuggestOptions) => boundSuggest(mergeDefaults(callOptions)),
     list: (callOptions: ListOptions) => boundList(mergeDefaults(callOptions)),

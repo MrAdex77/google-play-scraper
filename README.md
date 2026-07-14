@@ -201,6 +201,54 @@ Returns an `App` with 55 fields. Trimmed:
 }
 ```
 
+### Batch details
+
+Fetches the full detail of many apps in one call, with a concurrency limit and per-id
+failure capture. One missing app never rejects the whole batch, and results stay aligned
+with the input order.
+
+| Option        | Type       | Default  | Description                                                        |
+| ------------- | ---------- | -------- | ------------------------------------------------------------------ |
+| `appIds`      | `string[]` | required | Between `1` and `250` Google Play ids.                             |
+| `concurrency` | `number`   | `5`      | Maximum number of app lookups in flight at once, from `1` to `20`. |
+
+```typescript
+import { apps } from '@mradex77/google-play-scraper';
+
+const result = await apps({
+  appIds: ['com.whatsapp', 'com.spotify.music', 'com.gone.app'],
+  concurrency: 5,
+});
+```
+
+Each entry is a discriminated union keyed on `status`; narrow on it to read the parsed
+`App` or the typed error:
+
+```typescript
+for (const entry of result) {
+  if (entry.status === 'fulfilled') {
+    console.log(entry.appId, entry.app.title);
+  } else {
+    console.error(entry.appId, entry.error.name);
+  }
+}
+```
+
+```typescript
+type AppsEntry =
+  | { appId: string; status: 'fulfilled'; app: App }
+  | { appId: string; status: 'rejected'; error: GooglePlayError };
+```
+
+`apps` does not deduplicate `appIds` within a call: a list with the same id twice fetches
+it twice. Use a [`memoized`](#memoized) client when you want repeated ids, across or within
+batches, served from cache.
+
+`concurrency` bounds parallelism; a client [`throttle`](#throttling-and-requestoptions)
+bounds the request rate. When both apply, the effective rate is the smaller of the two
+constraints, so `createClient({ throttle: 2 }).apps({ appIds, concurrency: 5 })` still
+issues at most two requests per second.
+
 ### search
 
 Retrieves apps that match a search term.
