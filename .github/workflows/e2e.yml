@@ -17,7 +17,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:e2e
+      - run: pnpm test:e2e --reporter=default --reporter=json --outputFile.json=e2e-report.json
       - if: success()
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
@@ -43,14 +43,43 @@ jobs:
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
           script: |
+            const { readFileSync } = require('node:fs')
             const { owner, repo } = context.repo
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+            let failures = []
+            try {
+              const report = JSON.parse(readFileSync('e2e-report.json', 'utf8'))
+              failures = report.testResults.flatMap((file) =>
+                file.assertionResults
+                  .filter((test) => test.status === 'failed')
+                  .map((test) => ({
+                    feature: file.name.split('/').pop().replace('.e2e.test.ts', ''),
+                    fullName: test.fullName,
+                    message: (test.failureMessages[0] ?? 'no message').split('\n').slice(0, 6).join('\n'),
+                  })),
+              )
+            } catch {
+              failures = [{ feature: 'unknown', fullName: 'report unavailable', message: 'The run failed before vitest produced e2e-report.json. Check the run log.' }]
+            }
+            const features = [...new Set(failures.map((failure) => failure.feature))].join(', ')
+            const title = `Live contract tests failing: ${features}`
+            const details = failures
+              .map((failure) => `### \`${failure.feature}\` — ${failure.fullName}\n\n\`\`\`\n${failure.message}\n\`\`\``)
+              .join('\n\n')
+            const body = [
+              `The scheduled run against Google Play failed. Latest failing run: ${runUrl}`,
+              '',
+              `Failing tests (${failures.length}):`,
+              '',
+              details,
+              '',
+              'Google likely changed a page structure. Follow [docs/RUNBOOK.md](../blob/main/docs/RUNBOOK.md).',
+            ].join('\n')
             const open = await github.rest.issues.listForRepo({ owner, repo, state: 'open', labels: 'contract-breakage' })
             if (open.data.length === 0) {
-              await github.rest.issues.create({
-                owner,
-                repo,
-                title: 'Live contract tests are failing',
-                labels: ['contract-breakage'],
-                body: 'The scheduled run against Google Play failed. Google likely changed a page structure. Follow docs/RUNBOOK.md.'
-              })
+              await github.rest.issues.create({ owner, repo, title, labels: ['contract-breakage'], body })
+            } else {
+              const issue = open.data[0]
+              await github.rest.issues.update({ owner, repo, issue_number: issue.number, title, body })
+              await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `Still failing as of ${new Date().toISOString().slice(0, 10)}: ${runUrl}` })
             }
