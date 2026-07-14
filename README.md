@@ -249,6 +249,84 @@ bounds the request rate. When both apply, the effective rate is the smaller of t
 constraints, so `createClient({ throttle: 2 }).apps({ appIds, concurrency: 5 })` still
 issues at most two requests per second.
 
+### Country availability
+
+Answers "in which countries is this app published?" by probing the Google Play details
+page once per country. Each probe is a plain `GET` whose HTTP status is the whole answer,
+so the body is never parsed and a probe is an order of magnitude cheaper than an `app`
+lookup. No other scraper offers this as a first-class call.
+
+| Option        | Type       | Default  | Description                                                      |
+| ------------- | ---------- | -------- | ---------------------------------------------------------------- |
+| `appId`       | `string`   | required | The Google Play id to probe.                                     |
+| `countries`   | `string[]` | required | Between `1` and `50` ISO 3166-1 alpha-2 codes, case insensitive. |
+| `lang`        | `string`   | `'en'`   | The `hl` language of each probe.                                 |
+| `concurrency` | `number`   | `5`      | Maximum number of probes in flight at once, from `1` to `20`.    |
+
+```typescript
+import { availability } from '@mradex77/google-play-scraper';
+
+const result = await availability({
+  appId: 'com.adex77.WhereAmI',
+  countries: ['us', 'pl', 'de', 'jp'],
+});
+```
+
+```typescript
+{
+  appId: 'com.adex77.WhereAmI',
+  countries: {
+    us: { status: 'available' },
+    pl: { status: 'available' },
+    de: { status: 'available' },
+    jp: { status: 'unavailable' },
+  },
+}
+```
+
+Each country resolves to one of three statuses:
+
+- `available` — the probe returned `200`; the app is published in that storefront.
+- `unavailable` — the probe returned `404`; the app is not published there.
+- `error` — the probe could not tell: a block (consent wall or captcha), a rate limit, any
+  other HTTP failure, or a network error, with the original `message` preserved.
+
+`error` is deliberately never collapsed into `unavailable`. A blocked or rate-limited probe
+means "we could not determine availability", which must not masquerade as "not published"
+in data used for release decisions. Country codes are returned lowercased, duplicates
+(ignoring case) are rejected, and a single call probes at most `50` countries.
+
+Because Google Play geoblocking depends on the caller's IP as much as on the `gl`
+parameter, pair `availability` with [`createCountryFetch`](#routing-by-country) so each
+probe exits through a proxy located in the country it probes:
+
+```typescript
+import { ProxyAgent, fetch as undiciFetch, type RequestInit } from 'undici';
+import { availability, createCountryFetch } from '@mradex77/google-play-scraper';
+
+const throughProxy = (proxyUrl: string): typeof fetch => {
+  const dispatcher = new ProxyAgent(proxyUrl);
+  return ((input: string | URL, init?: RequestInit) =>
+    undiciFetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
+};
+
+const fetchImpl = createCountryFetch({
+  perCountry: {
+    us: throughProxy('http://us-proxy.internal:8080'),
+    de: throughProxy('http://de-proxy.internal:8080'),
+  },
+});
+
+const result = await availability({
+  appId: 'com.adex77.WhereAmI',
+  countries: ['us', 'de'],
+  requestOptions: { fetchImpl },
+});
+```
+
+Each probe carries `gl=<country>`, so `createCountryFetch` routes the `us` probe through
+the US proxy and the `de` probe through the German proxy.
+
 ### search
 
 Retrieves apps that match a search term.

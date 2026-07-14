@@ -11,6 +11,7 @@ import {
 import type { GooglePlayClient } from '../../index.js';
 import { app } from '../app/app.js';
 import { createApps } from '../apps/apps.js';
+import { availability } from '../availability/availability.js';
 import { categories, type CategoriesOptions } from '../categories/categories.js';
 import { datasafety } from '../datasafety/datasafety.js';
 import { createDeveloper } from '../developer/developer.js';
@@ -119,6 +120,7 @@ export function memoized(options?: MemoizedOptions): GooglePlayClient {
     sort,
     app: memoApp,
     apps: createApps(memoApp),
+    availability: memoize('availability', availability),
     search: memoize('search', createSearch(memoApp)),
     suggest: memoize('suggest', suggest),
     list: memoize('list', createList(memoApp)),
