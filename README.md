@@ -4,10 +4,13 @@
 [![npm downloads](https://img.shields.io/npm/dm/@mradex77/google-play-scraper.svg)](https://www.npmjs.com/package/@mradex77/google-play-scraper)
 [![CI](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml)
 [![Live contract tests](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml)
+[![API docs](https://github.com/MrAdex77/google-play-scraper/actions/workflows/docs.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/docs.yml)
 [![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/MrAdex77/5aa7b737d6fb2adae68cb61693cfa123/raw/google-play-scraper-coverage.json)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml)
 [![types](https://img.shields.io/npm/types/@mradex77/google-play-scraper.svg)](https://www.npmjs.com/package/@mradex77/google-play-scraper)
 [![node](https://img.shields.io/node/v/@mradex77/google-play-scraper.svg)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/@mradex77/google-play-scraper.svg)](LICENSE)
+
+📖 **[API reference](https://mradex77.github.io/google-play-scraper/)** — browsable, always-current typed signatures for every method, option and error class, generated from the source on each release.
 
 **Scrape Google Play app data in Node.js with a fully typed TypeScript API.** Fetch app details, search results, top charts, developer pages, similar apps, user reviews, permissions and data safety information directly from the Play Store. Built for ASO research, app market analysis, competitor tracking, review monitoring and data pipelines.
 
