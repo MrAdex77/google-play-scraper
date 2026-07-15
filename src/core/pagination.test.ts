@@ -161,9 +161,72 @@ describe('clusterPages', () => {
     expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
     expect(requests).toHaveLength(1);
   });
+
+  it('stops gracefully when a continuation page fails to parse', async () => {
+    const { client, requests } = queuedClient([batchResponse([[42]], 't2')]);
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [{ id: 'seed' }],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+      }),
+    );
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed']]);
+    expect(requests).toHaveLength(1);
+  });
+
+  it('propagates non-parse errors from the continuation request', async () => {
+    const client: HttpClient = {
+      request() {
+        return Promise.reject(new Error('network down'));
+      },
+    };
+
+    const generator = clusterPages({
+      client,
+      lang: 'en',
+      country: 'us',
+      initialApps: [],
+      initialToken: 't1',
+      itemSpecs,
+      appsPath: APPS_PATH,
+      tokenPath: TOKEN_PATH,
+      context: 'test',
+    });
+
+    await expect(collectPages(generator)).rejects.toThrow('network down');
+  });
 });
 
 describe('fetchClusterApps', () => {
+  it('returns the first page when the continuation page is malformed', async () => {
+    const { client, requests } = queuedClient([batchResponse([[42]], 't2')]);
+
+    const result = await fetchClusterApps({
+      client,
+      lang: 'en',
+      country: 'us',
+      num: 10,
+      initialApps: [{ id: 'seed' }],
+      initialToken: 't1',
+      itemSpecs,
+      appsPath: APPS_PATH,
+      tokenPath: TOKEN_PATH,
+      context: 'test',
+    });
+
+    expect(result).toEqual([{ id: 'seed' }]);
+    expect(requests).toHaveLength(1);
+  });
+
   it('follows the pagination token across pages until it runs out', async () => {
     const { client, requests } = queuedClient([
       batchResponse([['a'], ['b']], 't2'),
