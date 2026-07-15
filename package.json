@@ -1,6 +1,6 @@
 {
   "name": "@mradex77/google-play-scraper",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Google Play scraper for Node.js with a fully typed TypeScript API. Fetch app details, search results, top charts, reviews, permissions and data safety from the Play Store.",
   "keywords": [
     "google-play",

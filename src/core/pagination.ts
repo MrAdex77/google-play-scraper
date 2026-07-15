@@ -1,4 +1,5 @@
 import { BATCH_URL, parseBatchResponse } from './batchexecute.js';
+import { ParseError } from './errors.js';
 import type { HttpClient } from './http.js';
 import { getPath, type Path } from './path.js';
 import { extract, type Extracted, type SpecMap } from './spec.js';
@@ -53,15 +54,25 @@ export async function* clusterPages<M extends SpecMap>(
   while (token !== undefined && !seenTokens.has(token)) {
     seenTokens.add(token);
     const body = buildClusterBody(CLUSTER_PAGE_SIZE, token);
-    const text = await client.request({ url: clusterUrl(lang, country), method: 'POST', body });
-    const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
 
-    const apps = getPath(payload, appsPath);
-    if (!Array.isArray(apps) || apps.length === 0) {
-      return;
+    let page: Extracted<M>[];
+    try {
+      const text = await client.request({ url: clusterUrl(lang, country), method: 'POST', body });
+      const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
+
+      const apps = getPath(payload, appsPath);
+      if (!Array.isArray(apps) || apps.length === 0) {
+        return;
+      }
+      page = apps.map((item) => extract(item, itemSpecs, context));
+      token = asToken(getPath(payload, tokenPath));
+    } catch (error) {
+      if (error instanceof ParseError) {
+        return;
+      }
+      throw error;
     }
-    yield apps.map((item) => extract(item, itemSpecs, context));
-    token = asToken(getPath(payload, tokenPath));
+    yield page;
   }
 }
 
