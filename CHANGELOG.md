@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/MrAdex77/google-play-scraper/compare/v0.4.0...v0.4.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* **search:** degrade gracefully when a cluster page fails to parse ([af7c649](https://github.com/MrAdex77/google-play-scraper/commit/af7c64958ff3b633df86f6034fe7c7af3a920288))
+
 ## [0.4.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.3.0...v0.4.0) (2026-07-15)
 
 
