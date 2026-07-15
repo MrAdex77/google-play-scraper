@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.3.0...v0.4.0) (2026-07-15)
+
+
+### Features
+
+* **apps:** add batch app details helper ([48157af](https://github.com/MrAdex77/google-play-scraper/commit/48157afc2ea55fca0466ca3d1f5419944cefe0ae))
+* **availability:** add country availability helper ([f0c946c](https://github.com/MrAdex77/google-play-scraper/commit/f0c946c33cf7006ab8840f477aa8d159361a1cc1))
+* **client:** add createClient factory with cross call throttling ([1f40a44](https://github.com/MrAdex77/google-play-scraper/commit/1f40a44b3502f7996ace3d9295ee18b4f36f8a74))
+* **client:** bind iterators to the shared client ([b64eaf2](https://github.com/MrAdex77/google-play-scraper/commit/b64eaf2e4c0682b4aafe059cf4bf2a32357b1610))
+* **client:** expose apps on shared and memoized clients ([cb26489](https://github.com/MrAdex77/google-play-scraper/commit/cb264899c0863794e7a6ca70368e7cd363b27aeb))
+* **client:** expose availability on shared and memoized clients ([e5c73bc](https://github.com/MrAdex77/google-play-scraper/commit/e5c73bc63244d532c145acce85bb34fc80fb5f85))
+* **core:** add order preserving concurrency mapper ([44b551e](https://github.com/MrAdex77/google-play-scraper/commit/44b551e4df6c045a008a923a061003183d48b225))
+* **core:** support shared rate limiter injection in http client ([14f965d](https://github.com/MrAdex77/google-play-scraper/commit/14f965dca60af2d9dcf94feb393620b254405e00))
+* **developer:** add streaming developer iterator ([3d237c5](https://github.com/MrAdex77/google-play-scraper/commit/3d237c5a711ac5d6c163a5838cd3b1d1b9040f55))
+* **reviews:** add reviews iterator and reviews all helper ([79d4566](https://github.com/MrAdex77/google-play-scraper/commit/79d4566f6c4ca6a918dd93ac8d239329f14d2689))
+* **search:** add streaming search iterator ([f3ed8d3](https://github.com/MrAdex77/google-play-scraper/commit/f3ed8d398d3bfdd1f6ca62baccb851bfdf08f574))
+
 ## [0.3.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.2.0...v0.3.0) (2026-07-09)
 
 
