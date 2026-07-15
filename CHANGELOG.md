@@ -6,7 +6,6 @@
 ### Bug Fixes
 
 * **search:** degrade gracefully when a cluster page fails to parse ([af7c649](https://github.com/MrAdex77/google-play-scraper/commit/af7c64958ff3b633df86f6034fe7c7af3a920288))
-* **search:** degrade gracefully when a cluster page fails to parse ([9148f62](https://github.com/MrAdex77/google-play-scraper/commit/9148f621c07d3ba412171d77eea5e92bbbcd6ac3))
 
 ## [0.4.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.3.0...v0.4.0) (2026-07-15)
 
