@@ -38,10 +38,17 @@ function decodeEntity(match: string): string {
   return NAMED_ENTITIES[body] ?? match;
 }
 
+function stripTags(html: string): string {
+  let previous = html;
+  let stripped = html.replace(TAGS, '');
+  while (stripped !== previous) {
+    previous = stripped;
+    stripped = stripped.replace(TAGS, '');
+  }
+  return stripped;
+}
+
 export function htmlToPlainText(html: string): string {
-  return html
-    .replace(BR_TAGS, '\r\n')
-    .replace(CARRIAGE_RETURNS, '\n')
-    .replace(TAGS, '')
-    .replace(ENTITIES, decodeEntity);
+  const normalized = html.replace(BR_TAGS, '\r\n').replace(CARRIAGE_RETURNS, '\n');
+  return stripTags(normalized).replace(ENTITIES, decodeEntity);
 }

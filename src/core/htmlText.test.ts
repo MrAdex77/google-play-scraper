@@ -64,4 +64,10 @@ describe('htmlToPlainText', () => {
   it('strips tags before decoding entities', () => {
     expect(htmlToPlainText('<b>&amp;</b>')).toBe('&');
   });
+
+  it('leaves no complete tag behind when stripping exposes nested angle brackets', () => {
+    expect(htmlToPlainText('<scr<b>ipt>alert(1)</b>')).toBe('ipt>alert(1)');
+    expect(htmlToPlainText('<scr<b>ipt>payload</scr<b>ipt>')).not.toContain('<script');
+    expect(htmlToPlainText('<<b>script>')).not.toContain('<script');
+  });
 });
