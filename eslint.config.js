@@ -23,7 +23,7 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
   },
   {
-    files: ['examples/**'],
+    files: ['examples/**', 'scripts/**'],
     rules: { 'no-console': 'off' },
   },
   prettier,
