@@ -84,4 +84,30 @@ liveDescribe('list live contract', () => {
       }
     }
   });
+
+  it('applies the age filter to the family category', async () => {
+    const items = (await liveClient.list({
+      collection: 'TOP_FREE',
+      category: 'FAMILY',
+      age: 'AGE_RANGE1',
+      num: 10,
+    })) as ListItem[];
+
+    expect(items).toHaveLength(10);
+    for (const item of items) {
+      assertValidItem(item);
+    }
+  });
+
+  it('caps at the google ceiling when num exceeds it', async () => {
+    const items = (await liveClient.list({
+      collection: 'TOP_FREE',
+      category: 'APPLICATION',
+      num: 500,
+    })) as ListItem[];
+
+    expect(items.length).toBeGreaterThanOrEqual(150);
+    expect(items.length).toBeLessThanOrEqual(500);
+    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
+  });
 });
