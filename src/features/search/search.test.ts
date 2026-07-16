@@ -87,7 +87,7 @@ describe('search fixture parsing', () => {
     expect(results.length).toBeGreaterThanOrEqual(20);
     for (const item of results) {
       expect(() => searchResultSchema.parse(item)).not.toThrow();
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
     expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
     expect(results.some((item) => item.free && item.price === 0)).toBe(true);

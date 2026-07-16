@@ -29,7 +29,7 @@ liveDescribe('iterators live contract', () => {
     for await (const result of liveClient.searchIterator({ term: 'geography quiz' })) {
       expect(result.appId.length).toBeGreaterThan(0);
       expect(result.title.length).toBeGreaterThan(0);
-      expect(result.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(result.url).origin).toBe('https://play.google.com');
       collected.push(result.appId);
       if (collected.length === 30) {
         break;
@@ -38,6 +38,32 @@ liveDescribe('iterators live contract', () => {
 
     expect(collected).toHaveLength(30);
     expect(new Set(collected).size).toBe(30);
+  });
+
+  it('streams developer apps across the first page boundary', async () => {
+    const collected: string[] = [];
+    for await (const item of liveClient.developerIterator({ devId: '5700313618786177705' })) {
+      expect(item.appId.length).toBeGreaterThan(0);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
+      collected.push(item.appId);
+      if (collected.length === 40) {
+        break;
+      }
+    }
+
+    expect(collected).toHaveLength(40);
+    expect(new Set(collected).size).toBe(40);
+  });
+
+  it('drains the search stream without hanging when google stops paginating', async () => {
+    const collected: string[] = [];
+    for await (const result of liveClient.searchIterator({ term: 'panda' })) {
+      expect(result.appId.length).toBeGreaterThan(0);
+      collected.push(result.appId);
+    }
+
+    expect(collected.length).toBeGreaterThanOrEqual(15);
+    expect(new Set(collected).size).toBe(collected.length);
   });
 
   it('collects exactly maxReviews reviews through reviewsAll', async () => {

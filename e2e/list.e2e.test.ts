@@ -5,7 +5,7 @@ import { liveClient, liveDescribe } from './helpers.js';
 const assertValidItem = (item: ListItem): void => {
   expect(item.appId.length).toBeGreaterThan(0);
   expect(item.title.length).toBeGreaterThan(0);
-  expect(item.url.startsWith('https://play.google.com')).toBe(true);
+  expect(new URL(item.url).origin).toBe('https://play.google.com');
   expect(typeof item.price).toBe('number');
   expect(typeof item.free).toBe('boolean');
   if (item.score !== undefined) {
