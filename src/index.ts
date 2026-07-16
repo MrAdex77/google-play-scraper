@@ -15,6 +15,15 @@ export type { SpecFailure } from './core/errors.js';
 
 export type { DegradationEvent, OnDegradation } from './core/degradation.js';
 
+export type {
+  OnRequest,
+  OnResponse,
+  OnRetry,
+  RequestEvent,
+  ResponseEvent,
+  RetryEvent,
+} from './core/http.js';
+
 export { createCountryFetch, countryFetchSettingsSchema } from './core/countryFetch.js';
 export type { CountryFetchSettings } from './core/countryFetch.js';
 
