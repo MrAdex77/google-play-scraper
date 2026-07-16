@@ -245,6 +245,41 @@ describe('createClient', () => {
     expect(() => createClient({ throttle: -1 })).toThrow(/^client:/);
   });
 
+  it('fires lifecycle hooks on the throttled shared client', async () => {
+    const requests: number[] = [];
+    const responses: number[] = [];
+    const client = createClient({
+      throttle: 2,
+      requestOptions: {
+        fetchImpl: fetchReturning(translateHtml),
+        onRequest: (event) => {
+          requests.push(event.attempt);
+        },
+        onResponse: (event) => {
+          responses.push(event.status);
+        },
+      },
+    });
+
+    await client.app({ appId: TRANSLATE });
+
+    expect(requests).toEqual([1]);
+    expect(responses).toEqual([200]);
+  });
+
+  it('replaces a client-level hook with a call-level hook instead of chaining', async () => {
+    const clientHook = vi.fn();
+    const callHook = vi.fn();
+    const client = createClient({
+      requestOptions: { fetchImpl: fetchReturning(translateHtml), onRequest: clientHook },
+    });
+
+    await client.app({ appId: TRANSLATE, requestOptions: { onRequest: callHook } });
+
+    expect(callHook).toHaveBeenCalledTimes(1);
+    expect(clientHook).not.toHaveBeenCalled();
+  });
+
   it('leaves the top-level app function unchanged without the client factory', async () => {
     const result = await app({
       appId: TRANSLATE,

@@ -80,4 +80,29 @@ describe('parseOptions', () => {
 
     expect(parsed.onDegradation).toBeUndefined();
   });
+
+  it('accepts the three lifecycle hooks in request options', () => {
+    const onRequest = (): void => undefined;
+    const onResponse = (): void => undefined;
+    const onRetry = (): void => undefined;
+    const parsed = parseOptions(
+      baseOptionsSchema,
+      { requestOptions: { onRequest, onResponse, onRetry } },
+      'listApps',
+    );
+
+    expect(parsed.requestOptions?.onRequest).toBe(onRequest);
+    expect(parsed.requestOptions?.onResponse).toBe(onResponse);
+    expect(parsed.requestOptions?.onRetry).toBe(onRetry);
+  });
+
+  it('rejects non function lifecycle hooks naming the field', () => {
+    for (const field of ['onRequest', 'onResponse', 'onRetry']) {
+      const act = (): unknown =>
+        parseOptions(baseOptionsSchema, { requestOptions: { [field]: 42 } }, 'listApps');
+
+      expect(act).toThrow(ValidationError);
+      expect(act).toThrow(new RegExp(field));
+    }
+  });
 });

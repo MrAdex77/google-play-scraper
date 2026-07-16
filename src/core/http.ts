@@ -16,6 +16,27 @@ export interface HttpRequest {
 
 export type Limiter = () => Promise<void>;
 
+export interface RequestEvent {
+  url: string;
+  method: 'GET' | 'POST';
+  attempt: number;
+}
+
+export interface ResponseEvent extends RequestEvent {
+  status: number;
+  durationMs: number;
+}
+
+export interface RetryEvent extends RequestEvent {
+  delayMs: number;
+  reason: 'status' | 'network';
+  status?: number;
+}
+
+export type OnRequest = (event: RequestEvent) => void;
+export type OnResponse = (event: ResponseEvent) => void;
+export type OnRetry = (event: RetryEvent) => void;
+
 export interface HttpClientConfig {
   fetchImpl?: typeof fetch;
   throttle?: number;
@@ -24,6 +45,9 @@ export interface HttpClientConfig {
   timeoutMs?: number;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  onRequest?: OnRequest;
+  onResponse?: OnResponse;
+  onRetry?: OnRetry;
 }
 
 export interface HttpClient {
@@ -55,6 +79,20 @@ const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded;charset=UTF-8';
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+
+function emit<Event>(hook: ((event: Event) => unknown) | undefined, event: Event): void {
+  if (hook === undefined) {
+    return;
+  }
+  try {
+    const result = hook(event);
+    if (result instanceof Promise) {
+      result.catch(() => undefined);
+    }
+  } catch {
+    return;
+  }
+}
 
 export function createRateLimiter(rate: number): Limiter {
   let timestamps: number[] = [];
@@ -161,11 +199,18 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
   const request = async (req: HttpRequest): Promise<string> => {
     const method = req.method ?? 'GET';
     const headers = buildHeaders(method, config.headers, req.headers);
+    const eventFor = (attempt: number): RequestEvent => ({
+      url: req.url,
+      method,
+      attempt: attempt + 1,
+    });
 
     for (let attempt = 0; ; attempt += 1) {
       if (limiter) {
         await limiter();
       }
+      emit(config.onRequest, eventFor(attempt));
+      const startedAt = performance.now();
       try {
         const response = await fetchImpl(req.url, {
           method,
@@ -176,12 +221,30 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
 
         if (response.ok) {
           const body = await response.text();
+          emit(config.onResponse, {
+            ...eventFor(attempt),
+            status: response.status,
+            durationMs: performance.now() - startedAt,
+          });
           assertNotBlocked(response, body);
           return body;
         }
 
+        emit(config.onResponse, {
+          ...eventFor(attempt),
+          status: response.status,
+          durationMs: performance.now() - startedAt,
+        });
+
         if (isRetryableStatus(response.status) && attempt < retries) {
-          await sleep(computeBackoff(attempt, parseRetryAfter(response)));
+          const delayMs = computeBackoff(attempt, parseRetryAfter(response));
+          emit(config.onRetry, {
+            ...eventFor(attempt),
+            delayMs,
+            reason: 'status',
+            status: response.status,
+          });
+          await sleep(delayMs);
           continue;
         }
 
@@ -194,7 +257,9 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
           throw error;
         }
         if (attempt < retries) {
-          await sleep(computeBackoff(attempt, undefined));
+          const delayMs = computeBackoff(attempt, undefined);
+          emit(config.onRetry, { ...eventFor(attempt), delayMs, reason: 'network' });
+          await sleep(delayMs);
           continue;
         }
         const httpError = new HttpError(`Network request to ${req.url} failed`, 0, req.url);
@@ -218,5 +283,8 @@ export function clientFromOptions(opts: {
     timeoutMs: opts.requestOptions?.timeoutMs,
     headers: opts.requestOptions?.headers,
     signal: opts.requestOptions?.signal,
+    onRequest: opts.requestOptions?.onRequest,
+    onResponse: opts.requestOptions?.onResponse,
+    onRetry: opts.requestOptions?.onRetry,
   });
 }

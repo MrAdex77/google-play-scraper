@@ -74,6 +74,9 @@ export function createClient(options?: ClientOptions): GooglePlayClient & Google
         timeoutMs: requestOptions?.timeoutMs,
         headers: requestOptions?.headers,
         signal: requestOptions?.signal,
+        onRequest: requestOptions?.onRequest,
+        onResponse: requestOptions?.onResponse,
+        onRetry: requestOptions?.onRetry,
       });
     }
     return clientFromOptions({ throttle: opts.throttle, requestOptions });

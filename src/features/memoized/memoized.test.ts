@@ -186,6 +186,23 @@ describe('memoized', () => {
     expect(fetch.state.calls).toBe(4);
   });
 
+  it('keys entries by lifecycle hook identity', async () => {
+    const client = memoized();
+    const fetch = countingAppFetch();
+    const stableHook = (): void => undefined;
+    const requestOptionsWith = (onRequest: () => void): RequestOptions => ({
+      fetchImpl: fetch.fetchImpl,
+      onRequest,
+    });
+
+    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith(stableHook) });
+    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith(stableHook) });
+    expect(fetch.state.calls).toBe(1);
+
+    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith((): void => undefined) });
+    expect(fetch.state.calls).toBe(2);
+  });
+
   it('memoizes methods that take no options and exposes the constants', async () => {
     const client = memoized();
 

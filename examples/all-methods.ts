@@ -65,7 +65,20 @@ async function timed<T>(fn: () => Promise<T>): Promise<{ value: T; ms: number }>
 
 async function showApp(): Promise<App> {
   heading('app()', 'detailed information for a single app');
-  const details = await app({ appId: TEST_APP_ID });
+  const details = await app({
+    appId: TEST_APP_ID,
+    requestOptions: {
+      onRequest: (event) => {
+        field('onRequest', `attempt ${String(event.attempt)} ${event.method} ${event.url}`);
+      },
+      onResponse: (event) => {
+        field('onResponse', `status ${String(event.status)} in ${event.durationMs.toFixed(0)}ms`);
+      },
+      onRetry: (event) => {
+        field('onRetry', `${event.reason} retry in ${String(event.delayMs)}ms`);
+      },
+    },
+  });
   field('Title', details.title);
   field('App ID', details.appId);
   field('Developer', details.developer);

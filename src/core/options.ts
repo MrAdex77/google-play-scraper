@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { OnDegradation } from './degradation.js';
+import type { OnRequest, OnResponse, OnRetry } from './http.js';
 import { ValidationError } from './errors.js';
 
 export const requestOptionsSchema = z.object({
@@ -8,6 +9,9 @@ export const requestOptionsSchema = z.object({
   timeoutMs: z.number().int().positive().max(120000).optional(),
   retries: z.number().int().min(0).max(5).optional(),
   signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal).optional(),
+  onRequest: z.custom<OnRequest>((value) => typeof value === 'function').optional(),
+  onResponse: z.custom<OnResponse>((value) => typeof value === 'function').optional(),
+  onRetry: z.custom<OnRetry>((value) => typeof value === 'function').optional(),
 });
 
 export type RequestOptions = z.infer<typeof requestOptionsSchema>;
