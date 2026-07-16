@@ -19,11 +19,11 @@ liveDescribe('reviews live contract', () => {
   });
 
   it('accumulates exactly the requested number of reviews with unique ids', async () => {
-    const result = await liveClient.reviews({ appId: TRANSLATE, num: 200 });
+    const result = await liveClient.reviews({ appId: TRANSLATE, num: 320 });
 
-    expect(result.data).toHaveLength(200);
+    expect(result.data).toHaveLength(320);
     expect(result.nextPaginationToken).toBeNull();
-    expect(new Set(result.data.map((review) => review.id)).size).toBe(200);
+    expect(new Set(result.data.map((review) => review.id)).size).toBe(320);
   });
 
   it('walks two manual pages that surface different first reviews', async () => {
