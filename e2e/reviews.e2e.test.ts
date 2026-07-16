@@ -68,4 +68,23 @@ liveDescribe('reviews live contract', () => {
       userImage: 0.8,
     });
   });
+
+  it('returns an empty page instead of throwing for a missing app', async () => {
+    const result = await liveClient.reviews({
+      appId: 'com.adex77.definitely.not.a.real.app',
+      num: 10,
+    });
+
+    expect(result.data).toEqual([]);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('returns every available review and stops when num exceeds the total', async () => {
+    const result = await liveClient.reviews({ appId: 'com.adex77.WhereAmI', num: 5000 });
+
+    expect(result.data.length).toBeGreaterThanOrEqual(40);
+    expect(result.data.length).toBeLessThan(5000);
+    expect(result.nextPaginationToken).toBeNull();
+    expect(new Set(result.data.map((review) => review.id)).size).toBe(result.data.length);
+  });
 });
