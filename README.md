@@ -756,7 +756,7 @@ Pass `throttle` to cap requests per second, and `requestOptions` to override the
 | `retries`            | `number`                         | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.                                                                                                            |
 | `signal`             | `AbortSignal`                    | Cancels the call, including in-flight retries and pagination.                                                                                                        |
 | `onRequest`          | `(event: RequestEvent) => void`  | Called before every attempt, including retries. See [Request lifecycle hooks](#request-lifecycle-hooks).                                                             |
-| `onResponse`         | `(event: ResponseEvent) => void` | Called for every HTTP response, with `status` and `durationMs`.                                                                                                      |
+| `onResponse`         | `(event: ResponseEvent) => void` | Called for each settled response — after the body is read on success — with `status` and `durationMs`.                                                               |
 | `onRetry`            | `(event: RetryEvent) => void`    | Called when a retry is scheduled, with `delayMs` and `reason`.                                                                                                       |
 
 ```typescript
@@ -793,7 +793,7 @@ const details = await app({
 });
 ```
 
-Every event carries `url`, `method`, and a 1-based `attempt`: the first try is attempt 1, a `RetryEvent` carries the number of the attempt that just failed, and the subsequent `RequestEvent` is that attempt plus one. `ResponseEvent` adds `status` and `durationMs`, measured from just before the fetch (throttle wait excluded) and, on success, through the full body transfer. `RetryEvent` adds the scheduled `delayMs`, a `reason` of `'status'` or `'network'`, and the HTTP `status` when the reason is a retryable status. A retry-free happy path emits exactly one `RequestEvent` and one `ResponseEvent`.
+Every event carries `url`, `method`, and a 1-based `attempt`: the first try is attempt 1, a `RetryEvent` carries the number of the attempt that just failed, and the subsequent `RequestEvent` is that attempt plus one. `ResponseEvent` adds `status` and `durationMs`, measured from just before the fetch (throttle wait excluded) and, on success, through the transfer of the full body. `RetryEvent` adds the scheduled `delayMs`, a `reason` of `'status'` or `'network'`, and the HTTP `status` when the reason is a retryable status. A retry-free happy path emits exactly one `RequestEvent` and one `ResponseEvent`.
 
 Hooks are telemetry, never control flow. A hook that throws or returns a rejecting promise is swallowed and the request proceeds unchanged — the deliberate opposite of [`onDegradation`](#monitoring-drift), which rethrows because it is a data-integrity signal. When a client-level and a call-level `requestOptions` set the same hook, the call-level one replaces it for that call; hooks do not chain.
 
