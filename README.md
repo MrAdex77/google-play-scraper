@@ -334,12 +334,12 @@ the US proxy and the `de` probe through the German proxy.
 
 Retrieves apps that match a search term.
 
-| Option       | Type                        | Default  | Description                                                   |
-| ------------ | --------------------------- | -------- | ------------------------------------------------------------- |
-| `term`       | `string`                    | required | The search query.                                             |
-| `num`        | `number`                    | `20`     | Number of results, up to `250`.                               |
-| `price`      | `'all' \| 'free' \| 'paid'` | `'all'`  | Filter results by price.                                      |
-| `fullDetail` | `boolean`                   | `false`  | When `true`, fetch and return the full `App` for each result. |
+| Option       | Type                        | Default  | Description                                                                  |
+| ------------ | --------------------------- | -------- | ---------------------------------------------------------------------------- |
+| `term`       | `string`                    | required | The search query.                                                            |
+| `num`        | `number`                    | `20`     | Number of results, up to `250`. Best-effort above the Google cap, see below. |
+| `price`      | `'all' \| 'free' \| 'paid'` | `'all'`  | Filter results by price.                                                     |
+| `fullDetail` | `boolean`                   | `false`  | When `true`, fetch and return the full `App` for each result.                |
 
 ```typescript
 import { search } from '@mradex77/google-play-scraper';
@@ -367,6 +367,8 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
   },
 ];
 ```
+
+Google Play currently serves only the first result page, roughly 30 apps and fewer for narrow terms, and provides no continuation token (verified July 2026). A `num` above that cap is best-effort: the returned array may be shorter than requested.
 
 ### suggest
 
