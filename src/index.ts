@@ -13,6 +13,8 @@ export {
 } from './core/errors.js';
 export type { SpecFailure } from './core/errors.js';
 
+export type { DegradationEvent, OnDegradation } from './core/degradation.js';
+
 export { createCountryFetch, countryFetchSettingsSchema } from './core/countryFetch.js';
 export type { CountryFetchSettings } from './core/countryFetch.js';
 

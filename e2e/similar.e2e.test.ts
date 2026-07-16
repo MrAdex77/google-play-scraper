@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { type SimilarApp } from '../src/index.js';
+import { type DegradationEvent, type SimilarApp } from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 liveDescribe('similar live contract', () => {
@@ -18,7 +18,11 @@ liveDescribe('similar live contract', () => {
 
   it('returns related apps that exclude the source app', async () => {
     const sourceAppId = 'com.google.android.apps.translate';
-    const items = (await liveClient.similar({ appId: sourceAppId })) as SimilarApp[];
+    const events: DegradationEvent[] = [];
+    const items = (await liveClient.similar({
+      appId: sourceAppId,
+      onDegradation: (event) => events.push(event),
+    })) as SimilarApp[];
 
     expect(items.length).toBeGreaterThanOrEqual(60);
     expect(items.some((item) => item.appId === sourceAppId)).toBe(false);
@@ -36,5 +40,6 @@ liveDescribe('similar live contract', () => {
       scoreText: 0.8,
       summary: 0.8,
     });
+    expect(events).toEqual([]);
   });
 });

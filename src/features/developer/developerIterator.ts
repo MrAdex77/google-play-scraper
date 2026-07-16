@@ -34,6 +34,7 @@ async function* streamDeveloper(
     appsPath: CLUSTER_MAPPINGS.apps,
     tokenPath: CLUSTER_MAPPINGS.token,
     context: DEVELOPER_CONTEXT,
+    onDegradation: options.onDegradation,
   });
 
   for await (const page of pages) {

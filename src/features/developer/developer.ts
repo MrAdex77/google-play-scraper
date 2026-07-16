@@ -120,6 +120,7 @@ export function createDeveloper(
       appsPath: CLUSTER_MAPPINGS.apps,
       tokenPath: CLUSTER_MAPPINGS.token,
       context: DEVELOPER_CONTEXT,
+      onDegradation: parsed.onDegradation,
     });
 
     const sliced = items.slice(0, parsed.num);

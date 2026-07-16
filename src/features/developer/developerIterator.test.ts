@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createDeveloperIterator, developerIterator } from './developerIterator.js';
 import { developerAppSchema } from './schema.js';
-import { ValidationError } from '../../core/errors.js';
+import type { DegradationEvent } from '../../core/degradation.js';
+import { ParseError, ValidationError } from '../../core/errors.js';
 
 const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () => number } => {
   let index = 0;
@@ -65,9 +66,9 @@ const namePageHtml = (ids: string[]): string => {
   return buildDsThree([[null, [section]]]);
 };
 
-const clusterBatch = (ids: string[], nextToken: string | null): string => {
+const clusterBatchOf = (apps: unknown[], nextToken: string | null): string => {
   const clusterNode: unknown[] = [];
-  clusterNode[0] = ids.map((id) => clusterAppItem(id));
+  clusterNode[0] = apps;
   clusterNode[7] = [null, nextToken];
   const wrap: unknown[] = [];
   wrap[6] = clusterNode;
@@ -76,6 +77,12 @@ const clusterBatch = (ids: string[], nextToken: string | null): string => {
   const json = JSON.stringify(frame);
   return `)]}'\n\n${json.length.toString()}\n${json}`;
 };
+
+const clusterBatch = (ids: string[], nextToken: string | null): string =>
+  clusterBatchOf(
+    ids.map((id) => clusterAppItem(id)),
+    nextToken,
+  );
 
 const collect = async (
   generator: AsyncGenerator<{ appId: string }>,
@@ -108,6 +115,29 @@ describe('developerIterator layouts', () => {
     }
 
     expect(ids).toEqual(['n0', 'n1', 'n2']);
+  });
+
+  it('reports a degradation event and ends the stream when a continuation is malformed', async () => {
+    const { fetchImpl } = sequenceFetch([
+      numericPageHtml(['n0', 'n1'], 'next'),
+      clusterBatchOf([[42]], null),
+    ]);
+    const events: DegradationEvent[] = [];
+
+    const ids: string[] = [];
+    for await (const item of developerIterator({
+      devId: '5700313618786177705',
+      onDegradation: (event) => events.push(event),
+      requestOptions: { fetchImpl },
+    })) {
+      ids.push(item.appId);
+    }
+
+    expect(ids).toEqual(['n0', 'n1']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('developer');
+    expect(events[0]?.reason).toBe('cluster-page-parse');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
   });
 
   it('streams a name devId page', async () => {

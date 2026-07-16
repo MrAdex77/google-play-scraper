@@ -1,4 +1,5 @@
 import { BATCH_URL, parseBatchResponse } from './batchexecute.js';
+import type { OnDegradation } from './degradation.js';
 import { ParseError } from './errors.js';
 import type { HttpClient } from './http.js';
 import { getPath, type Path } from './path.js';
@@ -33,6 +34,7 @@ export interface ClusterPagesParams<M extends SpecMap> {
   appsPath: Path;
   tokenPath: Path;
   context: string;
+  onDegradation?: OnDegradation;
 }
 
 export interface FetchClusterAppsParams<M extends SpecMap> extends ClusterPagesParams<M> {
@@ -68,6 +70,7 @@ export async function* clusterPages<M extends SpecMap>(
       token = asToken(getPath(payload, tokenPath));
     } catch (error) {
       if (error instanceof ParseError) {
+        params.onDegradation?.({ context, reason: 'cluster-page-parse', error });
         return;
       }
       throw error;

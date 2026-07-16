@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.js';
 import { fetchSearchFirstPage } from '../src/features/search/search.js';
-import { type App, type SearchResult } from '../src/index.js';
+import { type App, type DegradationEvent, type SearchResult } from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 liveDescribe('search live contract', () => {
@@ -49,7 +49,12 @@ liveDescribe('search live contract', () => {
   });
 
   it('serves at least the full first page when num exceeds the google cap', async () => {
-    const results = (await liveClient.search({ term: 'game', num: 100 })) as SearchResult[];
+    const events: DegradationEvent[] = [];
+    const results = (await liveClient.search({
+      term: 'game',
+      num: 100,
+      onDegradation: (event) => events.push(event),
+    })) as SearchResult[];
 
     expect(results.length).toBeGreaterThanOrEqual(25);
     expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
@@ -59,6 +64,7 @@ liveDescribe('search live contract', () => {
       summary: 0.8,
       currency: 0.8,
     });
+    expect(events).toEqual([]);
   });
 
   it('confirms google still serves no search continuation token', async () => {

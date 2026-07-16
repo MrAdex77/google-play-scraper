@@ -125,6 +125,7 @@ export function createSearch(
       appsPath: CLUSTER_MAPPINGS.apps,
       tokenPath: CLUSTER_MAPPINGS.token,
       context: SEARCH_CONTEXT,
+      onDegradation: parsed.onDegradation,
     });
 
     const sliced = filterByPrice(items, parsed.price).slice(0, parsed.num);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { OnDegradation } from './degradation.js';
 import { ValidationError } from './errors.js';
 
 export const requestOptionsSchema = z.object({
@@ -16,6 +17,7 @@ export const baseOptionsSchema = z.object({
   country: z.string().length(2).default('us'),
   throttle: z.number().positive().max(50).optional(),
   requestOptions: requestOptionsSchema.optional(),
+  onDegradation: z.custom<OnDegradation>((value) => typeof value === 'function').optional(),
 });
 
 export type BaseOptions = z.infer<typeof baseOptionsSchema>;

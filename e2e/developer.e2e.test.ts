@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.js';
 import { fetchDeveloperFirstPage } from '../src/features/developer/developer.js';
-import { type DeveloperApp } from '../src/index.js';
+import { type DegradationEvent, type DeveloperApp } from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
@@ -22,9 +22,11 @@ liveDescribe('developer live contract', () => {
   });
 
   it('crosses the cluster boundary for the google numeric id', async () => {
+    const events: DegradationEvent[] = [];
     const items = (await liveClient.developer({
       devId: GOOGLE_DEV_ID,
       num: 100,
+      onDegradation: (event) => events.push(event),
     })) as DeveloperApp[];
 
     expect(items.length).toBeGreaterThanOrEqual(80);
@@ -39,6 +41,7 @@ liveDescribe('developer live contract', () => {
       scoreText: 0.8,
       summary: 0.8,
     });
+    expect(events).toEqual([]);
   });
 
   it('slices to exactly num when more apps are available', async () => {

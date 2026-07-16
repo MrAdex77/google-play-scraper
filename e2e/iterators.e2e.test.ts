@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { type DegradationEvent } from '../src/index.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
 const WHATSAPP = 'com.whatsapp';
@@ -42,7 +43,11 @@ liveDescribe('iterators live contract', () => {
 
   it('streams developer apps across the first page boundary', async () => {
     const collected: string[] = [];
-    for await (const item of liveClient.developerIterator({ devId: '5700313618786177705' })) {
+    const events: DegradationEvent[] = [];
+    for await (const item of liveClient.developerIterator({
+      devId: '5700313618786177705',
+      onDegradation: (event) => events.push(event),
+    })) {
       expect(item.appId.length).toBeGreaterThan(0);
       expect(new URL(item.url).origin).toBe('https://play.google.com');
       collected.push(item.appId);
@@ -53,6 +58,7 @@ liveDescribe('iterators live contract', () => {
 
     expect(collected).toHaveLength(40);
     expect(new Set(collected).size).toBe(40);
+    expect(events).toEqual([]);
   });
 
   it('drains the search stream without hanging when google stops paginating', async () => {

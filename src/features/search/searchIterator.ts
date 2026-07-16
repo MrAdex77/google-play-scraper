@@ -33,6 +33,7 @@ async function* streamSearch(
     appsPath: CLUSTER_MAPPINGS.apps,
     tokenPath: CLUSTER_MAPPINGS.token,
     context: SEARCH_CONTEXT,
+    onDegradation: options.onDegradation,
   });
 
   for await (const clusterPage of pages) {

@@ -60,4 +60,24 @@ describe('parseOptions', () => {
 
     expect(act).toThrow(ValidationError);
   });
+
+  it('accepts a function as the degradation callback', () => {
+    const onDegradation = (): void => undefined;
+    const parsed = parseOptions(baseOptionsSchema, { onDegradation }, 'listApps');
+
+    expect(parsed.onDegradation).toBe(onDegradation);
+  });
+
+  it('rejects a non function degradation callback naming the field', () => {
+    const act = (): unknown => parseOptions(baseOptionsSchema, { onDegradation: 42 }, 'listApps');
+
+    expect(act).toThrow(ValidationError);
+    expect(act).toThrow(/onDegradation/);
+  });
+
+  it('parses the degradation callback to undefined when omitted', () => {
+    const parsed = parseOptions(baseOptionsSchema, {}, 'listApps');
+
+    expect(parsed.onDegradation).toBeUndefined();
+  });
 });
