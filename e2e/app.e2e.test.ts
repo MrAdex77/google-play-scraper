@@ -2,6 +2,32 @@ import { expect, it } from 'vitest';
 import { NotFoundError } from '../src/index.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
+const TRANSLATE_STABLE_FIELDS = [
+  'summary',
+  'installs',
+  'minInstalls',
+  'maxInstalls',
+  'score',
+  'scoreText',
+  'ratings',
+  'reviews',
+  'currency',
+  'developerEmail',
+  'developerWebsite',
+  'privacyPolicy',
+  'headerImage',
+  'contentRating',
+  'recentChanges',
+] as const;
+
+const MINECRAFT_RICH_FIELDS = [
+  'video',
+  'videoImage',
+  'IAPRange',
+  'released',
+  'contentRatingDescription',
+] as const;
+
 liveDescribe('app live contract', () => {
   it('returns details for a popular free app', async () => {
     const appId = 'com.google.android.apps.translate';
@@ -62,6 +88,25 @@ liveDescribe('app live contract', () => {
     expect(result.title.length).toBeGreaterThan(0);
     expect(result.description.length).toBeGreaterThan(0);
     expect(result.free).toBe(true);
+  });
+
+  it('fills every stable optional field for a flagship listing', async () => {
+    const result = await liveClient.app({ appId: 'com.google.android.apps.translate' });
+    const record = result as unknown as Record<string, unknown>;
+
+    for (const field of TRANSLATE_STABLE_FIELDS) {
+      expect(record[field], field).toBeDefined();
+    }
+    expect(result.screenshots.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('fills media and purchase fields for a rich paid listing', async () => {
+    const result = await liveClient.app({ appId: 'com.mojang.minecraftpe' });
+    const record = result as unknown as Record<string, unknown>;
+
+    for (const field of MINECRAFT_RICH_FIELDS) {
+      expect(record[field], field).toBeDefined();
+    }
   });
 
   it('rejects a nonexistent package with a NotFoundError', async () => {

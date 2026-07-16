@@ -82,4 +82,12 @@ liveDescribe('iterators live contract', () => {
       expect(Number.isNaN(Date.parse(review.date))).toBe(false);
     }
   });
+
+  it('drains reviewsAll without maxReviews on a small catalog app', async () => {
+    const reviews = await liveClient.reviewsAll({ appId: 'com.adex77.WhereAmI' });
+
+    expect(reviews.length).toBeGreaterThanOrEqual(40);
+    expect(reviews.length).toBeLessThan(5000);
+    expect(new Set(reviews.map((review) => review.id)).size).toBe(reviews.length);
+  });
 });

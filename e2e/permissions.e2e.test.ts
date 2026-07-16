@@ -39,4 +39,12 @@ liveDescribe('permissions live contract', () => {
       expect(typeof name).toBe('string');
     }
   });
+
+  it('returns an empty list instead of throwing for a missing app', async () => {
+    const result = await liveClient.permissions({
+      appId: 'com.adex77.definitely.not.a.real.app',
+    });
+
+    expect(result).toEqual([]);
+  });
 });

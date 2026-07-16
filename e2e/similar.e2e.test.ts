@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { type DegradationEvent, type SimilarApp } from '../src/index.js';
+import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 liveDescribe('similar live contract', () => {
@@ -41,5 +41,11 @@ liveDescribe('similar live contract', () => {
       summary: 0.8,
     });
     expect(events).toEqual([]);
+  });
+
+  it('rejects a nonexistent source app with a NotFoundError', async () => {
+    await expect(
+      liveClient.similar({ appId: 'com.adex77.definitely.not.a.real.app' }),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

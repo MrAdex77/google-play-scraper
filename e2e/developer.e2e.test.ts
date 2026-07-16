@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.js';
 import { fetchDeveloperFirstPage } from '../src/features/developer/developer.js';
-import { type DegradationEvent, type DeveloperApp } from '../src/index.js';
+import { NotFoundError, type DegradationEvent, type DeveloperApp } from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
@@ -79,5 +79,25 @@ liveDescribe('developer live contract', () => {
       expect(item.developer).toBe('Adex77');
       expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
+  });
+
+  it('rejects an unknown numeric developer id with a NotFoundError', async () => {
+    await expect(liveClient.developer({ devId: '9999999999999999999' })).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+  });
+
+  it('rejects an unknown developer name with a NotFoundError', async () => {
+    await expect(
+      liveClient.developer({ devId: 'DefinitelyNotARealDeveloper8317' }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('returns the full catalog and stops when num exceeds it', async () => {
+    const items = (await liveClient.developer({ devId: 'Adex77', num: 500 })) as DeveloperApp[];
+
+    expect(items.length).toBeGreaterThanOrEqual(1);
+    expect(items.length).toBeLessThan(100);
+    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
   });
 });
