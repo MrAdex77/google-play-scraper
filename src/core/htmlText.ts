@@ -39,8 +39,8 @@ function decodeEntity(match: string): string {
 }
 
 function stripTags(html: string): string {
-  let previous = html;
-  let stripped = html.replace(TAGS, '');
+  let stripped = html;
+  let previous = '';
   while (stripped !== previous) {
     previous = stripped;
     stripped = stripped.replace(TAGS, '');
