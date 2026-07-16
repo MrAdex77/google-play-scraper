@@ -8,6 +8,7 @@ export default defineConfig({
           name: 'unit',
           include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
           environment: 'node',
+          benchmark: { include: ['bench/**/*.bench.ts'] },
         },
       },
       {
@@ -19,6 +20,7 @@ export default defineConfig({
           hookTimeout: 30000,
           retry: 2,
           fileParallelism: false,
+          benchmark: { include: [] },
         },
       },
     ],

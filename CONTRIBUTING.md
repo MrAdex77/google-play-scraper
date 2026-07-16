@@ -23,11 +23,20 @@ pnpm typecheck       tsc --noEmit
 pnpm test            unit tests, offline against recorded fixtures
 pnpm test:coverage   unit tests with coverage thresholds
 pnpm test:e2e        live contract tests against play.google.com
+pnpm bench           parser benchmarks over recorded fixtures
 pnpm build           emit dist/ with esm, cjs, and d.ts
 pnpm fixtures:update refresh recorded fixtures from live Google Play
 ```
 
 Before opening a pull request, make sure `pnpm lint`, `pnpm typecheck`, `pnpm test:coverage` and `pnpm build` all pass.
+
+## Benchmarks
+
+`pnpm bench` runs the Vitest benchmark suite in `bench/` over the recorded app fixtures: script data parsing (`bench/scriptData.bench.ts`) and the full offline `app()` pipeline plus spec extraction (`bench/app.bench.ts`). A single file or name filter works as `pnpm bench scriptData` or `pnpm bench -t referenced`.
+
+Benchmarks never run in CI: shared runners have noisy neighbors and frequency scaling, so any hz threshold there would flake. For a pull request that touches `src/core/scriptData.ts`, `src/core/spec.ts`, `src/core/path.ts`, or `src/features/app/`, run `pnpm bench` locally on `main`, run it again on your branch, and paste both tables into the PR description.
+
+`bench/scriptData.bench.ts` mirrors the three block regexes from `src/core/scriptData.ts` (they are module-private there). If `scriptData.ts` ever changes them, update the mirrors in the bench file to match.
 
 ## Conventions
 
