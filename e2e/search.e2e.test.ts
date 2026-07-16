@@ -48,6 +48,36 @@ liveDescribe('search live contract', () => {
     }
   });
 
+  it('returns an empty array for a term with no results', async () => {
+    const results = await liveClient.search({ term: 'zxqwkjhzxqwkjhqpz', num: 30 });
+
+    expect(results).toEqual([]);
+  });
+
+  it('returns only paid apps when the price filter is paid', async () => {
+    const results = (await liveClient.search({
+      term: 'minecraft',
+      price: 'paid',
+      num: 10,
+    })) as SearchResult[];
+
+    expect(results.length).toBeGreaterThan(0);
+    for (const item of results) {
+      expect(item.free).toBe(false);
+      expect(item.price).toBeGreaterThan(0);
+    }
+  });
+
+  it('returns results for a non latin search term', async () => {
+    const results = (await liveClient.search({ term: 'ポケモン', num: 10 })) as SearchResult[];
+
+    expect(results.length).toBeGreaterThanOrEqual(5);
+    for (const item of results) {
+      expect(item.appId.length).toBeGreaterThan(0);
+      expect(item.title.length).toBeGreaterThan(0);
+    }
+  });
+
   it('serves at least the full first page when num exceeds the google cap', async () => {
     const events: DegradationEvent[] = [];
     const results = (await liveClient.search({
