@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      cheerio:
-        specifier: 1.2.0
-        version: 1.2.0
       lru-cache:
         specifier: ^11.5.2
         version: 11.5.2
@@ -36,6 +33,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)
+      cheerio:
+        specifier: 1.2.0
+        version: 1.2.0
       eslint:
         specifier: ^10.7.0
         version: 10.7.0(jiti@2.6.1)

@@ -1,0 +1,82 @@
+language: en-US
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  sequence_diagrams: false
+  changed_files_summary: true
+  suggested_labels: false
+  suggested_reviewers: false
+  auto_apply_labels: false
+  path_filters:
+    - '!test/fixtures/**'
+    - '!dist/**'
+    - '!pnpm-lock.yaml'
+    - '!.reference/**'
+  path_instructions:
+    - path: 'src/**'
+      instructions: |
+        This codebase forbids all comments: no line comments, block comments, or JSDoc. Never suggest adding comments or docstrings; suggest better naming or extracted functions instead.
+        TypeScript strict mode: flag any use of `any`, non-null assertions (`!`), or `as` type assertions in src/.
+        All external data must enter as `unknown` and be validated through a zod v4 schema before use. Types must be derived with `z.infer`, never hand-written duplicates of a schema.
+        Named exports only, except the aggregate default export in src/index.ts.
+        Flag any `console` calls.
+        Flag any new runtime dependency.
+    - path: 'src/features/**'
+      instructions: |
+        Each feature folder contains <name>.ts, specs.ts, and schema.ts. User options must be parsed with an options schema before work begins; scraped output must be parsed with a result schema before being returned.
+    - path: '{test,e2e}/**'
+      instructions: |
+        Unit tests must be offline, running against recorded fixtures through an injected fetch. Live network calls belong only in e2e/*.e2e.test.ts.
+        Flag weakened assertions, removed test cases, lowered coverage expectations, or loosened zod schemas introduced to make a test pass.
+        Tests may use `as` assertions; comments are still forbidden.
+  auto_review:
+    enabled: true
+    drafts: false
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+  pre_merge_checks:
+    docstrings:
+      mode: 'off'
+    title:
+      mode: warning
+      requirements: |
+        Title must follow Conventional Commits 1.0.0: type(scope): subject, imperative lowercase subject, max 72 characters. Allowed types: feat, fix, refactor, test, docs, chore, ci, build, perf.
+    description:
+      mode: 'off'
+  tools:
+    eslint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    yamllint:
+      enabled: true
+    actionlint:
+      enabled: true
+    markdownlint:
+      enabled: false
+chat:
+  art: false
+  auto_reply: true
+knowledge_base:
+  opt_out: false
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - 'CLAUDE.md'
+  learnings:
+    scope: local
+  pull_requests:
+    scope: local
+code_generation:
+  docstrings:
+    path_instructions:
+      - path: '**'
+        instructions: |
+          Do not generate docstrings or comments anywhere in this repository. The project forbids all comments.

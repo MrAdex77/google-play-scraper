@@ -93,7 +93,6 @@
     ]
   },
   "dependencies": {
-    "cheerio": "1.2.0",
     "lru-cache": "^11.5.2",
     "zod": "^4.4.3"
   },
@@ -104,6 +103,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^4.1.10",
+    "cheerio": "1.2.0",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
