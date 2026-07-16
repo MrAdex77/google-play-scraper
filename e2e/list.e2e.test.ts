@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { type ListItem } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const assertValidItem = (item: ListItem): void => {
   expect(item.appId.length).toBeGreaterThan(0);
@@ -28,6 +28,20 @@ liveDescribe('list live contract', () => {
       expect(item.free).toBe(true);
       expect(item.price).toBe(0);
     }
+  });
+
+  it('fills scores and summaries across one hundred top free games', async () => {
+    const items = (await liveClient.list({
+      collection: 'TOP_FREE',
+      category: 'GAME',
+      num: 100,
+    })) as ListItem[];
+
+    expect(items).toHaveLength(100);
+    expectFieldCoverage('list', items, {
+      score: 0.8,
+      summary: 0.8,
+    });
   });
 
   it('returns paid applications with a price above zero', async () => {

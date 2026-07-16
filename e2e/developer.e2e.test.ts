@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.js';
 import { fetchDeveloperFirstPage } from '../src/features/developer/developer.js';
 import { type DeveloperApp } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
 
@@ -33,6 +33,12 @@ liveDescribe('developer live contract', () => {
       expect(item.developer).toContain('Google');
       expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
+
+    expectFieldCoverage('developer', items, {
+      score: 0.8,
+      scoreText: 0.8,
+      summary: 0.8,
+    });
   });
 
   it('slices to exactly num when more apps are available', async () => {

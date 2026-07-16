@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { sort } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -62,5 +62,10 @@ liveDescribe('reviews live contract', () => {
       expect(review.score).toBeGreaterThanOrEqual(1);
       expect(review.score).toBeLessThanOrEqual(5);
     }
+
+    expectFieldCoverage('reviews', byHelpfulness.data, {
+      text: 0.8,
+      userImage: 0.8,
+    });
   });
 });

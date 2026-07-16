@@ -75,6 +75,7 @@
     "test:coverage": "vitest run --project unit --coverage",
     "test:e2e": "vitest run --project e2e",
     "check:package": "pnpm build && publint && attw --pack .",
+    "coverage:live": "tsx scripts/live-coverage-report.ts",
     "docs:api": "typedoc",
     "fixtures:update": "tsx scripts/update-fixtures.ts",
     "example": "tsx examples/all-methods.ts",

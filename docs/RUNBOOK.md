@@ -61,3 +61,24 @@ When the search tripwire fires because a continuation token returned:
 
 Never satisfy a tripwire by weakening it: thresholds fall under hard rule 11,
 so the fix is always a re-port of the contract, never a threshold tweak.
+
+## Coverage gate recalibration
+
+The live suites gate optional fields (`score`, `scoreText`, `summary`,
+`currency`, review `text`, `userImage`) through `expectFieldCoverage`, so a
+drifted path that stops finding its value fails the daily run with a message
+naming the starved field. When a coverage gate fails, first run
+`pnpm coverage:live` and read the field's measured ratio:
+
+- **A single field at ~0.0** means a moved path. Fix the matching
+  `src/features/<name>/specs.ts` per the steps above and refresh the fixtures
+  with `pnpm fixtures:update`. A ratio stuck near the first page's share of the
+  result set means only the continuation shape broke, so start at
+  `src/core/clusterItem.ts`.
+- **A field slightly under its gate across anchors** means catalog drift, not a
+  broken path. Lower that field's gate to measured-minus-0.3 in a dedicated
+  commit whose body quotes the `coverage:live` report output.
+
+Never delete a gate to green a run (hard rule 11): a gate that no longer holds
+is recalibrated from the report data or its contract is re-ported, never
+removed.

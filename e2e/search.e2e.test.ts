@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.js';
 import { fetchSearchFirstPage } from '../src/features/search/search.js';
 import { type App, type SearchResult } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 liveDescribe('search live contract', () => {
   it('returns unique valid apps for a broad term', async () => {
@@ -53,6 +53,12 @@ liveDescribe('search live contract', () => {
 
     expect(results.length).toBeGreaterThanOrEqual(25);
     expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
+    expectFieldCoverage('search', results, {
+      score: 0.8,
+      scoreText: 0.8,
+      summary: 0.8,
+      currency: 0.8,
+    });
   });
 
   it('confirms google still serves no search continuation token', async () => {
