@@ -1,4 +1,6 @@
 import { expect, it } from 'vitest';
+import { clientFromOptions } from '../src/core/http.js';
+import { fetchSearchFirstPage } from '../src/features/search/search.js';
 import { type App, type SearchResult } from '../src/index.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
@@ -44,6 +46,23 @@ liveDescribe('search live contract', () => {
       expect(item.free).toBe(true);
       expect(item.price).toBe(0);
     }
+  });
+
+  it('serves at least the full first page when num exceeds the google cap', async () => {
+    const results = (await liveClient.search({ term: 'game', num: 100 })) as SearchResult[];
+
+    expect(results.length).toBeGreaterThanOrEqual(25);
+    expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
+  });
+
+  it('confirms google still serves no search continuation token', async () => {
+    const { page } = await fetchSearchFirstPage(
+      { term: 'game', lang: 'en', country: 'us', price: 'all', throttle: 1 },
+      clientFromOptions,
+    );
+
+    expect(page.apps.length).toBeGreaterThanOrEqual(19);
+    expect(page.token).toBeUndefined();
   });
 
   it('resolves full app details when fullDetail is set', async () => {
