@@ -35,4 +35,15 @@ liveDescribe('datasafety live contract', () => {
     }
     expect(result.privacyPolicyUrl?.startsWith('http')).toBe(true);
   });
+
+  it('returns an empty report instead of throwing for a missing app', async () => {
+    const result = await liveClient.datasafety({
+      appId: 'com.adex77.definitely.not.a.real.app',
+    });
+
+    expect(result.sharedData).toEqual([]);
+    expect(result.collectedData).toEqual([]);
+    expect(result.securityPractices).toEqual([]);
+    expect(result.privacyPolicyUrl).toBeUndefined();
+  });
 });
