@@ -42,6 +42,7 @@ This is a modern TypeScript rewrite of the popular but unmaintained [`google-pla
 ## Table of contents
 
 - [Installation](#installation)
+- [CLI](#cli)
 - [Quick start](#quick-start)
 - [Common options](#common-options)
 - [Shared client](#shared-client)
@@ -66,6 +67,42 @@ npm install @mradex77/google-play-scraper
 ```
 
 Requires Node.js 22.12 or newer.
+
+## CLI
+
+Every method with a JSON-friendly surface is also available from the command line, no install required:
+
+```sh
+npx @mradex77/google-play-scraper app com.spotify.music
+npx @mradex77/google-play-scraper search "sleep tracker" --num 5 --country de
+npx @mradex77/google-play-scraper reviews com.mojang.minecraftpe --sort rating --num 20
+npx @mradex77/google-play-scraper availability com.adex77.WhereAmI --countries us,pl,de
+```
+
+| Command                | Positional              | Own flags                                                       |
+| ---------------------- | ----------------------- | --------------------------------------------------------------- |
+| `app <appId>`          | app id                  |                                                                 |
+| `apps <appIds>`        | comma-separated app ids | `--concurrency`                                                 |
+| `search <term>`        | search term             | `--num`, `--price`, `--full-detail`                             |
+| `suggest <term>`       | search term             |                                                                 |
+| `list`                 |                         | `--collection`, `--category`, `--age`, `--num`, `--full-detail` |
+| `developer <devId>`    | developer id            | `--num`, `--full-detail`                                        |
+| `similar <appId>`      | app id                  | `--full-detail`                                                 |
+| `reviews <appId>`      | app id                  | `--num`, `--sort`, `--paginate`, `--token`                      |
+| `permissions <appId>`  | app id                  | `--short`                                                       |
+| `datasafety <appId>`   | app id                  |                                                                 |
+| `categories`           |                         |                                                                 |
+| `availability <appId>` | app id                  | `--countries` (comma-separated, required), `--concurrency`      |
+
+Every command also accepts `--lang <code>`, `--country <code>` and `--throttle <requestsPerSecond>`, plus the global `--help` and `--version`.
+
+Results are pretty-printed JSON on stdout, so the output pipes straight into `jq`:
+
+```sh
+npx @mradex77/google-play-scraper app com.spotify.music | jq '{title, score, installs}'
+```
+
+Exit codes: `0` success, `1` scrape failure (not found, rate limited, blocked, network), `2` usage error (unknown command or flag, missing argument, invalid option value).
 
 ## Quick start
 
