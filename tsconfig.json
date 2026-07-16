@@ -15,5 +15,14 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["src", "e2e", "test", "scripts", "examples", "vitest.config.ts", "tsdown.config.ts"]
+  "include": [
+    "src",
+    "e2e",
+    "test",
+    "scripts",
+    "examples",
+    "bench",
+    "vitest.config.ts",
+    "tsdown.config.ts"
+  ]
 }
