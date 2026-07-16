@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { type SimilarApp } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 liveDescribe('similar live contract', () => {
   it('returns similar games for the Where Am I geography game', async () => {
@@ -30,5 +30,11 @@ liveDescribe('similar live contract', () => {
       expect(new URL(item.url).origin).toBe('https://play.google.com');
       expect(typeof item.free).toBe('boolean');
     }
+
+    expectFieldCoverage('similar', items, {
+      score: 0.8,
+      scoreText: 0.8,
+      summary: 0.8,
+    });
   });
 });
