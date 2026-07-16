@@ -50,6 +50,7 @@ This is a modern TypeScript rewrite of the popular but unmaintained [`google-pla
 - [Error handling](#error-handling)
 - [Throttling and requestOptions](#throttling-and-requestoptions)
 - [Resilience](#resilience)
+- [Monitoring drift](#monitoring-drift)
 - [Migrating from google-play-scraper](#migrating-from-google-play-scraper)
 - [FAQ](#faq)
 - [Related projects](#related-projects)
@@ -99,12 +100,13 @@ More runnable examples live in [examples/](https://github.com/MrAdex77/google-pl
 
 Every method accepts a single options object. These options are available on all of them:
 
-| Option           | Type     | Default | Description                                                                          |
-| ---------------- | -------- | ------- | ------------------------------------------------------------------------------------ |
-| `lang`           | `string` | `'en'`  | Two letter language code used to fetch the page.                                     |
-| `country`        | `string` | `'us'`  | Two letter country code. Needed for apps available only in some regions.             |
-| `throttle`       | `number` | none    | Maximum requests per second across a single call.                                    |
-| `requestOptions` | `object` | none    | HTTP overrides. See [Throttling and requestOptions](#throttling-and-requestoptions). |
+| Option           | Type       | Default | Description                                                                                |
+| ---------------- | ---------- | ------- | ------------------------------------------------------------------------------------------ |
+| `lang`           | `string`   | `'en'`  | Two letter language code used to fetch the page.                                           |
+| `country`        | `string`   | `'us'`  | Two letter country code. Needed for apps available only in some regions.                   |
+| `throttle`       | `number`   | none    | Maximum requests per second across a single call.                                          |
+| `requestOptions` | `object`   | none    | HTTP overrides. See [Throttling and requestOptions](#throttling-and-requestoptions).       |
+| `onDegradation`  | `function` | none    | Callback fired when a call degrades gracefully. See [Monitoring drift](#monitoring-drift). |
 
 ## Shared client
 
@@ -836,6 +838,34 @@ const result = await reviews({
 Google Play serves its data as deeply nested, unlabeled arrays whose positions shift a few times a year. That is what breaks scrapers. Every positional path in this library lives as a typed constant in a `specs.ts` file per feature, never inline in logic, and each field is resolved through an ordered list of candidate paths so a single moved index does not take the whole call down. Extraction collects all field failures in one pass and throws a single `SpecError` naming every broken field and the paths that were tried, which is exactly the input the maintenance runbook needs. Unknown data enters as `unknown` and only leaves through a zod schema, so a layout change fails loudly at the boundary rather than three layers up.
 
 To catch breakage before users do, the `e2e/` suite runs against live Google Play on a daily GitHub Actions schedule and opens a labeled issue on failure. Repairing a break is a spec diff confined to one file, walked through step by step in [docs/RUNBOOK.md](docs/RUNBOOK.md).
+
+## Monitoring drift
+
+Cluster pagination degrades gracefully: when a continuation page from Google stops parsing, the call keeps everything collected so far and returns instead of throwing. That is the right default for consumers, but it can hide the day Google changes its layout. The `onDegradation` callback makes every swallowed continuation failure observable.
+
+The option exists on every method for uniformity, but only the methods that paginate through the cluster endpoint can emit: `search`, `searchIterator`, `similar`, `developer`, and `developerIterator`. Each event carries the feature `context`, the machine readable `reason` (`'cluster-page-parse'`), and the underlying `ParseError`:
+
+```typescript
+import { search, type DegradationEvent } from '@mradex77/google-play-scraper';
+
+const onDegradation = (event: DegradationEvent): void => {
+  metrics.increment('gplay.degradation', {
+    context: event.context,
+    reason: event.reason,
+  });
+};
+
+const results = await search({ term: 'panda', num: 100, onDegradation });
+```
+
+A degraded call still resolves with the pages that parsed, so wire the callback to a metrics counter or log sink rather than treating it as an error path. If the callback itself throws, the error surfaces to the caller unchanged.
+
+Two boundaries to know:
+
+- An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion.
+- `reviews` pagination never degrades. A parse failure there propagates as a `ParseError`, so review reads fail loudly instead of silently shrinking.
+
+With `memoized()`, `onDegradation` participates in the cache key by identity like any function option, so pass a stable function reference rather than an inline closure to keep cache hits.
 
 ## Migrating from google-play-scraper
 
