@@ -1,4 +1,4 @@
-import * as cheerio from 'cheerio';
+import { htmlToPlainText } from '../../core/htmlText.js';
 import { getPath } from '../../core/path.js';
 import { sanitizeText } from '../../core/text.js';
 import type { AppCategory } from './schema.js';
@@ -18,8 +18,7 @@ export function descriptionText(html: unknown): string | undefined {
   if (typeof html !== 'string') {
     return undefined;
   }
-  const document = cheerio.load(`<div>${html.replace(/<br>/g, '\r\n')}</div>`);
-  return sanitizeText(document('div').text());
+  return sanitizeText(htmlToPlainText(html));
 }
 
 export function priceText(value: unknown): string {
