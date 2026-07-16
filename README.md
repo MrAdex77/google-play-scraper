@@ -416,6 +416,8 @@ const items = await list({
 
 Returns `ListItem[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result.
 
+Google Play serves at most roughly 200 list items per request (verified July 2026), so a `num` above that ceiling, including the default `500`, returns fewer items than requested.
+
 ### developer
 
 Returns other apps published by the same developer. The `devId` is either the numeric developer id or the developer name, exactly as it appears on Google Play.
@@ -730,6 +732,16 @@ try {
   }
 }
 ```
+
+### Failure behavior
+
+An unknown `appId` or `devId` does not fail the same way everywhere, because Google Play itself does not: HTML details surfaces respond `404`, while report surfaces serve an empty payload. Both behaviors are pinned by the live test suite.
+
+| Behavior for a missing app        | Methods                                                                                                                                                        |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Throws `NotFoundError`            | `app`, `apps` (per entry, as a rejected `PromiseSettledResult`), `similar`, `developer`                                                                        |
+| Resolves with a typed empty value | `search` and `suggest` (`[]`), `reviews` (`{ data: [], nextPaginationToken: null }`), `permissions` (`[]`), `datasafety` (empty arrays, no `privacyPolicyUrl`) |
+| Maps the throw to a status        | `availability` reports `unavailable`                                                                                                                           |
 
 ## Throttling and requestOptions
 
