@@ -28,15 +28,16 @@ This is a modern TypeScript rewrite of the popular but unmaintained [`google-pla
 
 ## Comparison with the original google-play-scraper
 
-| Capability         | @mradex77/google-play-scraper          | facundoolano/google-play-scraper |
-| ------------------ | -------------------------------------- | -------------------------------- |
-| Language           | TypeScript in strict mode              | JavaScript                       |
-| Type definitions   | Generated from zod schemas             | Community typings                |
-| Runtime validation | zod on every input and output boundary | None                             |
-| Error handling     | Typed error classes                    | Plain `Error`                    |
-| Module formats     | ESM and CommonJS with `.d.ts`          | ESM only                         |
-| Breakage detection | Daily live contract tests in CI        | None                             |
-| Maintenance        | Actively maintained                    | Unmaintained                     |
+| Capability           | @mradex77/google-play-scraper          | facundoolano/google-play-scraper           |
+| -------------------- | -------------------------------------- | ------------------------------------------ |
+| Language             | TypeScript in strict mode              | JavaScript                                 |
+| Type definitions     | Generated from zod schemas             | Community typings                          |
+| Runtime validation   | zod on every input and output boundary | None                                       |
+| Error handling       | Typed error classes                    | Plain `Error`                              |
+| Module formats       | ESM and CommonJS with `.d.ts`          | ESM only                                   |
+| Runtime dependencies | `zod`, `lru-cache`                     | `cheerio`, `got`, `memoizee`, `ramda`, ... |
+| Breakage detection   | Daily live contract tests in CI        | None                                       |
+| Maintenance          | Actively maintained                    | Unmaintained                               |
 
 ## Table of contents
 
