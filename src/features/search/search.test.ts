@@ -5,7 +5,8 @@ import { createSearch, search, type SearchOptions } from './search.js';
 import { filterByPrice, matchesPriceFilter } from './specs.js';
 import { searchResultSchema, type SearchResult } from './schema.js';
 import type { App } from '../app/schema.js';
-import { ValidationError } from '../../core/errors.js';
+import type { DegradationEvent } from '../../core/degradation.js';
+import { ParseError, ValidationError } from '../../core/errors.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -65,8 +66,7 @@ const searchPageHtml = (ids: string[], token: string): string => {
   return buildScriptData('ds:4', ds4);
 };
 
-const clusterBatch = (ids: string[], nextToken: string | null): string => {
-  const apps = ids.map((id) => coreData(id));
+const clusterBatchOf = (apps: unknown[], nextToken: string | null): string => {
   const inner: unknown[] = [];
   inner[0] = apps;
   inner[7] = [null, nextToken];
@@ -75,6 +75,12 @@ const clusterBatch = (ids: string[], nextToken: string | null): string => {
   const json = JSON.stringify(frame);
   return `)]}'\n\n${json.length.toString()}\n${json}`;
 };
+
+const clusterBatch = (ids: string[], nextToken: string | null): string =>
+  clusterBatchOf(
+    ids.map((id) => coreData(id)),
+    nextToken,
+  );
 
 describe('search fixture parsing', () => {
   it('parses the recorded panda page into validated results', async () => {
@@ -133,6 +139,25 @@ describe('search pagination', () => {
 
     expect(results).toHaveLength(5);
     expect(results.map((item) => item.appId)).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+
+  it('reports a degradation event and keeps the first page when the continuation is malformed', async () => {
+    const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
+    const malformedPage = clusterBatchOf([[42]], null);
+    const events: DegradationEvent[] = [];
+
+    const results = (await search({
+      term: 'panda',
+      num: 5,
+      onDegradation: (event) => events.push(event),
+      requestOptions: { fetchImpl: sequenceFetch([firstPage, malformedPage]) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b', 'c']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('search');
+    expect(events[0]?.reason).toBe('cluster-page-parse');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
   });
 
   it('returns only the first page when it already satisfies num', async () => {

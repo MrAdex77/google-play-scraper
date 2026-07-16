@@ -78,6 +78,7 @@ export function createSimilar(
       appsPath: PAGINATION_MAPPINGS.apps,
       tokenPath: PAGINATION_MAPPINGS.token,
       context: SIMILAR_CONTEXT,
+      onDegradation: parsed.onDegradation,
     });
 
     if (parsed.fullDetail) {
