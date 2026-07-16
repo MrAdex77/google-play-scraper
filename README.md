@@ -748,13 +748,16 @@ An unknown `appId` or `devId` does not fail the same way everywhere, because Goo
 
 Pass `throttle` to cap requests per second, and `requestOptions` to override the HTTP layer:
 
-| requestOptions field | Type                     | Description                                                                                                                                                          |
-| -------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `headers`            | `Record<string, string>` | Extra headers merged into every request.                                                                                                                             |
-| `fetchImpl`          | `typeof fetch`           | A custom `fetch` implementation, useful for proxies and tests. Combine with [`createCountryFetch`](#routing-by-country) to route each storefront country separately. |
-| `timeoutMs`          | `number`                 | Timeout per request, up to `120000`. Default `30000`.                                                                                                                |
-| `retries`            | `number`                 | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.                                                                                                            |
-| `signal`             | `AbortSignal`            | Cancels the call, including in-flight retries and pagination.                                                                                                        |
+| requestOptions field | Type                             | Description                                                                                                                                                          |
+| -------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `headers`            | `Record<string, string>`         | Extra headers merged into every request.                                                                                                                             |
+| `fetchImpl`          | `typeof fetch`                   | A custom `fetch` implementation, useful for proxies and tests. Combine with [`createCountryFetch`](#routing-by-country) to route each storefront country separately. |
+| `timeoutMs`          | `number`                         | Timeout per request, up to `120000`. Default `30000`.                                                                                                                |
+| `retries`            | `number`                         | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.                                                                                                            |
+| `signal`             | `AbortSignal`                    | Cancels the call, including in-flight retries and pagination.                                                                                                        |
+| `onRequest`          | `(event: RequestEvent) => void`  | Called before every attempt, including retries. See [Request lifecycle hooks](#request-lifecycle-hooks).                                                             |
+| `onResponse`         | `(event: ResponseEvent) => void` | Called for every HTTP response, with `status` and `durationMs`.                                                                                                      |
+| `onRetry`            | `(event: RetryEvent) => void`    | Called when a retry is scheduled, with `delayMs` and `reason`.                                                                                                       |
 
 ```typescript
 import { app } from '@mradex77/google-play-scraper';
@@ -772,6 +775,27 @@ const details = await app({
 ```
 
 Retries use exponential backoff and honor a `Retry-After` header when present.
+
+### Request lifecycle hooks
+
+The three `on*` callbacks make request telemetry observable at every level — direct calls, `createClient`, and `memoized` — including what wrapping `fetchImpl` cannot see: retries and backoff decisions.
+
+```typescript
+import { app } from '@mradex77/google-play-scraper';
+
+const details = await app({
+  appId: 'com.google.android.apps.translate',
+  requestOptions: {
+    onRequest: (event) => log.debug('gplay request', event),
+    onResponse: (event) => metrics.timing('gplay.latency', event.durationMs),
+    onRetry: (event) => metrics.increment('gplay.retry', { reason: event.reason }),
+  },
+});
+```
+
+Every event carries `url`, `method`, and a 1-based `attempt`: the first try is attempt 1, a `RetryEvent` carries the number of the attempt that just failed, and the subsequent `RequestEvent` is that attempt plus one. `ResponseEvent` adds `status` and `durationMs`, measured from just before the fetch (throttle wait excluded) and, on success, through the full body transfer. `RetryEvent` adds the scheduled `delayMs`, a `reason` of `'status'` or `'network'`, and the HTTP `status` when the reason is a retryable status. A retry-free happy path emits exactly one `RequestEvent` and one `ResponseEvent`.
+
+Hooks are telemetry, never control flow. A hook that throws or returns a rejecting promise is swallowed and the request proceeds unchanged — the deliberate opposite of [`onDegradation`](#monitoring-drift), which rethrows because it is a data-integrity signal. When a client-level and a call-level `requestOptions` set the same hook, the call-level one replaces it for that call; hooks do not chain.
 
 ### Routing requests through a proxy
 
@@ -878,7 +902,7 @@ Two boundaries to know:
 - An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion.
 - `reviews` pagination never degrades. A parse failure there propagates as a `ParseError`, so review reads fail loudly instead of silently shrinking.
 
-With `memoized()`, `onDegradation` participates in the cache key by identity like any function option, so pass a stable function reference rather than an inline closure to keep cache hits.
+With `memoized()`, `onDegradation` and the lifecycle hooks `onRequest`, `onResponse`, and `onRetry` participate in the cache key by identity like any function option, so pass stable function references rather than inline closures to keep cache hits.
 
 ## Migrating from google-play-scraper
 
