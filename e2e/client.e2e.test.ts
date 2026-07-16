@@ -14,7 +14,7 @@ liveDescribe('createClient live contract', () => {
     expect(results.length).toBeGreaterThan(0);
     for (const item of results) {
       expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
   });
 

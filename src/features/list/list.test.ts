@@ -104,7 +104,7 @@ describe('list fixture parsing', () => {
     expect(items.length).toBeGreaterThanOrEqual(50);
     for (const item of items) {
       expect(() => listItemSchema.parse(item)).not.toThrow();
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
     expect(items.some((item) => item.free && item.price === 0)).toBe(true);

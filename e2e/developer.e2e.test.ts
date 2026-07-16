@@ -17,7 +17,7 @@ liveDescribe('developer live contract', () => {
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
     for (const item of items) {
       expect(item.developer).toContain('Google');
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
   });
 
@@ -31,7 +31,7 @@ liveDescribe('developer live contract', () => {
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
     for (const item of items) {
       expect(item.developer).toContain('Google');
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
   });
 
@@ -68,7 +68,7 @@ liveDescribe('developer live contract', () => {
     expect(items.map((item) => item.appId)).toContain('com.adex77.WhereAmI');
     for (const item of items) {
       expect(item.developer).toBe('Adex77');
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
   });
 });

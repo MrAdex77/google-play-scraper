@@ -62,7 +62,7 @@ describe('similar fixture parsing', () => {
     expect(items.length).toBeGreaterThanOrEqual(5);
     for (const item of items) {
       expect(() => similarAppSchema.parse(item)).not.toThrow();
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
   });

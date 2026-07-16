@@ -29,7 +29,7 @@ liveDescribe('iterators live contract', () => {
     for await (const result of liveClient.searchIterator({ term: 'geography quiz' })) {
       expect(result.appId.length).toBeGreaterThan(0);
       expect(result.title.length).toBeGreaterThan(0);
-      expect(result.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(result.url).origin).toBe('https://play.google.com');
       collected.push(result.appId);
       if (collected.length === 30) {
         break;
@@ -44,7 +44,7 @@ liveDescribe('iterators live contract', () => {
     const collected: string[] = [];
     for await (const item of liveClient.developerIterator({ devId: '5700313618786177705' })) {
       expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
       collected.push(item.appId);
       if (collected.length === 40) {
         break;

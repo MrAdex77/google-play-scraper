@@ -12,7 +12,7 @@ liveDescribe('similar live contract', () => {
     for (const item of items) {
       expect(item.appId.length).toBeGreaterThan(0);
       expect(item.title.length).toBeGreaterThan(0);
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
   });
 
@@ -27,7 +27,7 @@ liveDescribe('similar live contract', () => {
     for (const item of items) {
       expect(item.appId.length).toBeGreaterThan(0);
       expect(item.title.length).toBeGreaterThan(0);
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
       expect(typeof item.free).toBe('boolean');
     }
   });

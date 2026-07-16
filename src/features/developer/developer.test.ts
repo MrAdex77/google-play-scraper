@@ -157,7 +157,7 @@ describe('developer fixture parsing', () => {
     expect(items.length).toBeGreaterThanOrEqual(20);
     for (const item of items) {
       expect(() => developerAppSchema.parse(item)).not.toThrow();
-      expect(item.url.startsWith('https://play.google.com')).toBe(true);
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
   });
