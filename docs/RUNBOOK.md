@@ -31,3 +31,33 @@ This runbook turns that break into a fifteen minute patch.
    Release Please cut the patch.
 
 6. **Close out.** Close the breakage issue with a link to the fix commit.
+
+## Pagination tripwires
+
+Two e2e tests pin the current Google Play serving regime instead of the code:
+
+- `confirms google still serves no search continuation token` in
+  `e2e/search.e2e.test.ts`
+- `confirms the numeric first page still requires a continuation` in
+  `e2e/developer.e2e.test.ts`
+
+A tripwire failure means Google changed the serving regime, not that the code
+broke. The count assertions in the surrounding suites rely on the premises these
+tests pin, so re-port the affected contract before touching any threshold.
+
+When the search tripwire fires because a continuation token returned:
+
+1. Open `play.google.com/store/search?q=game&c=apps` in a browser with the
+   network panel filtered to `batchexecute` and scroll to the bottom of the
+   results.
+2. Note the `rpcids` of any request that returns app items. As of July 2026 only
+   `teXCtc` fires and it returns related-search chips, not apps, so `teXCtc` is
+   the first suspect for a revived pagination RPC.
+3. Replay that request to map the item shape, then update
+   `SECTIONS_MAPPING.token`, the cluster body builder, and `searchPageItemSpecs`
+   together.
+4. Only after the continuation parses live, raise the search count assertions
+   above 30.
+
+Never satisfy a tripwire by weakening it: thresholds fall under hard rule 11,
+so the fix is always a re-port of the contract, never a threshold tweak.
