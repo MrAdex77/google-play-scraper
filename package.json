@@ -22,7 +22,8 @@
     "market-research",
     "typescript",
     "nodejs",
-    "zod"
+    "zod",
+    "cli"
   ],
   "homepage": "https://github.com/MrAdex77/google-play-scraper#readme",
   "repository": {
@@ -43,6 +44,9 @@
     "node": ">=22.12.0"
   },
   "packageManager": "pnpm@11.10.0",
+  "bin": {
+    "google-play-scraper": "./dist/cli.js"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
