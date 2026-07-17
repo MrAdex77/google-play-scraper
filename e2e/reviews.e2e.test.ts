@@ -69,6 +69,36 @@ liveDescribe('reviews live contract', () => {
     });
   });
 
+  it('returns the newest sort in non increasing date order', async () => {
+    const result = await liveClient.reviews({ appId: 'com.whatsapp', paginate: true });
+
+    expect(result.data.length).toBeGreaterThan(100);
+    const timestamps = result.data.map((review) => Date.parse(review.date));
+    for (const [index, timestamp] of timestamps.entries()) {
+      if (index > 0) {
+        expect(timestamp).toBeLessThanOrEqual(timestamps[index - 1]!);
+      }
+    }
+  });
+
+  it('returns a localized first page for a polish storefront', async () => {
+    const result = await liveClient.reviews({
+      appId: 'com.whatsapp',
+      paginate: true,
+      lang: 'pl',
+      country: 'pl',
+    });
+
+    expect(result.data.length).toBeGreaterThan(100);
+    expect(result.nextPaginationToken).not.toBeNull();
+    for (const review of result.data) {
+      expect(review.id.length).toBeGreaterThan(0);
+      expect(review.score).toBeGreaterThanOrEqual(1);
+      expect(review.score).toBeLessThanOrEqual(5);
+      expect(Number.isNaN(Date.parse(review.date))).toBe(false);
+    }
+  });
+
   it('returns an empty page instead of throwing for a missing app', async () => {
     const result = await liveClient.reviews({
       appId: 'com.adex77.definitely.not.a.real.app',
