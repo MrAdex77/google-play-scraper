@@ -149,6 +149,51 @@ describe('flag mapping', () => {
   });
 });
 
+describe('comma list handling', () => {
+  it('apps drops empty segments and trims whitespace', async () => {
+    const call = await run('apps', ' com.a ,, com.b ,');
+    expect(call.options).toMatchObject({ appIds: ['com.a', 'com.b'] });
+  });
+
+  it('availability drops empty segments before lowercasing', async () => {
+    const call = await run('availability', 'com.example', { countries: 'us,, PL ,' });
+    expect(call.options).toMatchObject({ countries: ['us', 'pl'] });
+  });
+
+  it('apps forwards an empty list from a blank positional for the schema to reject', async () => {
+    const call = await run('apps', '');
+    expect(call.options).toMatchObject({ appIds: [] });
+  });
+});
+
+describe('absent flags', () => {
+  it('leaves unset numeric flags undefined so feature defaults apply', async () => {
+    const call = await run('search', 'panda');
+    const options = call.options as { num?: number; throttle?: number };
+    expect(options.num).toBeUndefined();
+    expect(options.throttle).toBeUndefined();
+  });
+
+  it('leaves unset base flags undefined so feature defaults apply', async () => {
+    const call = await run('app', 'com.example');
+    const options = call.options as { lang?: string; country?: string };
+    expect(options.lang).toBeUndefined();
+    expect(options.country).toBeUndefined();
+  });
+
+  it('leaves an unset --sort undefined so the feature default applies', async () => {
+    const call = await run('reviews', 'com.example');
+    const options = call.options as { sort?: number };
+    expect(options.sort).toBeUndefined();
+  });
+
+  it('leaves an unset --token undefined', async () => {
+    const call = await run('reviews', 'com.example');
+    const options = call.options as { nextPaginationToken?: string };
+    expect(options.nextPaginationToken).toBeUndefined();
+  });
+});
+
 describe('sort mapping', () => {
   it.each([
     { name: 'newest', value: sort.NEWEST },
@@ -157,6 +202,11 @@ describe('sort mapping', () => {
   ])('maps --sort $name to the sort constant', async ({ name, value }) => {
     const call = await run('reviews', 'com.example', { sort: name });
     expect(call.options).toMatchObject({ sort: value });
+  });
+
+  it('matches sort names case-insensitively', async () => {
+    const call = await run('reviews', 'com.example', { sort: 'RATING' });
+    expect(call.options).toMatchObject({ sort: sort.RATING });
   });
 
   it('rejects an unknown sort name listing the valid choices', () => {
@@ -193,6 +243,18 @@ describe('list choices', () => {
     const { api } = createStubApi();
     expect(() => getCommand('search').execute('panda', { price: 'cheap' }, api)).toThrow(
       'price must be one of all, free, paid',
+    );
+  });
+
+  it.each(['all', 'free', 'paid'] as const)('passes price %s through unchanged', async (price) => {
+    const call = await run('search', 'panda', { price });
+    expect(call.options).toMatchObject({ price });
+  });
+
+  it('rejects an unknown age listing the valid choices', () => {
+    const { api } = createStubApi();
+    expect(() => getCommand('list').execute('', { age: 'AGE_RANGE9' }, api)).toThrow(
+      'age must be one of AGE_RANGE1, AGE_RANGE2, AGE_RANGE3',
     );
   });
 });

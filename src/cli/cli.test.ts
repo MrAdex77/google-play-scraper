@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { NotFoundError } from '../core/errors.js';
+import { GooglePlayError, NotFoundError } from '../core/errors.js';
 import { runCli } from './cli.js';
 import { commands } from './commands.js';
 import type { CliApi } from './commands.js';
@@ -92,6 +92,27 @@ describe('runCli scrape failures', () => {
     expect(stdout()).toBe('');
     expect(stderr()).toContain('App not found (404)');
   });
+
+  it('returns 1 for a plain GooglePlayError with its message on stderr', async () => {
+    const { api } = createStubApi();
+    api.search = () => Promise.reject(new GooglePlayError('rate limited by google play'));
+    const { io, stdout, stderr } = createIo();
+    const code = await runCli(['search', 'panda'], io, api);
+    expect(code).toBe(1);
+    expect(stdout()).toBe('');
+    expect(stderr()).toContain('rate limited by google play');
+  });
+
+  it('returns 1 and stringifies a non-Error rejection', async () => {
+    const { api } = createStubApi();
+    const rejection = 'boom' as unknown as Error;
+    api.app = () => Promise.reject(rejection);
+    const { io, stdout, stderr } = createIo();
+    const code = await runCli(['app', 'com.example'], io, api);
+    expect(code).toBe(1);
+    expect(stdout()).toBe('');
+    expect(stderr()).toContain('boom');
+  });
 });
 
 describe('runCli usage errors', () => {
@@ -176,6 +197,102 @@ describe('runCli usage errors', () => {
     expect(code).toBe(2);
     expect(stderr()).toContain('--countries is required');
     expect(stderr()).toContain('Usage: google-play-scraper availability <appId>');
+  });
+
+  it('returns 2 when a string flag is missing its value', async () => {
+    const { api, calls } = createStubApi();
+    const { io, stderr } = createIo();
+    const code = await runCli(['search', 'panda', '--num'], io, api);
+    expect(code).toBe(2);
+    expect(calls).toEqual([]);
+    expect(stderr()).toContain('Usage: google-play-scraper search <term>');
+  });
+
+  it('surfaces a feature ValidationError for a garbage --throttle as exit 2', async () => {
+    const { io, stdout, stderr } = createIo();
+    const code = await runCli(['app', 'com.example', '--throttle', 'abc'], io);
+    expect(code).toBe(2);
+    expect(stdout()).toBe('');
+    expect(stderr()).toContain('throttle');
+  });
+
+  it('surfaces a feature ValidationError for a negative --num as exit 2', async () => {
+    const { io, stderr } = createIo();
+    const code = await runCli(['search', 'panda', '--num', '-5'], io);
+    expect(code).toBe(2);
+    expect(stderr()).toContain('num');
+  });
+
+  it('surfaces the feature ValidationError for an empty apps list as exit 2', async () => {
+    const { io, stderr } = createIo();
+    const code = await runCli(['apps', ','], io);
+    expect(code).toBe(2);
+    expect(stderr()).toContain('appIds');
+  });
+
+  it('surfaces the feature ValidationError for duplicate countries as exit 2', async () => {
+    const { io, stderr } = createIo();
+    const code = await runCli(['availability', 'com.example', '--countries', 'us,US'], io);
+    expect(code).toBe(2);
+    expect(stderr()).toContain('unique');
+  });
+
+  it('surfaces the feature ValidationError for a malformed country code as exit 2', async () => {
+    const { io, stderr } = createIo();
+    const code = await runCli(['availability', 'com.example', '--countries', 'usa'], io);
+    expect(code).toBe(2);
+    expect(stderr()).toContain('countries');
+  });
+
+  it('returns 2 for an unknown --collection naming the valid choices', async () => {
+    const { api, calls } = createStubApi();
+    const { io, stderr } = createIo();
+    const code = await runCli(['list', '--collection', 'TOP_BANANA'], io, api);
+    expect(code).toBe(2);
+    expect(calls).toEqual([]);
+    expect(stderr()).toContain('collection must be one of TOP_FREE, TOP_PAID, GROSSING');
+  });
+
+  it('returns 2 for an unknown --price naming the valid choices', async () => {
+    const { api } = createStubApi();
+    const { io, stderr } = createIo();
+    const code = await runCli(['search', 'panda', '--price', 'cheap'], io, api);
+    expect(code).toBe(2);
+    expect(stderr()).toContain('price must be one of all, free, paid');
+  });
+});
+
+describe('runCli parsing details', () => {
+  it('lets the last repeated flag value win', async () => {
+    const { api, calls } = createStubApi();
+    const { io } = createIo();
+    const code = await runCli(['search', 'panda', '--num', '5', '--num', '7'], io, api);
+    expect(code).toBe(0);
+    expect(calls[0]?.options).toMatchObject({ num: 7 });
+  });
+
+  it('treats arguments after -- as positionals', async () => {
+    const { api, calls } = createStubApi();
+    const { io } = createIo();
+    const code = await runCli(['app', '--', 'com.example'], io, api);
+    expect(code).toBe(0);
+    expect(calls[0]?.options).toMatchObject({ appId: 'com.example' });
+  });
+
+  it('accepts the --flag=value form', async () => {
+    const { api, calls } = createStubApi();
+    const { io } = createIo();
+    const code = await runCli(['search', 'panda', '--num=9', '--country=de'], io, api);
+    expect(code).toBe(0);
+    expect(calls[0]?.options).toMatchObject({ num: 9, country: 'de' });
+  });
+
+  it('keeps a multi-word quoted term as one positional', async () => {
+    const { api, calls } = createStubApi();
+    const { io } = createIo();
+    const code = await runCli(['search', 'sleep tracker'], io, api);
+    expect(code).toBe(0);
+    expect(calls[0]?.options).toMatchObject({ term: 'sleep tracker' });
   });
 });
 
