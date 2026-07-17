@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.0.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.4.1...v1.0.0) (2026-07-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** the datasafety export and gplay.datasafety method are renamed to dataSafety. The CLI subcommand datasafety is renamed to data-safety.
+* **core:** exported schemas are zod/mini schemas. .parse and .safeParse behave exactly as before; classic transform methods such as .extend/.pick/.omit are gone from schema objects — import { extend } from the zod/mini entry of the same zod package to derive schemas.
+
+### Features
+
+* **cli:** accept -h as a command help alias ([aef395b](https://github.com/MrAdex77/google-play-scraper/commit/aef395b0cd2c15dfedd605d84e6a54b945d43d3b))
+* **cli:** add a google-play-scraper command line interface ([47ac936](https://github.com/MrAdex77/google-play-scraper/commit/47ac9360c555673c0de18fccc84885bbe73e3068))
+* **cli:** add command table and dispatch core ([d7371a3](https://github.com/MrAdex77/google-play-scraper/commit/d7371a3b693898315ca107d1b705390b5254d0dc))
+* **client:** accept a degradation callback in base options ([cff6d4e](https://github.com/MrAdex77/google-play-scraper/commit/cff6d4e42c755e3c87f827c362895708d26461c7))
+* **client:** thread lifecycle hooks through shared clients ([4aa1f71](https://github.com/MrAdex77/google-play-scraper/commit/4aa1f7147ec457696f67be607d19ba4b2f009b78))
+* **cli:** expose the google-play-scraper binary ([7f64045](https://github.com/MrAdex77/google-play-scraper/commit/7f64045be33cc3d5285d20a87658412d73b6b966))
+* **core:** add request lifecycle hooks ([0e0810f](https://github.com/MrAdex77/google-play-scraper/commit/0e0810f107a33b7f3715c2460b9ac3f85eda5a6d))
+* **core:** emit degradation events from cluster pagination ([c1135db](https://github.com/MrAdex77/google-play-scraper/commit/c1135db2ff3a3c36c298c5ebebdce2e6f5cc9743))
+* **core:** emit request lifecycle events from the http client ([3146e54](https://github.com/MrAdex77/google-play-scraper/commit/3146e5448b292fb115d0c42adffed424715070f1))
+
+
+### Bug Fixes
+
+* **cli:** map --version failures to a clean exit 1 ([837b0f4](https://github.com/MrAdex77/google-play-scraper/commit/837b0f492e81eb65b9cdcfa4d82598feede7b2a1))
+* **cli:** reject unexpected extra arguments ([0e19de5](https://github.com/MrAdex77/google-play-scraper/commit/0e19de539a8c5c8e7edd519a3bfdeffeae31bcc5))
+* **e2e:** let vitest own the cli process timeout ([6646c4f](https://github.com/MrAdex77/google-play-scraper/commit/6646c4f15acce3cef44cdf66f2ae2523b9874621))
+* **reviews:** pad nanoseconds before deriving date milliseconds ([e18b3d9](https://github.com/MrAdex77/google-play-scraper/commit/e18b3d9cc34ac7380e11fb111ae8185e34edae1e))
+* **reviews:** pad nanoseconds before deriving date milliseconds ([1cda873](https://github.com/MrAdex77/google-play-scraper/commit/1cda873a78ba69ab1c68f31b0be0957204415d29))
+* **reviews:** validate the raw date tuple before deriving timestamps ([37fa23f](https://github.com/MrAdex77/google-play-scraper/commit/37fa23f4b6929004a8fb392481be5c5afef21593))
+
+
+### Performance Improvements
+
+* **core:** keep zod mini tree-shakeable via direct core imports ([804e2e3](https://github.com/MrAdex77/google-play-scraper/commit/804e2e3793d6420ebb238dab2b13c9a3b66b81c9))
+
+
+### Code Refactoring
+
+* **api:** rename datasafety to dataSafety ([ccf9061](https://github.com/MrAdex77/google-play-scraper/commit/ccf906133cb5584f8d73fc067f89a00356f0b6d0))
+* **core:** complete the zod mini public surface ([512d284](https://github.com/MrAdex77/google-play-scraper/commit/512d28440746a30313685ec9ee6e319fe557115c))
+
 ## [0.4.1](https://github.com/MrAdex77/google-play-scraper/compare/v0.4.0...v0.4.1) (2026-07-15)
 
 
