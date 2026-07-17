@@ -115,7 +115,7 @@ liveDescribe('app live contract', () => {
     expect(result.free).toBe(true);
     expect(result.price).toBe(0);
     expect(result.offersIAP).toBe(true);
-    expect(result.IAPRange).toBeDefined();
+    expect(result.IAPRange?.trim().length).toBeGreaterThan(0);
     expect(result.adSupported).toBe(true);
     expect(result.preregister).toBe(false);
     expect(result.available).toBe(true);
@@ -141,10 +141,10 @@ liveDescribe('app live contract', () => {
       country: 'de',
     });
 
-    expect(result.developerLegalName).toBeDefined();
-    expect(result.developerLegalEmail).toBeDefined();
-    expect(result.developerLegalAddress).toBeDefined();
-    expect(result.developerLegalPhoneNumber).toBeDefined();
+    expect(result.developerLegalName?.trim().length).toBeGreaterThan(0);
+    expect(result.developerLegalEmail?.trim().length).toBeGreaterThan(0);
+    expect(result.developerLegalAddress?.trim().length).toBeGreaterThan(0);
+    expect(result.developerLegalPhoneNumber?.trim().length).toBeGreaterThan(0);
   });
 
   it('rejects a nonexistent package with a NotFoundError', async () => {
