@@ -35,12 +35,12 @@ export function hasUniqueCountriesIgnoringCase(countries: readonly string[]): bo
   return new Set(normalized).size === normalized.length;
 }
 
-export function parseOptions<Schema extends z.ZodType>(
+export function parseOptions<Schema extends z.core.$ZodType>(
   schema: Schema,
   input: unknown,
   context: string,
 ): z.infer<Schema> {
-  const result = schema.safeParse(input);
+  const result = z.core.safeParse(schema, input);
   if (!result.success) {
     throw ValidationError.fromZod(result.error, context);
   }

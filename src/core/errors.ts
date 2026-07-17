@@ -1,4 +1,4 @@
-import type { ZodError } from 'zod';
+import type { z } from 'zod';
 
 export class GooglePlayError extends Error {
   constructor(message: string) {
@@ -13,7 +13,7 @@ export class ValidationError extends GooglePlayError {
     this.name = 'ValidationError';
   }
 
-  static fromZod(error: ZodError, context: string): ValidationError {
+  static fromZod(error: z.core.$ZodError, context: string): ValidationError {
     const details = error.issues
       .map((issue) => {
         const path = issue.path.join('.');

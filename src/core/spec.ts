@@ -8,7 +8,7 @@ import { SpecError } from './errors.js';
 
 export interface FieldSpec<T = unknown> {
   paths: readonly Path[];
-  schema: z.ZodType<T>;
+  schema: z.core.$ZodType<T>;
   serviceRequestId?: string;
   transform?: (value: unknown, source: unknown) => unknown;
 }
@@ -46,7 +46,7 @@ function resolveValue(root: unknown, paths: readonly Path[]): unknown {
 }
 
 function failureMessage(error: unknown): string {
-  if (error instanceof z.ZodError) {
+  if (error instanceof z.core.$ZodError) {
     return error.issues
       .map((issue) => {
         const path = issue.path.join('.');
@@ -78,7 +78,7 @@ export function extract(source: unknown, specs: SpecMap, context: string): Recor
     const raw = resolveValue(root, paths);
     try {
       const input = spec.transform ? spec.transform(raw, source) : raw;
-      result[field] = spec.schema.parse(input);
+      result[field] = z.core.parse(spec.schema, input);
     } catch (error) {
       failures.push({ field, paths, message: failureMessage(error) });
     }
