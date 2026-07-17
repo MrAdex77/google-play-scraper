@@ -199,8 +199,8 @@ liveDescribe('cli commands against live google play', () => {
     expect(JSON.parse(stdout)).toEqual([]);
   });
 
-  it('datasafety reports collected data and a privacy policy url', async () => {
-    const parsed = await runCliJson(['datasafety', TRANSLATE_ID]);
+  it('data-safety reports collected data and a privacy policy url', async () => {
+    const parsed = await runCliJson(['data-safety', TRANSLATE_ID]);
     const report = parsed as {
       collectedData: { data: string }[];
       securityPractices: { practice: string }[];
@@ -211,8 +211,8 @@ liveDescribe('cli commands against live google play', () => {
     expect(report.privacyPolicyUrl?.startsWith('http')).toBe(true);
   });
 
-  it('datasafety prints an empty report for a missing app and exits 0', async () => {
-    const parsed = await runCliJson(['datasafety', MISSING_ID]);
+  it('data-safety prints an empty report for a missing app and exits 0', async () => {
+    const parsed = await runCliJson(['data-safety', MISSING_ID]);
     const report = parsed as Record<string, unknown>;
     expect(report.sharedData).toEqual([]);
     expect(report.collectedData).toEqual([]);
@@ -270,7 +270,7 @@ describe('cli process contract', () => {
     const { exitCode, stdout, stderr } = await runCliProcess(['--help']);
     expect(exitCode).toBe(0);
     expect(stderr).toBe('');
-    for (const name of ['app', 'search', 'reviews', 'availability', 'datasafety']) {
+    for (const name of ['app', 'search', 'reviews', 'availability', 'data-safety']) {
       expect(stdout).toContain(name);
     }
   });

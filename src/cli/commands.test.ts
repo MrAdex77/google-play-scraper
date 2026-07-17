@@ -19,7 +19,7 @@ const API_METHODS = [
   'similar',
   'reviews',
   'permissions',
-  'datasafety',
+  'dataSafety',
   'categories',
   'availability',
 ] as const;
@@ -61,7 +61,13 @@ async function run(
 }
 
 describe('command dispatch', () => {
-  const cases: { name: string; positional: string; values?: CliValues; expected: object }[] = [
+  const cases: {
+    name: string;
+    method?: string;
+    positional: string;
+    values?: CliValues;
+    expected: object;
+  }[] = [
     { name: 'app', positional: 'com.example', expected: { appId: 'com.example' } },
     {
       name: 'apps',
@@ -75,7 +81,12 @@ describe('command dispatch', () => {
     { name: 'similar', positional: 'com.example', expected: { appId: 'com.example' } },
     { name: 'reviews', positional: 'com.example', expected: { appId: 'com.example' } },
     { name: 'permissions', positional: 'com.example', expected: { appId: 'com.example' } },
-    { name: 'datasafety', positional: 'com.example', expected: { appId: 'com.example' } },
+    {
+      name: 'data-safety',
+      method: 'dataSafety',
+      positional: 'com.example',
+      expected: { appId: 'com.example' },
+    },
     { name: 'categories', positional: '', expected: {} },
     {
       name: 'availability',
@@ -91,10 +102,13 @@ describe('command dispatch', () => {
     );
   });
 
-  it.each(cases)('$name calls exactly its api function', async ({ name, positional, values }) => {
-    const call = await run(name, positional, values ?? {});
-    expect(call.method).toBe(name);
-  });
+  it.each(cases)(
+    '$name calls exactly its api function',
+    async ({ name, method, positional, values }) => {
+      const call = await run(name, positional, values ?? {});
+      expect(call.method).toBe(method ?? name);
+    },
+  );
 
   it.each(cases)(
     '$name maps the positional into the right field',

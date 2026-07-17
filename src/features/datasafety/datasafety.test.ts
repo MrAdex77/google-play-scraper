@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { datasafety, type DataSafetyOptions } from './datasafety.js';
+import { dataSafety, type DataSafetyOptions } from './datasafety.js';
 import { ValidationError } from '../../core/errors.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -18,7 +18,7 @@ const fetchReturning =
 
 describe('datasafety fixture parsing', () => {
   it('extracts collected data entries with data, optional, and purpose fields', async () => {
-    const result = await datasafety({
+    const result = await dataSafety({
       appId: TRANSLATE,
       requestOptions: { fetchImpl: fetchReturning(fixture) },
     });
@@ -34,7 +34,7 @@ describe('datasafety fixture parsing', () => {
   });
 
   it('extracts security practices with nonempty practice strings', async () => {
-    const result = await datasafety({
+    const result = await dataSafety({
       appId: TRANSLATE,
       requestOptions: { fetchImpl: fetchReturning(fixture) },
     });
@@ -47,7 +47,7 @@ describe('datasafety fixture parsing', () => {
   });
 
   it('exposes a privacy policy url that parses', async () => {
-    const result = await datasafety({
+    const result = await dataSafety({
       appId: TRANSLATE,
       requestOptions: { fetchImpl: fetchReturning(fixture) },
     });
@@ -72,7 +72,7 @@ const wrapSafetyNode = (node: Record<string, unknown>): unknown[] => {
 
 describe('datasafety degraded pages', () => {
   it('returns empty defaults when the safety blocks are missing', async () => {
-    const result = await datasafety({
+    const result = await dataSafety({
       appId: TRANSLATE,
       requestOptions: { fetchImpl: fetchReturning(buildDataSafetyHtml([])) },
     });
@@ -100,7 +100,7 @@ describe('datasafety degraded pages', () => {
     ];
     const html = buildDataSafetyHtml(wrapSafetyNode({ '138': node138, '100': node100 }));
 
-    const result = await datasafety({
+    const result = await dataSafety({
       appId: TRANSLATE,
       requestOptions: { fetchImpl: fetchReturning(html) },
     });
@@ -118,6 +118,6 @@ describe('datasafety degraded pages', () => {
 
 describe('datasafety guards', () => {
   it('rejects a missing appId with a ValidationError', async () => {
-    await expect(datasafety({} as DataSafetyOptions)).rejects.toBeInstanceOf(ValidationError);
+    await expect(dataSafety({} as DataSafetyOptions)).rejects.toBeInstanceOf(ValidationError);
   });
 });

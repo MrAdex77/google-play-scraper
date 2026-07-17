@@ -228,7 +228,7 @@ describe('createClient', () => {
       settle(client.developer({ devId: 'Adex77' })),
       settle(client.similar({ appId: TRANSLATE })),
       settle(client.permissions({ appId: TRANSLATE })),
-      settle(client.datasafety({ appId: TRANSLATE })),
+      settle(client.dataSafety({ appId: TRANSLATE })),
     ]);
 
     expect(urls).toHaveLength(6);
