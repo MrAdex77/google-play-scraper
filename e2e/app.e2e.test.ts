@@ -109,6 +109,44 @@ liveDescribe('app live contract', () => {
     }
   });
 
+  it('reports the free with ads and purchases commercial model', async () => {
+    const result = await liveClient.app({ appId: 'com.king.candycrushsaga' });
+
+    expect(result.free).toBe(true);
+    expect(result.price).toBe(0);
+    expect(result.offersIAP).toBe(true);
+    expect(result.IAPRange?.trim().length).toBeGreaterThan(0);
+    expect(result.adSupported).toBe(true);
+    expect(result.preregister).toBe(false);
+    expect(result.available).toBe(true);
+  });
+
+  it('localizes the paid price into the storefront currency', async () => {
+    const result = await liveClient.app({
+      appId: 'com.mojang.minecraftpe',
+      lang: 'de',
+      country: 'de',
+    });
+
+    expect(result.free).toBe(false);
+    expect(result.price).toBeGreaterThan(0);
+    expect(result.currency).toBe('EUR');
+    expect(result.priceText).toContain('€');
+  });
+
+  it('exposes the trader legal fields on an eu storefront', async () => {
+    const result = await liveClient.app({
+      appId: 'com.google.android.apps.translate',
+      lang: 'de',
+      country: 'de',
+    });
+
+    expect(result.developerLegalName?.trim().length).toBeGreaterThan(0);
+    expect(result.developerLegalEmail?.trim().length).toBeGreaterThan(0);
+    expect(result.developerLegalAddress?.trim().length).toBeGreaterThan(0);
+    expect(result.developerLegalPhoneNumber?.trim().length).toBeGreaterThan(0);
+  });
+
   it('rejects a nonexistent package with a NotFoundError', async () => {
     await expect(
       liveClient.app({ appId: 'com.adex77.definitely.not.a.real.app' }),

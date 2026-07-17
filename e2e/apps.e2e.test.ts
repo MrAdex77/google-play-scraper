@@ -21,6 +21,19 @@ liveDescribe('apps live contract', () => {
     }
   });
 
+  it('rejects every entry in order when no id exists', async () => {
+    const missingIds = ['com.adex77.definitely.not.a.real.app', 'com.adex77.also.not.real'];
+    const result = await liveClient.apps({ appIds: missingIds, concurrency: 2 });
+
+    expect(result.map((entry) => entry.appId)).toEqual(missingIds);
+    for (const entry of result) {
+      expect(entry.status).toBe('rejected');
+      if (entry.status === 'rejected') {
+        expect(entry.error).toBeInstanceOf(NotFoundError);
+      }
+    }
+  });
+
   it('rejects only the missing id while the rest fulfill', async () => {
     const missingId = 'com.adex77.definitely.not.a.real.app';
     const result = await liveClient.apps({

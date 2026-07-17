@@ -72,6 +72,17 @@ liveDescribe('iterators live contract', () => {
     expect(new Set(collected).size).toBe(collected.length);
   });
 
+  it('terminates the reviews stream without items for a missing app', async () => {
+    const collected: string[] = [];
+    for await (const review of liveClient.reviewsIterator({
+      appId: 'com.adex77.definitely.not.a.real.app',
+    })) {
+      collected.push(review.id);
+    }
+
+    expect(collected).toEqual([]);
+  });
+
   it('collects exactly maxReviews reviews through reviewsAll', async () => {
     const reviews = await liveClient.reviewsAll({ appId: WHATSAPP, maxReviews: 50 });
 

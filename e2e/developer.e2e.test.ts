@@ -81,6 +81,17 @@ liveDescribe('developer live contract', () => {
     }
   });
 
+  it('resolves a developer name containing a comma and space', async () => {
+    const items = (await liveClient.developer({ devId: 'Netflix, Inc.' })) as DeveloperApp[];
+
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.map((item) => item.appId)).toContain('com.netflix.mediaclient');
+    for (const item of items) {
+      expect(item.developer).toBe('Netflix, Inc.');
+      expect(new URL(item.url).origin).toBe('https://play.google.com');
+    }
+  });
+
   it('rejects an unknown numeric developer id with a NotFoundError', async () => {
     await expect(liveClient.developer({ devId: '9999999999999999999' })).rejects.toBeInstanceOf(
       NotFoundError,
