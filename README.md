@@ -69,6 +69,12 @@ npm install @mradex77/google-play-scraper
 
 Requires Node.js 22.12 or newer.
 
+Every release is published from GitHub Actions with [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the package on npm is cryptographically linked to the exact commit and workflow that built it. Verify your installed tree with:
+
+```sh
+npm audit signatures
+```
+
 ## CLI
 
 Every method with a JSON-friendly surface is also available from the command line, no install required:
