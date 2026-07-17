@@ -28,16 +28,16 @@ This is a modern TypeScript rewrite of the popular but unmaintained [`google-pla
 
 ## Comparison with the original google-play-scraper
 
-| Capability           | @mradex77/google-play-scraper          | facundoolano/google-play-scraper           |
-| -------------------- | -------------------------------------- | ------------------------------------------ |
-| Language             | TypeScript in strict mode              | JavaScript                                 |
-| Type definitions     | Generated from zod schemas             | Community typings                          |
-| Runtime validation   | zod on every input and output boundary | None                                       |
-| Error handling       | Typed error classes                    | Plain `Error`                              |
-| Module formats       | ESM and CommonJS with `.d.ts`          | ESM only                                   |
-| Runtime dependencies | `zod`, `lru-cache`                     | `cheerio`, `got`, `memoizee`, `ramda`, ... |
-| Breakage detection   | Daily live contract tests in CI        | None                                       |
-| Maintenance          | Actively maintained                    | Unmaintained                               |
+| Capability           | @mradex77/google-play-scraper               | facundoolano/google-play-scraper           |
+| -------------------- | ------------------------------------------- | ------------------------------------------ |
+| Language             | TypeScript in strict mode                   | JavaScript                                 |
+| Type definitions     | Generated from zod schemas                  | Community typings                          |
+| Runtime validation   | zod/mini on every input and output boundary | None                                       |
+| Error handling       | Typed error classes                         | Plain `Error`                              |
+| Module formats       | ESM and CommonJS with `.d.ts`               | ESM only                                   |
+| Runtime dependencies | `zod`, `lru-cache`                          | `cheerio`, `got`, `memoizee`, `ramda`, ... |
+| Breakage detection   | Daily live contract tests in CI             | None                                       |
+| Maintenance          | Actively maintained                         | Unmaintained                               |
 
 ## Table of contents
 
@@ -949,6 +949,26 @@ The method names, options, and constants are the same, so most code keeps workin
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
 - The package is ESM first with a CommonJS build; the default export is the aggregate client and named exports are also available.
+
+### Deriving from the exported schemas
+
+Every exported schema is a [zod/mini](https://zod.dev/packages/mini) schema. `.parse` and `.safeParse` behave exactly like their classic zod counterparts, but transform methods such as `.extend`, `.pick`, and `.omit` live as top-level functions on the `zod/mini` entry of the same `zod` package:
+
+```ts
+import * as z from 'zod/mini';
+import { appSchema } from '@mradex77/google-play-scraper';
+
+const slimAppSchema = z.pick(appSchema, { title: true, appId: true, score: true });
+```
+
+The zod/mini surface is what keeps the library small in your bundle. Measured with `esbuild --bundle --minify --format=esm --platform=node` against zod 4.4.3:
+
+| Bundle             | Minified | Gzip    |
+| ------------------ | -------- | ------- |
+| Classic zod (v0.4) | 414.8 kB | 85.8 kB |
+| zod/mini (current) | 115.1 kB | 29.9 kB |
+
+Install size on disk is unchanged by design: `zod/mini` is a subpath export of the same `zod` package, so `node_modules` stays identical while the consumer bundle shrinks about 3.6×.
 
 ## FAQ
 
