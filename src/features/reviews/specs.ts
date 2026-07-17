@@ -1,3 +1,4 @@
+import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
 import type { Path } from '../../core/path.js';
 import type { SpecMap } from '../../core/spec.js';
@@ -35,17 +36,26 @@ interface RawCriteria {
   rating: unknown;
 }
 
+const MILLISECONDS_PER_SECOND = 1000;
+const NANOSECONDS_PER_MILLISECOND = 1_000_000;
+const MAX_NANOSECONDS = 999_999_999;
+
+const dateTupleSchema = z.tuple(
+  [
+    z.int().check(z.gte(0)),
+    z.optional(z.nullable(z.int().check(z.gte(0), z.lte(MAX_NANOSECONDS)))),
+  ],
+  z.unknown(),
+);
+
 function generateDate(value: unknown): string | undefined {
-  if (!Array.isArray(value)) {
+  const parsed = dateTupleSchema.safeParse(value);
+  if (!parsed.success) {
     return undefined;
   }
-  const seconds = Number(value[0]);
-  const nanos = Number(value[1]);
-  const nanoText = (Number.isFinite(nanos) && nanos !== 0 ? nanos.toString() : '000').substring(
-    0,
-    3,
-  );
-  const milliseconds = Number(`${seconds.toString()}${nanoText}`);
+  const [seconds, nanos] = parsed.data;
+  const milliseconds =
+    seconds * MILLISECONDS_PER_SECOND + Math.floor((nanos ?? 0) / NANOSECONDS_PER_MILLISECOND);
   const date = new Date(milliseconds);
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }

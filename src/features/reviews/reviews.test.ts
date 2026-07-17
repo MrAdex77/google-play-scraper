@@ -62,6 +62,18 @@ describe('reviews fixture parsing', () => {
     }
   });
 
+  it('derives sub second milliseconds from a nanosecond field shorter than nine digits', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      num: 150,
+      requestOptions: { fetchImpl: fetchReturning(initial) },
+    });
+
+    const dates = result.data.map((review) => review.date);
+    expect(dates).toContain('2026-07-06T13:55:24.077Z');
+    expect(dates).not.toContain('2026-07-06T13:55:24.770Z');
+  });
+
   it('accumulates across both pages and slices to the requested num', async () => {
     const { fetchImpl, count } = sequenceFetch([initial, page2]);
 
@@ -225,6 +237,35 @@ describe('reviews degraded payloads', () => {
 
     expect(result.data[0]?.replyDate).toBeUndefined();
     expect(result.data[0]?.replyText).toBe('thanks');
+  });
+
+  it('drops a reply date with fractional seconds or out of range nanoseconds', async () => {
+    const fractional = reviewEntry('r1');
+    fractional[7] = [null, 'thanks', [77.5, 0]];
+    const overflow = reviewEntry('r2');
+    overflow[7] = [null, 'thanks', [1700000100, 1000000000]];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([fractional, overflow], null)) },
+    });
+
+    expect(result.data[0]?.replyDate).toBeUndefined();
+    expect(result.data[1]?.replyDate).toBeUndefined();
+  });
+
+  it('keeps a reply date at the nanosecond upper bound', async () => {
+    const entry = reviewEntry('r1');
+    entry[7] = [null, 'thanks', [1700000100, 999999999]];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    expect(result.data[0]?.replyDate).toBe('2023-11-14T22:15:00.999Z');
   });
 
   it('surfaces a SpecError when a criteria entry is not an array', async () => {
