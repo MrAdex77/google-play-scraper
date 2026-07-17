@@ -53,6 +53,7 @@ This is a modern TypeScript rewrite of the popular but unmaintained [`google-pla
 - [Throttling and requestOptions](#throttling-and-requestoptions)
 - [Resilience](#resilience)
 - [Monitoring drift](#monitoring-drift)
+- [Versioning and API stability](#versioning-and-api-stability)
 - [Migrating from google-play-scraper](#migrating-from-google-play-scraper)
 - [FAQ](#faq)
 - [Related projects](#related-projects)
@@ -67,6 +68,12 @@ npm install @mradex77/google-play-scraper
 ```
 
 Requires Node.js 22.12 or newer.
+
+Every release is published from GitHub Actions with [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the package on npm is cryptographically linked to the exact commit and workflow that built it. Verify your installed tree with:
+
+```sh
+npm audit signatures
+```
 
 ## CLI
 
@@ -940,6 +947,26 @@ Two boundaries to know:
 - `reviews` pagination never degrades. A parse failure there propagates as a `ParseError`, so review reads fail loudly instead of silently shrinking.
 
 With `memoized()`, `onDegradation` and the lifecycle hooks `onRequest`, `onResponse`, and `onRetry` participate in the cache key by identity like any function option, so pass stable function references rather than inline closures to keep cache hits.
+
+## Versioning and API stability
+
+This package follows [Semantic Versioning](https://semver.org). For a scraper the contract needs one clarification: semver covers the code surface this library controls, not the data Google serves.
+
+| Change                                                            | Release |
+| ----------------------------------------------------------------- | ------- |
+| Removing or renaming an exported function, option, or constant    | major   |
+| Removing a field from a result schema, or changing its type       | major   |
+| Raising the Node.js support floor or dropping a module format     | major   |
+| Adding a new method, option, or optional result field             | minor   |
+| Restoring extraction of a field after a Google Play layout change | patch   |
+
+What semver cannot cover is the content behind those shapes. Google Play changes its markup a few times a year, and a field can start coming back `undefined`, empty, or degraded without any release of this package. The policy for that case:
+
+- The daily live test suite fails and an issue is filed automatically, usually before user reports arrive.
+- When extraction can be restored, the fix ships as a patch.
+- When Google removes the underlying data permanently, the field stays in the schema as a documented degraded surface first (see [categories](#categories) for the worked example) and is only removed in the next major.
+
+To watch for drift in your own production use, wire up [`onDegradation`](#monitoring-drift) and treat [`SpecError`](#error-handling) as a layout-change signal rather than an application bug.
 
 ## Migrating from google-play-scraper
 
