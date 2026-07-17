@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import type * as z from 'zod/mini';
 
 export class GooglePlayError extends Error {
   constructor(message: string) {

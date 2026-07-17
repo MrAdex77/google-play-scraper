@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import type { Path } from './path.js';
 import { getPath } from './path.js';
 import type { ScriptData } from './scriptData.js';
