@@ -49,17 +49,26 @@ liveDescribe('datasafety live contract', () => {
     expect(result.sharedData.some((entry) => entry.purpose !== undefined)).toBe(true);
   });
 
-  it('localizes the safety report for a polish storefront', async () => {
-    const result = await liveClient.dataSafety({ appId: 'com.adex77.WhereAmI', lang: 'pl' });
+  it('localizes the safety report labels for a polish storefront', async () => {
+    const defaultReport = await liveClient.dataSafety({ appId: 'com.adex77.WhereAmI' });
+    const polishReport = await liveClient.dataSafety({ appId: 'com.adex77.WhereAmI', lang: 'pl' });
 
-    expect(result.collectedData.length).toBeGreaterThan(0);
-    expect(result.securityPractices.length).toBeGreaterThan(0);
-    for (const entry of result.collectedData) {
+    expect(polishReport.collectedData.length).toBe(defaultReport.collectedData.length);
+    expect(polishReport.securityPractices.length).toBe(defaultReport.securityPractices.length);
+    expect(polishReport.collectedData.length).toBeGreaterThan(0);
+    expect(polishReport.securityPractices.length).toBeGreaterThan(0);
+
+    const defaultTypes = defaultReport.collectedData.map((entry) => entry.type);
+    const polishTypes = polishReport.collectedData.map((entry) => entry.type);
+    expect(polishTypes).not.toEqual(defaultTypes);
+
+    const defaultPractices = defaultReport.securityPractices.map((entry) => entry.practice);
+    const polishPractices = polishReport.securityPractices.map((entry) => entry.practice);
+    expect(polishPractices).not.toEqual(defaultPractices);
+
+    for (const entry of polishReport.collectedData) {
       expect(entry.data.length).toBeGreaterThan(0);
       expect(entry.type.length).toBeGreaterThan(0);
-    }
-    for (const practice of result.securityPractices) {
-      expect(practice.practice.length).toBeGreaterThan(0);
     }
   });
 

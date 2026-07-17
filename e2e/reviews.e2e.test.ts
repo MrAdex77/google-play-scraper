@@ -81,22 +81,27 @@ liveDescribe('reviews live contract', () => {
     }
   });
 
-  it('returns a localized first page for a polish storefront', async () => {
-    const result = await liveClient.reviews({
+  it('serves a disjoint localized first page for a polish storefront', async () => {
+    const defaultPage = await liveClient.reviews({ appId: 'com.whatsapp', paginate: true });
+    const polishPage = await liveClient.reviews({
       appId: 'com.whatsapp',
       paginate: true,
       lang: 'pl',
       country: 'pl',
     });
 
-    expect(result.data.length).toBeGreaterThan(100);
-    expect(result.nextPaginationToken).not.toBeNull();
-    for (const review of result.data) {
+    expect(polishPage.data.length).toBeGreaterThan(100);
+    expect(polishPage.nextPaginationToken).not.toBeNull();
+    for (const review of polishPage.data) {
       expect(review.id.length).toBeGreaterThan(0);
       expect(review.score).toBeGreaterThanOrEqual(1);
       expect(review.score).toBeLessThanOrEqual(5);
       expect(Number.isNaN(Date.parse(review.date))).toBe(false);
     }
+
+    const defaultIds = new Set(defaultPage.data.map((review) => review.id));
+    const overlap = polishPage.data.filter((review) => defaultIds.has(review.id)).length;
+    expect(overlap).toBeLessThan(15);
   });
 
   it('returns an empty page instead of throwing for a missing app', async () => {
