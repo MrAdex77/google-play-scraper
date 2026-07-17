@@ -111,6 +111,11 @@ export async function runCli(
   if (command.requiresPositional && positional === undefined) {
     return usageFailure(io, `${command.name}: missing required argument`, command);
   }
+  const expectedPositionals = command.requiresPositional ? 1 : 0;
+  if (positionals.length > expectedPositionals) {
+    const unexpected = positionals[expectedPositionals] ?? '';
+    return usageFailure(io, `${command.name}: unexpected argument "${unexpected}"`, command);
+  }
   try {
     const result = await command.execute(positional ?? '', values, api);
     io.out(`${JSON.stringify(result, null, 2)}\n`);

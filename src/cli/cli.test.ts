@@ -124,6 +124,25 @@ describe('runCli usage errors', () => {
     expect(stderr()).toContain('Usage: google-play-scraper app <appId>');
   });
 
+  it('returns 2 for an unexpected extra positional and names it', async () => {
+    const { api, calls } = createStubApi();
+    const { io, stderr } = createIo();
+    const code = await runCli(['app', 'com.example', 'com.stray'], io, api);
+    expect(code).toBe(2);
+    expect(calls).toEqual([]);
+    expect(stderr()).toContain('unexpected argument "com.stray"');
+    expect(stderr()).toContain('Usage: google-play-scraper app <appId>');
+  });
+
+  it('returns 2 when a command that takes no positional receives one', async () => {
+    const { api, calls } = createStubApi();
+    const { io, stderr } = createIo();
+    const code = await runCli(['list', 'com.example'], io, api);
+    expect(code).toBe(2);
+    expect(calls).toEqual([]);
+    expect(stderr()).toContain('unexpected argument "com.example"');
+  });
+
   it('returns 2 with no arguments at all and prints the help to stderr', async () => {
     const { api } = createStubApi();
     const { io, stdout, stderr } = createIo();
