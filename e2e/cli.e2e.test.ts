@@ -12,7 +12,7 @@ const GEO_GAME_ID = 'com.adex77.WhereAmI';
 const MISSING_ID = 'com.adex77.definitely.not.a.real.app';
 const GOOGLE_DEV_ID = '5700313618786177705';
 
-const CLI_PROCESS_TIMEOUT_MS = 25000;
+const CLI_PROCESS_TIMEOUT_MS = 30000;
 
 interface CliRun {
   exitCode: number;
