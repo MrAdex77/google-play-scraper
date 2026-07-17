@@ -40,6 +40,17 @@ liveDescribe('permissions live contract', () => {
     }
   });
 
+  it('returns localized permission names for a german storefront', async () => {
+    const result = await liveClient.permissions({ appId: TRANSLATE, lang: 'de' });
+
+    expect(result.length).toBeGreaterThan(3);
+    for (const entry of result) {
+      const item = entry as { permission: string; type: number };
+      expect(item.permission.length).toBeGreaterThan(0);
+      expect([permission.COMMON, permission.OTHER]).toContain(item.type);
+    }
+  });
+
   it('returns an empty list instead of throwing for a missing app', async () => {
     const result = await liveClient.permissions({
       appId: 'com.adex77.definitely.not.a.real.app',

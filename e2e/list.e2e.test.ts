@@ -59,6 +59,21 @@ liveDescribe('list live contract', () => {
     }
   });
 
+  it('returns paid games for the top paid game collection', async () => {
+    const items = (await liveClient.list({
+      collection: 'TOP_PAID',
+      category: 'GAME',
+      num: 5,
+    })) as ListItem[];
+
+    expect(items).toHaveLength(5);
+    for (const item of items) {
+      assertValidItem(item);
+      expect(item.free).toBe(false);
+      expect(item.price).toBeGreaterThan(0);
+    }
+  });
+
   it('returns five valid apps for the grossing collection', async () => {
     const items = (await liveClient.list({ collection: 'GROSSING', num: 5 })) as ListItem[];
 

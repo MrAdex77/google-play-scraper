@@ -78,6 +78,22 @@ liveDescribe('search live contract', () => {
     }
   });
 
+  it('returns localized results for a german term with diacritics', async () => {
+    const results = (await liveClient.search({
+      term: 'übersetzer',
+      lang: 'de',
+      country: 'de',
+      num: 20,
+    })) as SearchResult[];
+
+    expect(results.length).toBeGreaterThanOrEqual(10);
+    expect(results.some((item) => item.title.toLowerCase().includes('übersetzer'))).toBe(true);
+    for (const item of results) {
+      expect(item.appId.length).toBeGreaterThan(0);
+      expect(item.title.length).toBeGreaterThan(0);
+    }
+  });
+
   it('serves at least the full first page when num exceeds the google cap', async () => {
     const events: DegradationEvent[] = [];
     const results = (await liveClient.search({
