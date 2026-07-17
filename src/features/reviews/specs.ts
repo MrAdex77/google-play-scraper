@@ -41,10 +41,9 @@ function generateDate(value: unknown): string | undefined {
   }
   const seconds = Number(value[0]);
   const nanos = Number(value[1]);
-  const nanoText = (Number.isFinite(nanos) && nanos !== 0 ? nanos.toString() : '000').substring(
-    0,
-    3,
-  );
+  const nanoText = (
+    Number.isFinite(nanos) && nanos !== 0 ? nanos.toString().padStart(9, '0') : '000'
+  ).substring(0, 3);
   const milliseconds = Number(`${seconds.toString()}${nanoText}`);
   const date = new Date(milliseconds);
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();

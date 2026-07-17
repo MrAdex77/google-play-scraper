@@ -62,6 +62,18 @@ describe('reviews fixture parsing', () => {
     }
   });
 
+  it('derives sub second milliseconds from a nanosecond field shorter than nine digits', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      num: 150,
+      requestOptions: { fetchImpl: fetchReturning(initial) },
+    });
+
+    const dates = result.data.map((review) => review.date);
+    expect(dates).toContain('2026-07-06T13:55:24.077Z');
+    expect(dates).not.toContain('2026-07-06T13:55:24.770Z');
+  });
+
   it('accumulates across both pages and slices to the requested num', async () => {
     const { fetchImpl, count } = sequenceFetch([initial, page2]);
 
