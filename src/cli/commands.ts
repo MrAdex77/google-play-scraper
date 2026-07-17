@@ -15,7 +15,7 @@ export type CliApi = Pick<
   | 'similar'
   | 'reviews'
   | 'permissions'
-  | 'datasafety'
+  | 'dataSafety'
   | 'categories'
   | 'availability'
 >;
@@ -262,13 +262,13 @@ export const commands: readonly CliCommand[] = [
       }),
   },
   {
-    name: 'datasafety',
+    name: 'data-safety',
     summary: 'the data safety section of an app',
-    usage: `datasafety <appId> ${BASE_FLAGS_USAGE}`,
+    usage: `data-safety <appId> ${BASE_FLAGS_USAGE}`,
     requiresPositional: true,
     options: { ...baseFlags },
     execute: (positional, values, api) =>
-      api.datasafety({ appId: positional, ...baseOptions(values) }),
+      api.dataSafety({ appId: positional, ...baseOptions(values) }),
   },
   {
     name: 'categories',

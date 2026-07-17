@@ -96,7 +96,7 @@ export type { PermissionsOptions } from './features/permissions/permissions.js';
 export { permissionSchema } from './features/permissions/schema.js';
 export type { AppPermission } from './features/permissions/schema.js';
 
-export { datasafety, dataSafetyOptionsSchema } from './features/datasafety/datasafety.js';
+export { dataSafety, dataSafetyOptionsSchema } from './features/datasafety/datasafety.js';
 export type { DataSafetyOptions } from './features/datasafety/datasafety.js';
 export {
   dataEntrySchema,
@@ -127,7 +127,7 @@ import { reviewsAll } from './features/reviews/reviewsAll.js';
 import { searchIterator } from './features/search/searchIterator.js';
 import { developerIterator } from './features/developer/developerIterator.js';
 import { permissions } from './features/permissions/permissions.js';
-import { datasafety } from './features/datasafety/datasafety.js';
+import { dataSafety } from './features/datasafety/datasafety.js';
 import { memoized } from './features/memoized/memoized.js';
 import { createClient } from './client.js';
 
@@ -150,7 +150,7 @@ export interface GooglePlayClient {
   similar: typeof similar;
   reviews: typeof reviews;
   permissions: typeof permissions;
-  datasafety: typeof datasafety;
+  dataSafety: typeof dataSafety;
 }
 
 export interface GooglePlayIterators {
@@ -187,7 +187,7 @@ const gplay: GooglePlayClient &
   searchIterator,
   developerIterator,
   permissions,
-  datasafety,
+  dataSafety,
   memoized,
   createClient,
 };

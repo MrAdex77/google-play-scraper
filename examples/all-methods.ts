@@ -248,8 +248,8 @@ async function showPermissions(client: Client): Promise<void> {
 }
 
 async function showDataSafety(client: Client): Promise<void> {
-  heading('datasafety()', 'the data safety section of an app');
-  const safety = await client.datasafety({ appId: TEST_APP_ID });
+  heading('dataSafety()', 'the data safety section of an app');
+  const safety = await client.dataSafety({ appId: TEST_APP_ID });
   field('Shared data types', safety.sharedData.length);
   field('Collected data types', safety.collectedData.length);
   field('Security practices', safety.securityPractices.length);
@@ -352,7 +352,7 @@ async function main(): Promise<void> {
     await run('developerIterator()', () => showDeveloperIterator(client, details.developerId));
   }
   await run('permissions()', () => showPermissions(client));
-  await run('datasafety()', () => showDataSafety(client));
+  await run('dataSafety()', () => showDataSafety(client));
   await run('createCountryFetch()', showCountryFetch);
   await run('errors', showErrors);
   await run('memoized()', showMemoized);

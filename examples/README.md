@@ -34,7 +34,7 @@ others still run.
 | `searchIterator()`                   | Streaming search matches page by page           |
 | `developerIterator()`                | Streaming a developer catalog page by page      |
 | `permissions()`                      | Permissions requested by an app                 |
-| `datasafety()`                       | The data safety section of an app               |
+| `dataSafety()`                       | The data safety section of an app               |
 | `createCountryFetch()`               | Routing requests to a per-country fetch         |
 | `errors`                             | The typed error hierarchy raised on failure     |
 | `memoized()`                         | A client that caches identical calls            |

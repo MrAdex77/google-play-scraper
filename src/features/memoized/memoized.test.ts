@@ -213,7 +213,7 @@ describe('memoized', () => {
 
     expect(client.BASE_URL).toBe('https://play.google.com');
     expect(typeof client.reviews).toBe('function');
-    expect(typeof client.datasafety).toBe('function');
+    expect(typeof client.dataSafety).toBe('function');
     expect(typeof client.permissions).toBe('function');
     expect(typeof client.developer).toBe('function');
     expect(typeof client.similar).toBe('function');

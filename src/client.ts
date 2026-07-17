@@ -15,7 +15,7 @@ import {
   type AvailabilityOptions,
 } from './features/availability/availability.js';
 import { categories, type CategoriesOptions } from './features/categories/categories.js';
-import { createDatasafety, type DataSafetyOptions } from './features/datasafety/datasafety.js';
+import { createDataSafety, type DataSafetyOptions } from './features/datasafety/datasafety.js';
 import { createDeveloper, type DeveloperOptions } from './features/developer/developer.js';
 import { createList, type ListOptions } from './features/list/list.js';
 import { createPermissions, type PermissionsOptions } from './features/permissions/permissions.js';
@@ -109,7 +109,7 @@ export function createClient(options?: ClientOptions): GooglePlayClient & Google
   const boundSearchIterator = createSearchIterator(resolveClient);
   const boundDeveloperIterator = createDeveloperIterator(resolveClient);
   const boundPermissions = createPermissions(resolveClient);
-  const boundDatasafety = createDatasafety(resolveClient);
+  const boundDataSafety = createDataSafety(resolveClient);
 
   return {
     BASE_URL,
@@ -138,6 +138,6 @@ export function createClient(options?: ClientOptions): GooglePlayClient & Google
     developerIterator: (callOptions: DeveloperIteratorOptions) =>
       boundDeveloperIterator(mergeDefaults(callOptions)),
     permissions: (callOptions: PermissionsOptions) => boundPermissions(mergeDefaults(callOptions)),
-    datasafety: (callOptions: DataSafetyOptions) => boundDatasafety(mergeDefaults(callOptions)),
+    dataSafety: (callOptions: DataSafetyOptions) => boundDataSafety(mergeDefaults(callOptions)),
   };
 }

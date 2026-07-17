@@ -38,7 +38,7 @@ const API_METHODS = [
   'similar',
   'reviews',
   'permissions',
-  'datasafety',
+  'dataSafety',
   'categories',
   'availability',
 ] as const;

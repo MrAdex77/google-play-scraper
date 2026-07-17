@@ -7,7 +7,7 @@ import { extract } from '../../core/spec.js';
 import { dataSafetySchema, type DataSafety } from './schema.js';
 import { dataSafetySpecs } from './specs.js';
 
-const DATA_SAFETY_CONTEXT = 'datasafety';
+const DATA_SAFETY_CONTEXT = 'dataSafety';
 
 export const dataSafetyOptionsSchema = z.extend(baseOptionsSchema, {
   appId: z.string().check(z.minLength(1)),
@@ -17,8 +17,8 @@ export type DataSafetyOptions = z.input<typeof dataSafetyOptionsSchema>;
 
 const DATA_SAFETY_URL = `${BASE_URL}/store/apps/datasafety`;
 
-export function createDatasafety(resolveClient: ResolveClient = clientFromOptions) {
-  return async function datasafety(options: DataSafetyOptions): Promise<DataSafety> {
+export function createDataSafety(resolveClient: ResolveClient = clientFromOptions) {
+  return async function dataSafety(options: DataSafetyOptions): Promise<DataSafety> {
     const parsed = parseOptions(dataSafetyOptionsSchema, options, DATA_SAFETY_CONTEXT);
 
     const params = new URLSearchParams({ id: parsed.appId, hl: parsed.lang });
@@ -33,4 +33,4 @@ export function createDatasafety(resolveClient: ResolveClient = clientFromOption
   };
 }
 
-export const datasafety = createDatasafety();
+export const dataSafety = createDataSafety();

@@ -13,7 +13,7 @@ import { app } from '../app/app.js';
 import { createApps } from '../apps/apps.js';
 import { availability } from '../availability/availability.js';
 import { categories, type CategoriesOptions } from '../categories/categories.js';
-import { datasafety } from '../datasafety/datasafety.js';
+import { dataSafety } from '../datasafety/datasafety.js';
 import { createDeveloper } from '../developer/developer.js';
 import { createList } from '../list/list.js';
 import { permissions } from '../permissions/permissions.js';
@@ -129,6 +129,6 @@ export function memoized(options?: MemoizedOptions): GooglePlayClient {
     similar: memoize('similar', createSimilar(memoApp)),
     reviews: memoize('reviews', reviews),
     permissions: memoize('permissions', permissions),
-    datasafety: memoize('datasafety', datasafety),
+    dataSafety: memoize('dataSafety', dataSafety),
   };
 }

@@ -5,7 +5,7 @@ const TRANSLATE = 'com.google.android.apps.translate';
 
 liveDescribe('datasafety live contract', () => {
   it('returns collected data, security practices, and a privacy policy url', async () => {
-    const result = await liveClient.datasafety({ appId: TRANSLATE });
+    const result = await liveClient.dataSafety({ appId: TRANSLATE });
 
     expect(result.collectedData.length).toBeGreaterThan(0);
     for (const entry of result.collectedData) {
@@ -23,7 +23,7 @@ liveDescribe('datasafety live contract', () => {
   });
 
   it('returns a typed safety report for the Where Am I geography game', async () => {
-    const result = await liveClient.datasafety({ appId: 'com.adex77.WhereAmI' });
+    const result = await liveClient.dataSafety({ appId: 'com.adex77.WhereAmI' });
 
     expect(Array.isArray(result.sharedData)).toBe(true);
     expect(Array.isArray(result.collectedData)).toBe(true);
@@ -37,7 +37,7 @@ liveDescribe('datasafety live contract', () => {
   });
 
   it('returns an empty report instead of throwing for a missing app', async () => {
-    const result = await liveClient.datasafety({
+    const result = await liveClient.dataSafety({
       appId: 'com.adex77.definitely.not.a.real.app',
     });
 

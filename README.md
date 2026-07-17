@@ -97,7 +97,7 @@ npx @mradex77/google-play-scraper availability com.adex77.WhereAmI --countries u
 | `similar <appId>`      | app id                  | `--full-detail`                                                 |
 | `reviews <appId>`      | app id                  | `--num`, `--sort`, `--paginate`, `--token`                      |
 | `permissions <appId>`  | app id                  | `--short`                                                       |
-| `datasafety <appId>`   | app id                  |                                                                 |
+| `data-safety <appId>`  | app id                  |                                                                 |
 | `categories`           |                         |                                                                 |
 | `availability <appId>` | app id                  | `--countries` (comma-separated, required), `--concurrency`      |
 
@@ -191,7 +191,7 @@ Every method from the [reference below](#methods) is available on the client, al
 - [similar](#similar): apps related to a given app
 - [reviews](#reviews): user reviews for an app
 - [permissions](#permissions): permissions an app requests
-- [datasafety](#datasafety): the data safety section of an app
+- [dataSafety](#datasafety): the data safety section of an app
 - [categories](#categories): the Google Play category taxonomy
 - [memoized](#memoized): a client that caches identical calls
 
@@ -573,7 +573,7 @@ Returns `AppPermission[]` (or `string[]` when `short` is `true`):
 
 The `type` is `permission.COMMON` (`0`) or `permission.OTHER` (`1`).
 
-### datasafety
+### dataSafety
 
 Returns the data safety section of an app.
 
@@ -582,9 +582,9 @@ Returns the data safety section of an app.
 | `appId` | `string` | required | The Google Play id of the app. |
 
 ```typescript
-import { datasafety } from '@mradex77/google-play-scraper';
+import { dataSafety } from '@mradex77/google-play-scraper';
 
-const safety = await datasafety({ appId: 'com.google.android.apps.translate' });
+const safety = await dataSafety({ appId: 'com.google.android.apps.translate' });
 ```
 
 Returns `DataSafety`. Trimmed:
@@ -785,7 +785,7 @@ An unknown `appId` or `devId` does not fail the same way everywhere, because Goo
 | Behavior for a missing app        | Methods                                                                                                                                                        |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Throws `NotFoundError`            | `app`, `apps` (per entry, as a rejected `PromiseSettledResult`), `similar`, `developer`                                                                        |
-| Resolves with a typed empty value | `search` and `suggest` (`[]`), `reviews` (`{ data: [], nextPaginationToken: null }`), `permissions` (`[]`), `datasafety` (empty arrays, no `privacyPolicyUrl`) |
+| Resolves with a typed empty value | `search` and `suggest` (`[]`), `reviews` (`{ data: [], nextPaginationToken: null }`), `permissions` (`[]`), `dataSafety` (empty arrays, no `privacyPolicyUrl`) |
 | Maps the throw to a status        | `availability` reports `unavailable`                                                                                                                           |
 
 ## Throttling and requestOptions
@@ -897,7 +897,7 @@ const details = await app({
 });
 ```
 
-Routes accept any `typeof fetch`, so the same helper also works for per-country rate limiting, logging or fixtures in tests. Omit `fallback` to send unmatched countries through a direct connection. The only request without a `gl` parameter is the `datasafety` page fetch, which always uses the fallback route.
+Routes accept any `typeof fetch`, so the same helper also works for per-country rate limiting, logging or fixtures in tests. Omit `fallback` to send unmatched countries through a direct connection. The only request without a `gl` parameter is the `dataSafety` page fetch, which always uses the fallback route.
 
 Pass an `AbortSignal` to cancel long running calls, such as a `reviews` fetch that walks many pages. An aborted call rejects with the signal's reason and is never retried:
 
