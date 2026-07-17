@@ -55,6 +55,15 @@ function usageFailure(io: CliIo, message: string, command: CliCommand | undefine
   return 2;
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function scrapeFailure(io: CliIo, error: unknown): 1 {
+  io.err(`${BIN_NAME}: ${errorMessage(error)}\n`);
+  return 1;
+}
+
 function isParseArgsError(error: unknown): error is TypeError & { code: string } {
   return (
     error instanceof TypeError &&
@@ -79,8 +88,12 @@ export async function runCli(
     return 0;
   }
   if (first === '--version') {
-    io.out(`${await readVersion()}\n`);
-    return 0;
+    try {
+      io.out(`${await readVersion()}\n`);
+      return 0;
+    } catch (error) {
+      return scrapeFailure(io, error);
+    }
   }
   const command = commands.find((entry) => entry.name === first);
   if (command === undefined) {
@@ -124,8 +137,6 @@ export async function runCli(
     if (error instanceof ValidationError) {
       return usageFailure(io, error.message, command);
     }
-    const message = error instanceof Error ? error.message : String(error);
-    io.err(`${BIN_NAME}: ${message}\n`);
-    return 1;
+    return scrapeFailure(io, error);
   }
 }
