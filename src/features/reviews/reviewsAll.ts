@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { parseOptions } from '../../core/options.js';
 import { createReviewsIterator, reviewsIteratorOptionsSchema } from './reviewsIterator.js';
@@ -6,8 +6,8 @@ import type { Review } from './schema.js';
 
 const REVIEWS_ALL_CONTEXT = 'reviewsAll';
 
-export const reviewsAllOptionsSchema = reviewsIteratorOptionsSchema.extend({
-  maxReviews: z.number().int().min(1).optional(),
+export const reviewsAllOptionsSchema = z.extend(reviewsIteratorOptionsSchema, {
+  maxReviews: z.optional(z.int().check(z.gte(1))),
 });
 
 export type ReviewsAllOptions = z.input<typeof reviewsAllOptionsSchema>;

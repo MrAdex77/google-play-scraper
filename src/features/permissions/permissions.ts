@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { permission } from '../../constants.js';
 import { parseBatchResponse } from '../../core/batchexecute.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
@@ -13,9 +13,9 @@ import {
 
 const PERMISSIONS_CONTEXT = 'permissions';
 
-export const permissionsOptionsSchema = baseOptionsSchema.extend({
-  appId: z.string().min(1),
-  short: z.boolean().default(false),
+export const permissionsOptionsSchema = z.extend(baseOptionsSchema, {
+  appId: z.string().check(z.minLength(1)),
+  short: z._default(z.boolean(), false),
 });
 
 export type PermissionsOptions = z.input<typeof permissionsOptionsSchema>;

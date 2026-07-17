@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
 import { mapWithConcurrency } from '../../core/concurrency.js';
 import { NotFoundError } from '../../core/errors.js';
@@ -15,19 +15,21 @@ import {
   type CountryAvailability,
 } from './schema.js';
 
-const countryCodeSchema = z.string().regex(/^[a-z]{2}$/i);
+const countryCodeSchema = z.string().check(z.regex(/^[a-z]{2}$/i));
 
 export const availabilityOptionsSchema = z.object({
-  appId: z.string().min(1),
+  appId: z.string().check(z.minLength(1)),
   countries: z
     .array(countryCodeSchema)
-    .min(1)
-    .max(50)
-    .refine(hasUniqueCountriesIgnoringCase, 'country codes must be unique ignoring case'),
-  lang: z.string().min(2).max(7).default('en'),
-  concurrency: z.number().int().min(1).max(20).default(5),
-  throttle: z.number().positive().max(50).optional(),
-  requestOptions: requestOptionsSchema.optional(),
+    .check(
+      z.minLength(1),
+      z.maxLength(50),
+      z.refine(hasUniqueCountriesIgnoringCase, 'country codes must be unique ignoring case'),
+    ),
+  lang: z._default(z.string().check(z.minLength(2), z.maxLength(7)), 'en'),
+  concurrency: z._default(z.int().check(z.gte(1), z.lte(20)), 5),
+  throttle: z.optional(z.number().check(z.positive(), z.lte(50))),
+  requestOptions: z.optional(requestOptionsSchema),
 });
 
 export type AvailabilityOptions = z.input<typeof availabilityOptionsSchema>;

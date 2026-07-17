@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { buildBatchBody, parseBatchResponse } from '../../core/batchexecute.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
@@ -11,8 +11,8 @@ import {
   suggestUrl,
 } from './specs.js';
 
-export const suggestOptionsSchema = baseOptionsSchema.extend({
-  term: z.string().min(1),
+export const suggestOptionsSchema = z.extend(baseOptionsSchema, {
+  term: z.string().check(z.minLength(1)),
 });
 
 export type SuggestOptions = z.input<typeof suggestOptionsSchema>;

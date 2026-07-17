@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
@@ -20,9 +20,9 @@ import {
   similarItemSpecs,
 } from './specs.js';
 
-export const similarOptionsSchema = baseOptionsSchema.extend({
-  appId: z.string().min(1),
-  fullDetail: z.boolean().default(false),
+export const similarOptionsSchema = z.extend(baseOptionsSchema, {
+  appId: z.string().check(z.minLength(1)),
+  fullDetail: z._default(z.boolean(), false),
 });
 
 export type SimilarOptions = z.input<typeof similarOptionsSchema>;

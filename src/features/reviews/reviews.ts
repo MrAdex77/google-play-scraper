@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { sort } from '../../constants.js';
 import { parseBatchResponse } from '../../core/batchexecute.js';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
@@ -17,16 +17,17 @@ import {
 
 const REVIEWS_CONTEXT = 'reviews';
 
-const sortSchema = z
-  .union([z.literal(sort.NEWEST), z.literal(sort.RATING), z.literal(sort.HELPFULNESS)])
-  .default(sort.NEWEST);
+const sortSchema = z._default(
+  z.union([z.literal(sort.NEWEST), z.literal(sort.RATING), z.literal(sort.HELPFULNESS)]),
+  sort.NEWEST,
+);
 
-export const reviewsOptionsSchema = baseOptionsSchema.extend({
-  appId: z.string().min(1),
+export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
+  appId: z.string().check(z.minLength(1)),
   sort: sortSchema,
-  num: z.number().int().min(1).default(150),
-  paginate: z.boolean().default(false),
-  nextPaginationToken: z.string().optional(),
+  num: z._default(z.int().check(z.gte(1)), 150),
+  paginate: z._default(z.boolean(), false),
+  nextPaginationToken: z.optional(z.string()),
 });
 
 export type ReviewsOptions = z.input<typeof reviewsOptionsSchema>;

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import {
   clientFromOptions,
@@ -39,10 +39,10 @@ import { createSuggest, type SuggestOptions } from './features/suggest/suggest.j
 import type { GooglePlayClient, GooglePlayIterators } from './index.js';
 
 export const clientOptionsSchema = z.object({
-  lang: z.string().min(2).max(7).optional(),
-  country: z.string().length(2).optional(),
-  throttle: z.number().positive().max(50).optional(),
-  requestOptions: requestOptionsSchema.optional(),
+  lang: z.optional(z.string().check(z.minLength(2), z.maxLength(7))),
+  country: z.optional(z.string().check(z.length(2))),
+  throttle: z.optional(z.number().check(z.positive(), z.lte(50))),
+  requestOptions: z.optional(requestOptionsSchema),
 });
 
 export type ClientOptions = z.input<typeof clientOptionsSchema>;
