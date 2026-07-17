@@ -12,6 +12,8 @@ const GEO_GAME_ID = 'com.adex77.WhereAmI';
 const MISSING_ID = 'com.adex77.definitely.not.a.real.app';
 const GOOGLE_DEV_ID = '5700313618786177705';
 
+const CLI_PROCESS_TIMEOUT_MS = 25000;
+
 interface CliRun {
   exitCode: number;
   stdout: string;
@@ -23,7 +25,7 @@ function runCliProcess(args: readonly string[]): Promise<CliRun> {
     execFile(
       process.execPath,
       ['--import', 'tsx', 'src/cli/main.ts', ...args],
-      { cwd: REPO_ROOT, encoding: 'utf8' },
+      { cwd: REPO_ROOT, encoding: 'utf8', timeout: CLI_PROCESS_TIMEOUT_MS },
       (error, stdout, stderr) => {
         const exitCode = error === null ? 0 : typeof error.code === 'number' ? error.code : 1;
         resolve({ exitCode, stdout, stderr });
