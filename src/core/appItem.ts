@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 export const appItemSchema = z.object({
   title: z.string(),
@@ -6,13 +6,13 @@ export const appItemSchema = z.object({
   url: z.string(),
   icon: z.string(),
   developer: z.string(),
-  developerId: z.string().optional(),
-  currency: z.string().optional(),
+  developerId: z.optional(z.string()),
+  currency: z.optional(z.string()),
   price: z.number(),
   free: z.boolean(),
-  summary: z.string().optional(),
-  scoreText: z.string().optional(),
-  score: z.number().min(0).max(5).optional(),
+  summary: z.optional(z.string()),
+  scoreText: z.optional(z.string()),
+  score: z.optional(z.number().check(z.gte(0), z.lte(5))),
 });
 
 export type AppItem = z.infer<typeof appItemSchema>;
