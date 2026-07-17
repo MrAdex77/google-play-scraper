@@ -200,6 +200,23 @@ describe('runCli global flags', () => {
     expect(stdout()).toContain('Usage: google-play-scraper search <term>');
   });
 
+  it('-h prints the global help and returns 0', async () => {
+    const { api } = createStubApi();
+    const { io, stdout } = createIo();
+    const code = await runCli(['-h'], io, api);
+    expect(code).toBe(0);
+    expect(stdout()).toContain('Usage: google-play-scraper <command>');
+  });
+
+  it('<command> -h prints that command usage and returns 0', async () => {
+    const { api, calls } = createStubApi();
+    const { io, stdout } = createIo();
+    const code = await runCli(['app', 'com.example', '-h'], io, api);
+    expect(code).toBe(0);
+    expect(calls).toEqual([]);
+    expect(stdout()).toContain('Usage: google-play-scraper app <appId>');
+  });
+
   it('--version prints the exact version from package.json and returns 0', async () => {
     const raw = await readFile(new URL('../../package.json', import.meta.url), 'utf8');
     const { version } = JSON.parse(raw) as { version: string };

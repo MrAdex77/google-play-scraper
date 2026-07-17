@@ -94,7 +94,7 @@ npx @mradex77/google-play-scraper availability com.adex77.WhereAmI --countries u
 | `categories`           |                         |                                                                 |
 | `availability <appId>` | app id                  | `--countries` (comma-separated, required), `--concurrency`      |
 
-Every command also accepts `--lang <code>`, `--country <code>` and `--throttle <requestsPerSecond>`, plus the global `--help` and `--version`.
+Every command also accepts `--lang <code>`, `--country <code>` and `--throttle <requestsPerSecond>`, plus `--help`/`-h` (global or per command) and the global `--version`.
 
 Results are pretty-printed JSON on stdout, so the output pipes straight into `jq`:
 

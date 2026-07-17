@@ -91,7 +91,7 @@ export async function runCli(
   try {
     const parsed = parseArgs({
       args: rest,
-      options: { ...command.options, help: { type: 'boolean' } },
+      options: { ...command.options, help: { type: 'boolean', short: 'h' } },
       strict: true,
       allowPositionals: true,
     });
