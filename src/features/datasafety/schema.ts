@@ -1,22 +1,22 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 export const dataEntrySchema = z.object({
   data: z.string(),
   optional: z.boolean(),
-  purpose: z.string().optional(),
+  purpose: z.optional(z.string()),
   type: z.string(),
 });
 
 export const securityPracticeSchema = z.object({
   practice: z.string(),
-  description: z.string().optional(),
+  description: z.optional(z.string()),
 });
 
 export const dataSafetySchema = z.object({
-  sharedData: z.array(dataEntrySchema).default([]),
-  collectedData: z.array(dataEntrySchema).default([]),
-  securityPractices: z.array(securityPracticeSchema).default([]),
-  privacyPolicyUrl: z.url().optional(),
+  sharedData: z._default(z.array(dataEntrySchema), []),
+  collectedData: z._default(z.array(dataEntrySchema), []),
+  securityPractices: z._default(z.array(securityPracticeSchema), []),
+  privacyPolicyUrl: z.optional(z.url()),
 });
 
 export type DataEntry = z.infer<typeof dataEntrySchema>;

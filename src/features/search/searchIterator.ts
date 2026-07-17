@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import * as z from 'zod/mini';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { parseOptions } from '../../core/options.js';
 import { clusterPages } from '../../core/pagination.js';
@@ -8,7 +8,7 @@ import { CLUSTER_MAPPINGS, filterByPrice, searchPageItemSpecs } from './specs.js
 
 const SEARCH_ITERATOR_CONTEXT = 'searchIterator';
 
-export const searchIteratorOptionsSchema = searchOptionsSchema.omit({
+export const searchIteratorOptionsSchema = z.omit(searchOptionsSchema, {
   num: true,
   fullDetail: true,
 });

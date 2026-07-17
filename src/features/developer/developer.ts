@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
@@ -20,10 +20,10 @@ import {
   numericItemSpecs,
 } from './specs.js';
 
-export const developerOptionsSchema = baseOptionsSchema.extend({
-  devId: z.string().min(1),
-  num: z.number().int().min(1).default(60),
-  fullDetail: z.boolean().default(false),
+export const developerOptionsSchema = z.extend(baseOptionsSchema, {
+  devId: z.string().check(z.minLength(1)),
+  num: z._default(z.int().check(z.gte(1)), 60),
+  fullDetail: z._default(z.boolean(), false),
 });
 
 export type DeveloperOptions = z.input<typeof developerOptionsSchema>;

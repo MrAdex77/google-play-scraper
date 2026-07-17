@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { hasUniqueCountriesIgnoringCase, normalizeCountry, parseOptions } from './options.js';
 
 const COUNTRY_QUERY_PARAM = 'gl';
@@ -9,12 +9,14 @@ const fetchImplSchema = z.custom<typeof fetch>((value) => typeof value === 'func
 
 export const countryFetchSettingsSchema = z.object({
   perCountry: z
-    .record(z.string().regex(COUNTRY_CODE_PATTERN), fetchImplSchema)
-    .refine(
-      (perCountry) => hasUniqueCountriesIgnoringCase(Object.keys(perCountry)),
-      'country codes must be unique ignoring case',
+    .record(z.string().check(z.regex(COUNTRY_CODE_PATTERN)), fetchImplSchema)
+    .check(
+      z.refine(
+        (perCountry) => hasUniqueCountriesIgnoringCase(Object.keys(perCountry)),
+        'country codes must be unique ignoring case',
+      ),
     ),
-  fallback: fetchImplSchema.optional(),
+  fallback: z.optional(fetchImplSchema),
 });
 
 export type CountryFetchSettings = z.input<typeof countryFetchSettingsSchema>;

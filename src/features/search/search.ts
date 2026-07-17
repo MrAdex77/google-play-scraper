@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
@@ -21,11 +21,11 @@ import {
   SECTIONS_MAPPING,
 } from './specs.js';
 
-export const searchOptionsSchema = baseOptionsSchema.extend({
-  term: z.string().min(1),
-  num: z.number().int().min(1).max(250).default(20),
-  price: z.enum(['all', 'free', 'paid']).default('all'),
-  fullDetail: z.boolean().default(false),
+export const searchOptionsSchema = z.extend(baseOptionsSchema, {
+  term: z.string().check(z.minLength(1)),
+  num: z._default(z.int().check(z.gte(1), z.lte(250)), 20),
+  price: z._default(z.enum(['all', 'free', 'paid']), 'all'),
+  fullDetail: z._default(z.boolean(), false),
 });
 
 export type SearchOptions = z.input<typeof searchOptionsSchema>;

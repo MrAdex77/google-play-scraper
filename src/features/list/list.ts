@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import {
   age as ageConstants,
   category as categoryConstants,
@@ -22,12 +22,12 @@ import {
   listUrl,
 } from './specs.js';
 
-export const listOptionsSchema = baseOptionsSchema.extend({
-  collection: z.enum(collectionConstants).default('TOP_FREE'),
-  category: z.enum(categoryConstants).default('APPLICATION'),
-  age: z.enum(ageConstants).optional(),
-  num: z.number().int().min(1).default(500),
-  fullDetail: z.boolean().default(false),
+export const listOptionsSchema = z.extend(baseOptionsSchema, {
+  collection: z._default(z.enum(collectionConstants), 'TOP_FREE'),
+  category: z._default(z.enum(categoryConstants), 'APPLICATION'),
+  age: z.optional(z.enum(ageConstants)),
+  num: z._default(z.int().check(z.gte(1)), 500),
+  fullDetail: z._default(z.boolean(), false),
 });
 
 export type ListOptions = z.input<typeof listOptionsSchema>;

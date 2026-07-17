@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import * as z from 'zod/mini';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { parseOptions } from '../../core/options.js';
 import { clusterItemSpecs } from '../../core/clusterItem.js';
@@ -9,7 +9,7 @@ import { CLUSTER_MAPPINGS } from './specs.js';
 
 const DEVELOPER_ITERATOR_CONTEXT = 'developerIterator';
 
-export const developerIteratorOptionsSchema = developerOptionsSchema.omit({
+export const developerIteratorOptionsSchema = z.omit(developerOptionsSchema, {
   num: true,
   fullDetail: true,
 });

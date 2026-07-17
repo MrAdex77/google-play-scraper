@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { parseOptions } from '../../core/options.js';
 import { reviewPages, reviewsOptionsSchema } from './reviews.js';
@@ -6,7 +6,7 @@ import { reviewSchema, type Review } from './schema.js';
 
 const REVIEWS_ITERATOR_CONTEXT = 'reviewsIterator';
 
-export const reviewsIteratorOptionsSchema = reviewsOptionsSchema.omit({
+export const reviewsIteratorOptionsSchema = z.omit(reviewsOptionsSchema, {
   num: true,
   paginate: true,
 });

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import gplay from '../index.js';
 import { GooglePlayError, ValidationError } from '../core/errors.js';
 import { commands } from './commands.js';

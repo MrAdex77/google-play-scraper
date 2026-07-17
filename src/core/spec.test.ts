@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { extract } from './spec.js';
 import { parseScriptData, type ScriptData } from './scriptData.js';
 import { SpecError } from './errors.js';
@@ -92,7 +92,7 @@ describe('extract', () => {
     const source = loadScriptData();
     const result = extract(
       source,
-      { subtitle: { paths: [['ds:5', 9, 9, 9]], schema: z.string().optional() } },
+      { subtitle: { paths: [['ds:5', 9, 9, 9]], schema: z.optional(z.string()) } },
       'app',
     );
     expect(result.subtitle).toBeUndefined();

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { permission } from '../../constants.js';
 
 export const permissionTypeSchema = z.union([

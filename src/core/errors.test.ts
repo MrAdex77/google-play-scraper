@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import {
   GooglePlayError,
   HttpError,
@@ -35,7 +35,7 @@ describe('error taxonomy', () => {
   });
 
   it('flattens zod issues into a readable ValidationError message', () => {
-    const schema = z.object({ country: z.string().length(2) });
+    const schema = z.object({ country: z.string().check(z.length(2)) });
     const result = schema.safeParse({ country: 'u' });
     expect(result.success).toBe(false);
     if (result.success) {

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
@@ -7,8 +7,8 @@ import { extract } from '../../core/spec.js';
 import { appSchema, type App } from './schema.js';
 import { appSpecs } from './specs.js';
 
-export const appOptionsSchema = baseOptionsSchema.extend({
-  appId: z.string().min(1),
+export const appOptionsSchema = z.extend(baseOptionsSchema, {
+  appId: z.string().check(z.minLength(1)),
 });
 
 export type AppOptions = z.input<typeof appOptionsSchema>;

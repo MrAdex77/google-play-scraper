@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
@@ -9,8 +9,8 @@ import { dataSafetySpecs } from './specs.js';
 
 const DATA_SAFETY_CONTEXT = 'datasafety';
 
-export const dataSafetyOptionsSchema = baseOptionsSchema.extend({
-  appId: z.string().min(1),
+export const dataSafetyOptionsSchema = z.extend(baseOptionsSchema, {
+  appId: z.string().check(z.minLength(1)),
 });
 
 export type DataSafetyOptions = z.input<typeof dataSafetyOptionsSchema>;
