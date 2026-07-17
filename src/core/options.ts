@@ -1,3 +1,4 @@
+import { safeParse, type $ZodType } from 'zod/v4/core';
 import * as z from 'zod/mini';
 import type { OnDegradation } from './degradation.js';
 import type { OnRequest, OnResponse, OnRetry } from './http.js';
@@ -35,12 +36,12 @@ export function hasUniqueCountriesIgnoringCase(countries: readonly string[]): bo
   return new Set(normalized).size === normalized.length;
 }
 
-export function parseOptions<Schema extends z.core.$ZodType>(
+export function parseOptions<Schema extends $ZodType>(
   schema: Schema,
   input: unknown,
   context: string,
 ): z.infer<Schema> {
-  const result = z.core.safeParse(schema, input);
+  const result = safeParse(schema, input);
   if (!result.success) {
     throw ValidationError.fromZod(result.error, context);
   }

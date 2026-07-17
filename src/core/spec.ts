@@ -1,4 +1,5 @@
-import * as z from 'zod/mini';
+import { $ZodError, parse, type $ZodType } from 'zod/v4/core';
+import type * as z from 'zod/mini';
 import type { Path } from './path.js';
 import { getPath } from './path.js';
 import type { ScriptData } from './scriptData.js';
@@ -8,7 +9,7 @@ import { SpecError } from './errors.js';
 
 export interface FieldSpec<T = unknown> {
   paths: readonly Path[];
-  schema: z.core.$ZodType<T>;
+  schema: $ZodType<T>;
   serviceRequestId?: string;
   transform?: (value: unknown, source: unknown) => unknown;
 }
@@ -46,7 +47,7 @@ function resolveValue(root: unknown, paths: readonly Path[]): unknown {
 }
 
 function failureMessage(error: unknown): string {
-  if (error instanceof z.core.$ZodError) {
+  if (error instanceof $ZodError) {
     return error.issues
       .map((issue) => {
         const path = issue.path.join('.');
@@ -78,7 +79,7 @@ export function extract(source: unknown, specs: SpecMap, context: string): Recor
     const raw = resolveValue(root, paths);
     try {
       const input = spec.transform ? spec.transform(raw, source) : raw;
-      result[field] = z.core.parse(spec.schema, input);
+      result[field] = parse(spec.schema, input);
     } catch (error) {
       failures.push({ field, paths, message: failureMessage(error) });
     }
