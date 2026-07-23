@@ -1,10 +1,29 @@
 import { expect, it } from 'vitest';
-import { clientFromOptions } from '../src/core/http.js';
-import { fetchSearchFirstPage } from '../src/features/search/search.js';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../src/core/http.js';
+import { app } from '../src/features/app/app.js';
+import { createSearch, fetchSearchFirstPage } from '../src/features/search/search.js';
 import { type App, type DegradationEvent, type SearchResult } from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const FIRST_PAGE_CEILING = 40;
+
+function memoizingResolveClient(): ResolveClient {
+  const underlying = clientFromOptions({ throttle: 1 });
+  const cache = new Map<string, Promise<string>>();
+  const client: HttpClient = {
+    request(req) {
+      const key = `${req.method ?? 'GET'} ${req.url} ${req.body ?? ''}`;
+      const cached = cache.get(key);
+      if (cached !== undefined) {
+        return cached;
+      }
+      const pending = underlying.request(req);
+      cache.set(key, pending);
+      return pending;
+    },
+  };
+  return () => client;
+}
 
 liveDescribe('search live contract', () => {
   it('returns unique valid apps for a broad term', async () => {
@@ -98,23 +117,29 @@ liveDescribe('search live contract', () => {
 
   it('serves the full first page without truncation when num exceeds the google cap', async () => {
     const events: DegradationEvent[] = [];
+    const resolveClient = memoizingResolveClient();
+    const search = createSearch(app, resolveClient);
+
     const { page } = await fetchSearchFirstPage(
       { term: 'game', lang: 'en', country: 'us', price: 'all', throttle: 1 },
-      clientFromOptions,
+      resolveClient,
     );
 
     expect(page.token).toBeUndefined();
     expect(page.apps.length).toBeGreaterThan(10);
+    expect(page.apps.length).toBeLessThanOrEqual(FIRST_PAGE_CEILING);
 
-    const results = (await liveClient.search({
+    const results = (await search({
       term: 'game',
       num: 100,
       onDegradation: (event) => events.push(event),
     })) as SearchResult[];
 
-    expect(results.length).toBeGreaterThan(10);
-    expect(results.length).toBeLessThanOrEqual(FIRST_PAGE_CEILING);
-    expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
+    const firstPageIds = page.apps.map((item) => item.appId);
+    const resultIds = results.map((item) => item.appId);
+
+    expect(resultIds).toEqual(firstPageIds);
+    expect(new Set(resultIds).size).toBe(resultIds.length);
     expectFieldCoverage('search', results, {
       score: 0.8,
       scoreText: 0.8,
