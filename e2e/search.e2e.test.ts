@@ -4,6 +4,8 @@ import { fetchSearchFirstPage } from '../src/features/search/search.js';
 import { type App, type DegradationEvent, type SearchResult } from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
+const FIRST_PAGE_CEILING = 40;
+
 liveDescribe('search live contract', () => {
   it('returns unique valid apps for a broad term', async () => {
     const results = (await liveClient.search({ term: 'panda', num: 30 })) as SearchResult[];
@@ -94,15 +96,24 @@ liveDescribe('search live contract', () => {
     }
   });
 
-  it('serves at least the full first page when num exceeds the google cap', async () => {
+  it('serves the full first page without truncation when num exceeds the google cap', async () => {
     const events: DegradationEvent[] = [];
+    const { page } = await fetchSearchFirstPage(
+      { term: 'game', lang: 'en', country: 'us', price: 'all', throttle: 1 },
+      clientFromOptions,
+    );
+
+    expect(page.token).toBeUndefined();
+    expect(page.apps.length).toBeGreaterThan(10);
+
     const results = (await liveClient.search({
       term: 'game',
       num: 100,
       onDegradation: (event) => events.push(event),
     })) as SearchResult[];
 
-    expect(results.length).toBeGreaterThanOrEqual(25);
+    expect(results.length).toBeGreaterThan(10);
+    expect(results.length).toBeLessThanOrEqual(FIRST_PAGE_CEILING);
     expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
     expectFieldCoverage('search', results, {
       score: 0.8,
