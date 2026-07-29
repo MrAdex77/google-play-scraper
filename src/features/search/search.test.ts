@@ -265,6 +265,26 @@ describe('search malformed pages', () => {
     expect(results[0]?.price).toBe(0);
     expect(results[0]?.url).toBe('https://play.google.com/store/apps/details?id=x');
   });
+
+  it('keeps an exact match with a present invalid developer link', async () => {
+    const section = sectionWithApps(['a']);
+    const exactMatch = exactMatchNode('x');
+    const node16 = exactMatch[16] as unknown[];
+    const detail = node16[2] as unknown[];
+    const developer = detail[68] as unknown[];
+    const developerMetadata = developer[1] as unknown[];
+    const developerLink = developerMetadata[4] as unknown[];
+    developerLink[2] = 42;
+    section[23] = exactMatch;
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(results[0]?.developerId).toBeUndefined();
+  });
 });
 
 const paidCoreData = (id: string): unknown[] => {

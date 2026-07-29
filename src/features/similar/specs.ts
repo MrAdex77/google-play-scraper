@@ -1,11 +1,13 @@
 import { BASE_URL } from '../../constants.js';
+import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
 import { getPath, type Path } from '../../core/path.js';
 import { resolveDsKeys, type ScriptData } from '../../core/scriptData.js';
-import type { SpecMap } from '../../core/spec.js';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { similarAppSchema } from './schema.js';
 
-const MICROS_PER_UNIT = 1_000_000;
 const shape = similarAppSchema.shape;
+const REQUIRED = required();
+const OPTIONAL = optional();
 
 export const CLUSTERS_RPC_ID = 'ag2B9c';
 export const SIMILAR_MAX_APPS = 100;
@@ -57,28 +59,26 @@ export function findSimilarClusterPath(data: ScriptData): string | undefined {
   return undefined;
 }
 
-function resolveUrl(value: unknown): string | undefined {
-  return typeof value === 'string' ? new URL(value, BASE_URL).toString() : undefined;
-}
-
-function microsToUnits(value: unknown): number {
-  return typeof value === 'number' ? value / MICROS_PER_UNIT || 0 : 0;
-}
-
-function isFree(value: unknown): boolean {
-  return value === 0;
-}
-
 export const similarItemSpecs = {
-  title: { paths: [[3]], schema: shape.title },
-  appId: { paths: [[0, 0]], schema: shape.appId },
-  url: { paths: [[10, 4, 2]], schema: shape.url, transform: resolveUrl },
-  icon: { paths: [[1, 3, 2]], schema: shape.icon },
-  developer: { paths: [[14]], schema: shape.developer },
-  currency: { paths: [[8, 1, 0, 1]], schema: shape.currency },
-  price: { paths: [[8, 1, 0, 0]], schema: shape.price, transform: microsToUnits },
-  free: { paths: [[8, 1, 0, 0]], schema: shape.free, transform: isFree },
-  summary: { paths: [[13, 1]], schema: shape.summary },
-  scoreText: { paths: [[4, 0]], schema: shape.scoreText },
-  score: { paths: [[4, 1]], schema: shape.score },
+  title: { paths: [[3]], missing: REQUIRED, schema: shape.title },
+  appId: { paths: [[0, 0]], missing: REQUIRED, schema: shape.appId },
+  url: { paths: [[10, 4, 2]], missing: REQUIRED, schema: shape.url, transform: resolveAppUrl },
+  icon: { paths: [[1, 3, 2]], missing: REQUIRED, schema: shape.icon },
+  developer: { paths: [[14]], missing: REQUIRED, schema: shape.developer },
+  currency: { paths: [[8, 1, 0, 1]], missing: OPTIONAL, schema: shape.currency },
+  price: {
+    paths: [[8, 1, 0, 0]],
+    missing: defaulted(() => 0),
+    schema: shape.price,
+    transform: microsToUnits,
+  },
+  free: {
+    paths: [[8, 1, 0, 0]],
+    missing: defaulted(() => false),
+    schema: shape.free,
+    transform: isFreeMicros,
+  },
+  summary: { paths: [[13, 1]], missing: OPTIONAL, schema: shape.summary },
+  scoreText: { paths: [[4, 0]], missing: OPTIONAL, schema: shape.scoreText },
+  score: { paths: [[4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
