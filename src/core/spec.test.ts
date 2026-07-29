@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
-import { extract } from './spec.js';
+import { defaulted, extract, optional, required } from './spec.js';
 import { parseScriptData, type ScriptData } from './scriptData.js';
 import { SpecError } from './errors.js';
 
@@ -64,19 +64,17 @@ describe('extract', () => {
     expect(result.title).toBe('Panda App');
   });
 
-  it('passes the raw value and the source to a transform', () => {
+  it('passes only the raw value to a transform', () => {
     const source = loadScriptData();
     let seenRaw: unknown;
-    let seenSource: unknown;
     const result = extract(
       source,
       {
         appId: {
           paths: [['ds:5', 0, 1, 0]],
           schema: z.string(),
-          transform: (value, providedSource) => {
+          transform: (value) => {
             seenRaw = value;
-            seenSource = providedSource;
             return typeof value === 'string' ? value.toUpperCase() : value;
           },
         },
@@ -84,7 +82,6 @@ describe('extract', () => {
       'app',
     );
     expect(seenRaw).toBe('com.panda.app');
-    expect(seenSource).toBe(source);
     expect(result.appId).toBe('COM.PANDA.APP');
   });
 
@@ -92,10 +89,93 @@ describe('extract', () => {
     const source = loadScriptData();
     const result = extract(
       source,
-      { subtitle: { paths: [['ds:5', 9, 9, 9]], schema: z.optional(z.string()) } },
+      {
+        subtitle: {
+          paths: [['ds:5', 9, 9, 9]],
+          missing: optional(),
+          schema: z.optional(z.string()),
+        },
+      },
       'app',
     );
     expect(result.subtitle).toBeUndefined();
+  });
+
+  it('reports a missing required field without running its transform', () => {
+    const source = loadScriptData();
+    let transformed = false;
+    let thrown: unknown;
+    try {
+      extract(
+        source,
+        {
+          title: {
+            paths: [['ds:5', 9, 9, 9]],
+            missing: required(),
+            schema: z.string(),
+            transform: () => {
+              transformed = true;
+              return 'manufactured';
+            },
+          },
+        },
+        'app',
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(transformed).toBe(false);
+    expect(thrown).toBeInstanceOf(SpecError);
+    expect((thrown as SpecError).failures).toEqual([
+      {
+        field: 'title',
+        paths: [['ds:5', 9, 9, 9]],
+        message: 'required value missing',
+      },
+    ]);
+  });
+
+  it('creates a fresh default without running the transform', () => {
+    const source = loadScriptData();
+    let transformed = false;
+    const result = extract(
+      source,
+      {
+        tags: {
+          paths: [['ds:5', 9, 9, 9]],
+          missing: defaulted(() => []),
+          schema: z.array(z.string()),
+          transform: () => {
+            transformed = true;
+            return ['manufactured'];
+          },
+        },
+      },
+      'app',
+    );
+    expect(result.tags).toEqual([]);
+    expect(transformed).toBe(false);
+  });
+
+  it('does not retry after a present candidate fails validation', () => {
+    let thrown: unknown;
+    try {
+      extract(
+        { primary: 42, fallback: 'valid' },
+        {
+          value: {
+            paths: [['primary'], ['fallback']],
+            missing: required(),
+            schema: z.string(),
+          },
+        },
+        'terminal',
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(SpecError);
+    expect((thrown as SpecError).failures[0]?.paths).toEqual([['primary'], ['fallback']]);
   });
 
   it('treats a plain value as the root when the source is not script data', () => {

@@ -9,10 +9,18 @@ import { SpecError } from './errors.js';
 
 export interface FieldSpec<T = unknown> {
   paths: readonly Path[];
+  missing?: MissingPolicy;
   schema: $ZodType<T>;
   serviceRequestId?: string;
-  transform?: (value: unknown, source: unknown) => unknown;
+  transform?: (value: unknown) => unknown;
 }
+
+export type MissingPolicy =
+  { kind: 'required' } | { kind: 'optional' } | { kind: 'default'; create: () => unknown };
+
+export const required = (): MissingPolicy => ({ kind: 'required' });
+export const optional = (): MissingPolicy => ({ kind: 'optional' });
+export const defaulted = (create: () => unknown): MissingPolicy => ({ kind: 'default', create });
 
 export type SpecMap = Record<string, FieldSpec>;
 export type Extracted<M extends SpecMap> = { [K in keyof M]: z.infer<M[K]['schema']> };
@@ -36,14 +44,16 @@ function candidatePaths(spec: FieldSpec, source: unknown): readonly Path[] {
   return spec.paths;
 }
 
-function resolveValue(root: unknown, paths: readonly Path[]): unknown {
+type ResolvedValue = { found: true; value: unknown } | { found: false };
+
+function resolveValue(root: unknown, paths: readonly Path[]): ResolvedValue {
   for (const path of paths) {
     const value = getPath(root, path);
     if (value !== undefined && value !== null) {
-      return value;
+      return { found: true, value };
     }
   }
-  return undefined;
+  return { found: false };
 }
 
 function failureMessage(error: unknown): string {
@@ -76,9 +86,22 @@ export function extract(source: unknown, specs: SpecMap, context: string): Recor
 
   for (const [field, spec] of Object.entries(specs)) {
     const paths = candidatePaths(spec, source);
-    const raw = resolveValue(root, paths);
+    const resolved = resolveValue(root, paths);
     try {
-      const input = spec.transform ? spec.transform(raw, source) : raw;
+      if (!resolved.found && spec.missing?.kind === 'required') {
+        failures.push({ field, paths, message: 'required value missing' });
+        continue;
+      }
+      if (!resolved.found && spec.missing?.kind === 'optional') {
+        result[field] = parse(spec.schema, undefined);
+        continue;
+      }
+      if (!resolved.found && spec.missing?.kind === 'default') {
+        result[field] = parse(spec.schema, spec.missing.create());
+        continue;
+      }
+      const raw = resolved.found ? resolved.value : undefined;
+      const input = spec.transform ? spec.transform(raw) : raw;
       result[field] = parse(spec.schema, input);
     } catch (error) {
       failures.push({ field, paths, message: failureMessage(error) });
