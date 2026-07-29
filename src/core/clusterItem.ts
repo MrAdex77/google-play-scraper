@@ -1,6 +1,6 @@
 import { BASE_URL } from '../constants.js';
 import { appItemSchema } from './appItem.js';
-import type { SpecMap } from './spec.js';
+import { defaulted, optional, required, type SpecMap } from './spec.js';
 
 const shape = appItemSchema.shape;
 const PRICE_NUMBER = /([0-9.,]+)/;
@@ -22,15 +22,25 @@ function isFreeText(value: unknown): boolean {
 }
 
 export const clusterItemSpecs = {
-  title: { paths: [[2]], schema: shape.title },
-  appId: { paths: [[12, 0]], schema: shape.appId },
-  url: { paths: [[9, 4, 2]], schema: shape.url, transform: resolveUrl },
-  icon: { paths: [[1, 1, 0, 3, 2]], schema: shape.icon },
-  developer: { paths: [[4, 0, 0, 0]], schema: shape.developer },
-  currency: { paths: [[7, 0, 3, 2, 1, 0, 1]], schema: shape.currency },
-  price: { paths: [[7, 0, 3, 2, 1, 0, 2]], schema: shape.price, transform: priceFromText },
-  free: { paths: [[7, 0, 3, 2, 1, 0, 2]], schema: shape.free, transform: isFreeText },
-  summary: { paths: [[4, 1, 1, 1, 1]], schema: shape.summary },
-  scoreText: { paths: [[6, 0, 2, 1, 0]], schema: shape.scoreText },
-  score: { paths: [[6, 0, 2, 1, 1]], schema: shape.score },
+  title: { paths: [[2]], missing: required(), schema: shape.title },
+  appId: { paths: [[12, 0]], missing: required(), schema: shape.appId },
+  url: { paths: [[9, 4, 2]], missing: required(), schema: shape.url, transform: resolveUrl },
+  icon: { paths: [[1, 1, 0, 3, 2]], missing: required(), schema: shape.icon },
+  developer: { paths: [[4, 0, 0, 0]], missing: required(), schema: shape.developer },
+  currency: { paths: [[7, 0, 3, 2, 1, 0, 1]], missing: optional(), schema: shape.currency },
+  price: {
+    paths: [[7, 0, 3, 2, 1, 0, 2]],
+    missing: defaulted(() => 0),
+    schema: shape.price,
+    transform: priceFromText,
+  },
+  free: {
+    paths: [[7, 0, 3, 2, 1, 0, 2]],
+    missing: defaulted(() => true),
+    schema: shape.free,
+    transform: isFreeText,
+  },
+  summary: { paths: [[4, 1, 1, 1, 1]], missing: optional(), schema: shape.summary },
+  scoreText: { paths: [[6, 0, 2, 1, 0]], missing: optional(), schema: shape.scoreText },
+  score: { paths: [[6, 0, 2, 1, 1]], missing: optional(), schema: shape.score },
 } satisfies SpecMap;
