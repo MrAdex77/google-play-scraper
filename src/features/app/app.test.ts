@@ -131,7 +131,7 @@ describe('app', () => {
     const ds5 = data.blocks['ds:5'] as unknown[];
     const details = (ds5[1] as unknown[])[2] as unknown[];
     details[140] = null;
-    details[69] = null;
+    details[69] = [];
     const blankedHtml = buildScriptData('ds:5', ds5);
 
     const result = await app({
@@ -147,12 +147,50 @@ describe('app', () => {
     expect(result.developerLegalPhoneNumber).toBeUndefined();
   });
 
+  it('distinguishes absent commercial flags from present enabled flags', async () => {
+    const absent = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(translateHtml) },
+    });
+
+    expect(absent.offersIAP).toBeUndefined();
+    expect(absent.adSupported).toBe(false);
+    expect(absent.earlyAccessEnabled).toBe(false);
+    expect(absent.isAvailableInPlayPass).toBe(false);
+
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const availability = details[18] as unknown[];
+    availability[2] = 'early-access';
+    details[62] = ['play-pass'];
+    const enabledHtml = buildScriptData('ds:5', ds5);
+
+    const enabled = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(enabledHtml) },
+    });
+
+    expect(enabled.earlyAccessEnabled).toBe(true);
+    expect(enabled.isAvailableInPlayPass).toBe(true);
+  });
+
   it('exposes the original price when a discount is active', async () => {
     const data = parseScriptData(minecraftHtml);
     const ds5 = data.blocks['ds:5'] as unknown[];
     const details = (ds5[1] as unknown[])[2] as unknown[];
     const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
     const pricePair = offer[1] as unknown[];
+    pricePair[1] = [0];
+    const undiscountedHtml = buildScriptData('ds:5', ds5);
+
+    const undiscounted = await app({
+      appId: 'com.mojang.minecraftpe',
+      requestOptions: { fetchImpl: fetchReturning(undiscountedHtml) },
+    });
+
+    expect(undiscounted.originalPrice).toBeUndefined();
+
     pricePair[1] = [10_990_000];
     const discountedHtml = buildScriptData('ds:5', ds5);
 

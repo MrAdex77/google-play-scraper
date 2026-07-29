@@ -35,7 +35,7 @@ export const appSchema = z.object({
   currency: z.optional(z.string()),
   priceText: z.string(),
   available: z.boolean(),
-  offersIAP: z.boolean(),
+  offersIAP: z.optional(z.boolean()),
   IAPRange: z.optional(z.string()),
   androidVersion: z.string(),
   androidVersionText: z.string(),
