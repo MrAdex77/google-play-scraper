@@ -4,8 +4,9 @@ import * as cheerio from 'cheerio';
 import { describe, expect, it } from 'vitest';
 import { htmlToPlainText } from './htmlText.js';
 import { parseScriptData } from './scriptData.js';
+import { resolveScriptRoot } from './scriptRoot.js';
 import { extract } from './spec.js';
-import { appSpecs } from '../features/app/specs.js';
+import { appDetailsRootSpec, appSpecs } from '../features/app/specs.js';
 
 function legacyDescriptionText(html: string): string {
   const document = cheerio.load(`<div>${html.replace(/<br>/g, '\r\n')}</div>`);
@@ -19,7 +20,9 @@ function fixtureDescriptionHtml(name: string): string {
     fileURLToPath(new URL(`../../test/fixtures/app/${name}.html`, import.meta.url)),
     'utf8',
   );
-  const extracted = extract(parseScriptData(html), appSpecs, 'app');
+  const data = parseScriptData(html);
+  const details = resolveScriptRoot(data, appDetailsRootSpec, 'app details');
+  const extracted = extract(details.root, appSpecs, 'app');
   return extracted.descriptionHTML;
 }
 

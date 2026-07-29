@@ -3,7 +3,6 @@ import { getPath } from '../../core/path.js';
 import { sanitizeText } from '../../core/text.js';
 import type { AppCategory } from './schema.js';
 
-const COMMENT_ROOTS = ['ds:8', 'ds:9'] as const;
 const MAX_COMMENTS = 5;
 const MICROS_PER_UNIT = 1_000_000;
 
@@ -65,22 +64,15 @@ export function developerIdFromUrl(value: unknown): string | undefined {
   return value.split('id=')[1];
 }
 
-export function extractComments(source: unknown): string[] {
-  for (const root of COMMENT_ROOTS) {
-    const author = getPath(source, [root, 0, 0, 1, 0]);
-    const version = getPath(source, [root, 0, 0, 10]);
-    const date = getPath(source, [root, 0, 0, 5, 0]);
-    if (author && version && date) {
-      const comments = getPath(source, [root, 0]);
-      if (Array.isArray(comments)) {
-        return comments
-          .map((comment) => getPath(comment, [4]))
-          .filter((text): text is string => typeof text === 'string')
-          .slice(0, MAX_COMMENTS);
-      }
-    }
+export function extractComments(root: unknown): string[] {
+  const comments = getPath(root, [0]);
+  if (!Array.isArray(comments)) {
+    return [];
   }
-  return [];
+  return comments
+    .map((comment) => getPath(comment, [4]))
+    .filter((text): text is string => typeof text === 'string')
+    .slice(0, MAX_COMMENTS);
 }
 
 export function extractScreenshots(value: unknown): string[] {

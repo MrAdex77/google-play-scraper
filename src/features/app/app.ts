@@ -3,9 +3,11 @@ import { BASE_URL } from '../../constants.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { parseScriptData } from '../../core/scriptData.js';
+import { resolveScriptRoot } from '../../core/scriptRoot.js';
 import { extract } from '../../core/spec.js';
 import { appSchema, type App } from './schema.js';
-import { appSpecs } from './specs.js';
+import { appCommentsRootSpec, appDetailsRootSpec, appSpecs } from './specs.js';
+import { extractComments } from './transforms.js';
 
 export const appOptionsSchema = z.extend(baseOptionsSchema, {
   appId: z.string().check(z.minLength(1)),
@@ -29,9 +31,16 @@ export function createApp(resolveClient: ResolveClient = clientFromOptions) {
     const client = resolveClient(parsed);
     const html = await client.request({ url });
     const data = parseScriptData(html);
-    const extracted = extract(data, appSpecs, 'app');
+    const details = resolveScriptRoot(data, appDetailsRootSpec, 'app details');
+    const comments = resolveScriptRoot(data, appCommentsRootSpec, 'app comments');
+    const extracted = extract(details.root, appSpecs, 'app');
 
-    return appSchema.parse({ ...extracted, appId: parsed.appId, url });
+    return appSchema.parse({
+      ...extracted,
+      appId: parsed.appId,
+      url,
+      comments: extractComments(comments.root),
+    });
   };
 }
 

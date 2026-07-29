@@ -5,6 +5,7 @@ import { app, type AppOptions } from './app.js';
 import { getPath } from '../../core/path.js';
 import { parseScriptData } from '../../core/scriptData.js';
 import { NotFoundError, SpecError, ValidationError } from '../../core/errors.js';
+import { APP_DETAILS_RPC_ID, appCommentsRootSchema, appDetailsRootSchema } from './specs.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -23,6 +24,28 @@ const fetchReturning = (body: string, status = 200): typeof fetch => {
 
 const buildScriptData = (key: string, value: unknown): string =>
   `<script>AF_initDataCallback({key: '${key}', hash: '1', data:${JSON.stringify(value)}, sideChannel: {}});</script>`;
+
+const buildServiceTable = (entries: Record<string, string>): string => {
+  const pairs = Object.entries(entries)
+    .map(([key, rpcId]) => `'${key}' : {id:'${rpcId}'}`)
+    .join(',');
+  return `<script>; var AF_dataServiceRequests = {${pairs}}; var AF_initDataChunkQueue = [];</script>`;
+};
+
+const commentEntry = (text: string): unknown[] => {
+  const entry: unknown[] = [];
+  entry[1] = ['Reviewer'];
+  entry[4] = text;
+  entry[5] = [1700000000];
+  entry[10] = '1.2.3';
+  return entry;
+};
+
+const appHtmlWithCommentRoot = (key: string, comments: unknown[], routed: boolean): string => {
+  const details = parseScriptData(translateHtml).blocks['ds:5'];
+  const routing = routed ? buildServiceTable({ [key]: APP_DETAILS_RPC_ID }) : '';
+  return `${buildScriptData('ds:5', details)}${buildScriptData(key, [comments])}${routing}`;
+};
 
 describe('app', () => {
   it('parses the translate details page into a validated result', async () => {
@@ -48,6 +71,7 @@ describe('app', () => {
     expect(result.installs?.endsWith('+')).toBe(true);
     expect(result.appId).toBe(appId);
     expect(result.url).toContain(`id=${appId}`);
+    expect(result.comments).toEqual([]);
   });
 
   it('parses paid app fields from the minecraft details page', async () => {
@@ -60,6 +84,7 @@ describe('app', () => {
     expect(result.price).toBeGreaterThan(0);
     expect(result.currency).toMatch(/^[A-Z]{3}$/);
     expect(typeof result.offersIAP).toBe('boolean');
+    expect(result.comments).toEqual([]);
   });
 
   it('parses the Where Am I geography game details page', async () => {
@@ -78,6 +103,64 @@ describe('app', () => {
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.score).toBeLessThanOrEqual(5);
     expect(result.screenshots.length).toBeGreaterThan(0);
+    expect(result.comments).toEqual([]);
+  });
+
+  it('parses non-empty comments from the ds:8 fallback', async () => {
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: {
+        fetchImpl: fetchReturning(
+          appHtmlWithCommentRoot('ds:8', [commentEntry('primary comment')], false),
+        ),
+      },
+    });
+
+    expect(result.comments).toEqual(['primary comment']);
+  });
+
+  it('parses non-empty comments from the ds:9 fallback', async () => {
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: {
+        fetchImpl: fetchReturning(
+          appHtmlWithCommentRoot('ds:9', [commentEntry('secondary comment')], false),
+        ),
+      },
+    });
+
+    expect(result.comments).toEqual(['secondary comment']);
+  });
+
+  it('parses non-empty comments reached through the Ws7gDc route', async () => {
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: {
+        fetchImpl: fetchReturning(
+          appHtmlWithCommentRoot('ds:11', [commentEntry('routed comment')], true),
+        ),
+      },
+    });
+
+    expect(result.comments).toEqual(['routed comment']);
+  });
+
+  it('keeps details and comments root schemas mutually exclusive', () => {
+    const data = parseScriptData(translateHtml);
+    const details = data.blocks['ds:5'];
+    const comments = [[commentEntry('comment')]];
+
+    expect(appDetailsRootSchema.safeParse(details).success).toBe(true);
+    expect(appCommentsRootSchema.safeParse(details).success).toBe(false);
+    expect(appDetailsRootSchema.safeParse(comments).success).toBe(false);
+    expect(appCommentsRootSchema.safeParse(comments).success).toBe(true);
+  });
+
+  it('rejects the current similar cluster as comments and accepts the empty ds:9 variant', () => {
+    const data = parseScriptData(translateHtml);
+
+    expect(appCommentsRootSchema.safeParse(data.blocks['ds:8']).success).toBe(false);
+    expect(appCommentsRootSchema.safeParse(data.blocks['ds:9']).success).toBe(true);
   });
 
   it('sanitizes control characters out of the changelog and description', async () => {

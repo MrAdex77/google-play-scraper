@@ -1,8 +1,9 @@
 import { bench, describe } from 'vitest';
 import { parseScriptData } from '../src/core/scriptData.js';
+import { resolveScriptRoot } from '../src/core/scriptRoot.js';
 import { extract } from '../src/core/spec.js';
 import { createApp } from '../src/features/app/app.js';
-import { appSpecs } from '../src/features/app/specs.js';
+import { appDetailsRootSpec, appSpecs } from '../src/features/app/specs.js';
 import { APP_FIXTURES, loadAppFixture } from './fixtures.js';
 import type { AppFixtureName } from './fixtures.js';
 
@@ -15,6 +16,7 @@ for (const name of Object.keys(APP_FIXTURES) as AppFixtureName[]) {
   const appId = APP_FIXTURES[name];
   const app = offlineApp(html);
   const data = parseScriptData(html);
+  const details = resolveScriptRoot(data, appDetailsRootSpec, 'app details');
 
   describe(name, () => {
     bench(
@@ -29,7 +31,7 @@ for (const name of Object.keys(APP_FIXTURES) as AppFixtureName[]) {
     bench(
       'extract appSpecs',
       () => {
-        sink.total += Object.keys(extract(data, appSpecs, 'app')).length;
+        sink.total += Object.keys(extract(details.root, appSpecs, 'app')).length;
       },
       { time: 1000 },
     );
