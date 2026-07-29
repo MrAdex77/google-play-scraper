@@ -199,6 +199,32 @@ describe('reviews degraded payloads', () => {
     expect(review?.version).toBe('9.9.9');
   });
 
+  it('maps a present non-array criteria collection to an empty list', async () => {
+    const entry = reviewEntry('r1');
+    entry[12] = ['invalid-criteria-collection'];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    expect(result.data[0]?.criterias).toEqual([]);
+  });
+
+  it('rejects a present non-array criteria entry', async () => {
+    const entry = reviewEntry('r1');
+    entry[12] = [[42]];
+
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+      }),
+    ).rejects.toBeInstanceOf(SpecError);
+  });
+
   it('strips control characters from review text and reply text', async () => {
     const entry = reviewEntry('r1');
     entry[4] = 'Great\u0000 app\u0007 loved it';
@@ -237,6 +263,19 @@ describe('reviews degraded payloads', () => {
 
     expect(result.data[0]?.replyDate).toBeUndefined();
     expect(result.data[0]?.replyText).toBe('thanks');
+  });
+
+  it('defaults omitted date nanoseconds to zero', async () => {
+    const entry = reviewEntry('r1');
+    entry[5] = [1700000000];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    expect(result.data[0]?.date).toBe('2023-11-14T22:13:20.000Z');
   });
 
   it('drops a reply date with fractional seconds or out of range nanoseconds', async () => {

@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 import { getPath, type Path } from '../../core/path.js';
-import type { SpecMap } from '../../core/spec.js';
+import { defaulted, optional, type SpecMap } from '../../core/spec.js';
 import { dataEntrySchema, securityPracticeSchema } from './schema.js';
 
 const SHARED_DATA_PATH: Path = ['ds:3', 1, 2, 1, '138', 4, 0, 0];
@@ -48,21 +48,25 @@ function mapSecurityPractices(value: unknown): unknown {
 export const dataSafetySpecs = {
   sharedData: {
     paths: [SHARED_DATA_PATH],
+    missing: defaulted(() => []),
     schema: z._default(z.array(dataEntrySchema), []),
     transform: mapDataEntries,
   },
   collectedData: {
     paths: [COLLECTED_DATA_PATH],
+    missing: defaulted(() => []),
     schema: z._default(z.array(dataEntrySchema), []),
     transform: mapDataEntries,
   },
   securityPractices: {
     paths: [SECURITY_PRACTICES_PATH],
+    missing: defaulted(() => []),
     schema: z._default(z.array(securityPracticeSchema), []),
     transform: mapSecurityPractices,
   },
   privacyPolicyUrl: {
     paths: [PRIVACY_POLICY_PATH],
+    missing: optional(),
     schema: z.optional(z.url()),
   },
 } satisfies SpecMap;

@@ -113,3 +113,19 @@
 | similar      | `summary`                   | optional                                            | pinned reference | absent optional summary remains undefined                   |
 | similar      | `scoreText`                 | optional                                            | pinned reference | unrated apps may omit score metadata                        |
 | similar      | `score`                     | optional                                            | pinned reference | unrated apps may omit score metadata                        |
+| reviews      | `id`                        | required                                            | recorded fixture | every recorded review carries an id                         |
+| reviews      | `userName`                  | required                                            | recorded fixture | every recorded review carries a user name                   |
+| reviews      | `userImage`                 | optional                                            | pinned reference | absent optional user image remains undefined                |
+| reviews      | `date`                      | required                                            | recorded fixture | every recorded review carries a date tuple                  |
+| reviews      | `score`                     | required                                            | recorded fixture | every recorded review carries a score                       |
+| reviews      | `title`                     | required                                            | pinned reference | title derives from the required review id source            |
+| reviews      | `text`                      | optional                                            | pinned reference | reviews may omit text                                       |
+| reviews      | `replyDate`                 | optional                                            | pinned reference | reviews without a developer reply omit its date             |
+| reviews      | `replyText`                 | optional                                            | pinned reference | reviews without a developer reply omit its text             |
+| reviews      | `version`                   | optional                                            | pinned reference | reviews may omit the app version                            |
+| reviews      | `thumbsUp`                  | optional                                            | pinned reference | absent optional vote count remains undefined                |
+| reviews      | `criterias`                 | default `[]`                                        | recorded fixture | reviews without criteria retain an empty criteria list      |
+| dataSafety   | `sharedData`                | default `[]`                                        | established test | missing-app response yields an empty report                 |
+| dataSafety   | `collectedData`             | default `[]`                                        | established test | missing-app response yields an empty report                 |
+| dataSafety   | `securityPractices`         | default `[]`                                        | established test | missing-app response yields an empty report                 |
+| dataSafety   | `privacyPolicyUrl`          | optional                                            | established test | missing-app response omits the policy link                  |

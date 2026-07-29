@@ -1,7 +1,7 @@
 import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
 import type { Path } from '../../core/path.js';
-import type { SpecMap } from '../../core/spec.js';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { sanitizeText } from '../../core/text.js';
 import { reviewSchema } from './schema.js';
 
@@ -30,6 +30,8 @@ export const REVIEWS_RESPONSE_PATHS = {
 } satisfies Record<string, Path>;
 
 const shape = reviewSchema.shape;
+const REQUIRED = required();
+const OPTIONAL = optional();
 
 interface RawCriteria {
   criteria: unknown;
@@ -88,16 +90,31 @@ function mapCriterias(value: unknown): RawCriteria[] {
 }
 
 export const reviewItemSpecs = {
-  id: { paths: [[0]], schema: shape.id },
-  userName: { paths: [[1, 0]], schema: shape.userName },
-  userImage: { paths: [[1, 1, 3, 2]], schema: shape.userImage },
-  date: { paths: [[5]], schema: shape.date, transform: generateDate },
-  score: { paths: [[2]], schema: shape.score },
-  title: { paths: [[0]], schema: shape.title, transform: alwaysNull },
-  text: { paths: [[4]], schema: shape.text, transform: sanitizeText },
-  replyDate: { paths: [[7, 2]], schema: shape.replyDate, transform: generateDate },
-  replyText: { paths: [[7, 1]], schema: shape.replyText, transform: cleanReplyText },
-  version: { paths: [[10]], schema: shape.version, transform: emptyToUndefined },
-  thumbsUp: { paths: [[6]], schema: shape.thumbsUp },
-  criterias: { paths: [[12, 0]], schema: shape.criterias, transform: mapCriterias },
+  id: { paths: [[0]], missing: REQUIRED, schema: shape.id },
+  userName: { paths: [[1, 0]], missing: REQUIRED, schema: shape.userName },
+  userImage: { paths: [[1, 1, 3, 2]], missing: OPTIONAL, schema: shape.userImage },
+  date: { paths: [[5]], missing: REQUIRED, schema: shape.date, transform: generateDate },
+  score: { paths: [[2]], missing: REQUIRED, schema: shape.score },
+  title: { paths: [[0]], missing: REQUIRED, schema: shape.title, transform: alwaysNull },
+  text: { paths: [[4]], missing: OPTIONAL, schema: shape.text, transform: sanitizeText },
+  replyDate: {
+    paths: [[7, 2]],
+    missing: OPTIONAL,
+    schema: shape.replyDate,
+    transform: generateDate,
+  },
+  replyText: {
+    paths: [[7, 1]],
+    missing: OPTIONAL,
+    schema: shape.replyText,
+    transform: cleanReplyText,
+  },
+  version: { paths: [[10]], missing: OPTIONAL, schema: shape.version, transform: emptyToUndefined },
+  thumbsUp: { paths: [[6]], missing: OPTIONAL, schema: shape.thumbsUp },
+  criterias: {
+    paths: [[12, 0]],
+    missing: defaulted(() => []),
+    schema: shape.criterias,
+    transform: mapCriterias,
+  },
 } satisfies SpecMap;

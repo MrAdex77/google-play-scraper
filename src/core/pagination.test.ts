@@ -11,10 +11,10 @@ import { BATCH_URL } from './batchexecute.js';
 import type { DegradationEvent } from './degradation.js';
 import { ParseError } from './errors.js';
 import type { HttpClient, HttpRequest } from './http.js';
-import type { SpecMap } from './spec.js';
+import { required, type SpecMap } from './spec.js';
 
 const itemSpecs = {
-  id: { paths: [[0]], schema: z.string() },
+  id: { paths: [[0]], missing: required(), schema: z.string() },
 } satisfies SpecMap;
 
 const APPS_PATH = [0, 0, 0];

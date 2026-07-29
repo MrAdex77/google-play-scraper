@@ -114,6 +114,22 @@ describe('datasafety degraded pages', () => {
     ]);
     expect(result.privacyPolicyUrl).toBe('https://example.com/privacy');
   });
+
+  it('treats present non-array report sections as empty', async () => {
+    const node138: unknown[] = [];
+    node138[4] = [['invalid-shared'], ['invalid-collected']];
+    node138[9] = [null, null, 'invalid-practices'];
+    const html = buildDataSafetyHtml(wrapSafetyNode({ '138': node138 }));
+
+    const result = await dataSafety({
+      appId: TRANSLATE,
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    });
+
+    expect(result.sharedData).toEqual([]);
+    expect(result.collectedData).toEqual([]);
+    expect(result.securityPractices).toEqual([]);
+  });
 });
 
 describe('datasafety guards', () => {

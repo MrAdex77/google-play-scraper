@@ -18,7 +18,7 @@ describe('extract', () => {
     const source = loadScriptData();
     const result = extract(
       source,
-      { title: { paths: [['ds:5', 0, 0, 0]], schema: z.string() } },
+      { title: { paths: [['ds:5', 0, 0, 0]], missing: required(), schema: z.string() } },
       'app',
     );
     expect(result.title).toBe('Panda App');
@@ -34,6 +34,7 @@ describe('extract', () => {
             ['ds:5', 1, 0],
             ['ds:5', 1, 1],
           ],
+          missing: required(),
           schema: z.string(),
         },
       },
@@ -46,7 +47,14 @@ describe('extract', () => {
     const source = loadScriptData();
     const result = extract(
       source,
-      { title: { paths: [[0, 0, 0]], schema: z.string(), serviceRequestId: 'rpcFive' } },
+      {
+        title: {
+          paths: [[0, 0, 0]],
+          missing: required(),
+          schema: z.string(),
+          serviceRequestId: 'rpcFive',
+        },
+      },
       'app',
     );
     expect(result.title).toBe('Panda App');
@@ -57,7 +65,12 @@ describe('extract', () => {
     const result = extract(
       source,
       {
-        title: { paths: [['ds:5', 0, 0, 0]], schema: z.string(), serviceRequestId: 'missing-rpc' },
+        title: {
+          paths: [['ds:5', 0, 0, 0]],
+          missing: required(),
+          schema: z.string(),
+          serviceRequestId: 'missing-rpc',
+        },
       },
       'app',
     );
@@ -72,6 +85,7 @@ describe('extract', () => {
       {
         appId: {
           paths: [['ds:5', 0, 1, 0]],
+          missing: required(),
           schema: z.string(),
           transform: (value) => {
             seenRaw = value;
@@ -180,7 +194,11 @@ describe('extract', () => {
 
   it('treats a plain value as the root when the source is not script data', () => {
     const payload = [['header'], ['nested', 'value']];
-    const result = extract(payload, { cell: { paths: [[1, 1]], schema: z.string() } }, 'batch');
+    const result = extract(
+      payload,
+      { cell: { paths: [[1, 1]], missing: required(), schema: z.string() } },
+      'batch',
+    );
     expect(result.cell).toBe('value');
   });
 
@@ -191,8 +209,8 @@ describe('extract', () => {
       extract(
         source,
         {
-          rating: { paths: [['ds:5', 0, 0, 0]], schema: z.number() },
-          installs: { paths: [['ds:5', 1, 0]], schema: z.string() },
+          rating: { paths: [['ds:5', 0, 0, 0]], missing: required(), schema: z.number() },
+          installs: { paths: [['ds:5', 1, 0]], missing: required(), schema: z.string() },
         },
         'app',
       );
@@ -218,7 +236,13 @@ describe('extract', () => {
     try {
       extract(
         [{ name: 42 }],
-        { entry: { paths: [[0]], schema: z.object({ name: z.string() }) } },
+        {
+          entry: {
+            paths: [[0]],
+            missing: required(),
+            schema: z.object({ name: z.string() }),
+          },
+        },
         'nested',
       );
     } catch (error) {
@@ -238,6 +262,7 @@ describe('extract', () => {
         {
           title: {
             paths: [['ds:5', 0, 0, 0]],
+            missing: required(),
             schema: z.string(),
             transform: () => {
               throw new Error('transform blew up');
@@ -261,6 +286,7 @@ describe('extract', () => {
         {
           title: {
             paths: [['ds:5', 0, 0, 0]],
+            missing: required(),
             schema: z.string(),
             transform: () => {
               const failure: unknown = 'plain string failure';
@@ -285,6 +311,7 @@ describe('extract', () => {
         {
           title: {
             paths: [['ds:5', 0, 0, 0]],
+            missing: required(),
             schema: z.string(),
             transform: () => {
               const failure: unknown = 42;
@@ -306,7 +333,14 @@ describe('extract', () => {
     try {
       extract(
         source,
-        { title: { paths: [[0, 0, 0]], schema: z.number(), serviceRequestId: 'rpcFive' } },
+        {
+          title: {
+            paths: [[0, 0, 0]],
+            missing: required(),
+            schema: z.number(),
+            serviceRequestId: 'rpcFive',
+          },
+        },
         'app',
       );
     } catch (error) {

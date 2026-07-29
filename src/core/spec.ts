@@ -9,7 +9,7 @@ import { SpecError } from './errors.js';
 
 export interface FieldSpec<T = unknown> {
   paths: readonly Path[];
-  missing?: MissingPolicy;
+  missing: MissingPolicy;
   schema: $ZodType<T>;
   serviceRequestId?: string;
   transform?: (value: unknown) => unknown;
@@ -88,15 +88,15 @@ export function extract(source: unknown, specs: SpecMap, context: string): Recor
     const paths = candidatePaths(spec, source);
     const resolved = resolveValue(root, paths);
     try {
-      if (!resolved.found && spec.missing?.kind === 'required') {
+      if (!resolved.found && spec.missing.kind === 'required') {
         failures.push({ field, paths, message: 'required value missing' });
         continue;
       }
-      if (!resolved.found && spec.missing?.kind === 'optional') {
+      if (!resolved.found && spec.missing.kind === 'optional') {
         result[field] = parse(spec.schema, undefined);
         continue;
       }
-      if (!resolved.found && spec.missing?.kind === 'default') {
+      if (!resolved.found && spec.missing.kind === 'default') {
         result[field] = parse(spec.schema, spec.missing.create());
         continue;
       }
