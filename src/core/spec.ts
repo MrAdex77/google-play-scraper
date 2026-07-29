@@ -3,7 +3,6 @@ import type * as z from 'zod/mini';
 import type { Path } from './path.js';
 import { getPath } from './path.js';
 import type { ScriptData } from './scriptData.js';
-import { resolveDsKeys } from './scriptData.js';
 import type { SpecFailure } from './errors.js';
 import { SpecError } from './errors.js';
 
@@ -11,7 +10,6 @@ export interface FieldSpec<T = unknown> {
   paths: readonly Path[];
   missing: MissingPolicy;
   schema: $ZodType<T>;
-  serviceRequestId?: string;
   transform?: (value: unknown) => unknown;
 }
 
@@ -32,16 +30,6 @@ function isScriptData(source: unknown): source is ScriptData {
     'blocks' in source &&
     'serviceRequests' in source
   );
-}
-
-function candidatePaths(spec: FieldSpec, source: unknown): readonly Path[] {
-  if (spec.serviceRequestId !== undefined && isScriptData(source)) {
-    const dsKey = resolveDsKeys(source, spec.serviceRequestId)[0];
-    if (dsKey !== undefined) {
-      return spec.paths.map((path) => [dsKey, ...path]);
-    }
-  }
-  return spec.paths;
 }
 
 type ResolvedValue = { found: true; value: unknown } | { found: false };
@@ -85,7 +73,7 @@ export function extract(source: unknown, specs: SpecMap, context: string): Recor
   const failures: SpecFailure[] = [];
 
   for (const [field, spec] of Object.entries(specs)) {
-    const paths = candidatePaths(spec, source);
+    const paths = spec.paths;
     const resolved = resolveValue(root, paths);
     try {
       if (!resolved.found && spec.missing.kind === 'required') {

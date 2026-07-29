@@ -43,40 +43,6 @@ describe('extract', () => {
     expect(result.installs).toBe('5,000,000+');
   });
 
-  it('resolves relative paths through the service request id', () => {
-    const source = loadScriptData();
-    const result = extract(
-      source,
-      {
-        title: {
-          paths: [[0, 0, 0]],
-          missing: required(),
-          schema: z.string(),
-          serviceRequestId: 'rpcFive',
-        },
-      },
-      'app',
-    );
-    expect(result.title).toBe('Panda App');
-  });
-
-  it('falls through to absolute paths when the service request id is unknown', () => {
-    const source = loadScriptData();
-    const result = extract(
-      source,
-      {
-        title: {
-          paths: [['ds:5', 0, 0, 0]],
-          missing: required(),
-          schema: z.string(),
-          serviceRequestId: 'missing-rpc',
-        },
-      },
-      'app',
-    );
-    expect(result.title).toBe('Panda App');
-  });
-
   it('passes only the raw value to a transform', () => {
     const source = loadScriptData();
     let seenRaw: unknown;
@@ -325,28 +291,5 @@ describe('extract', () => {
       thrown = error;
     }
     expect((thrown as SpecError).message).toContain('non-error thrown during extraction');
-  });
-
-  it('reports the resolved service request paths in the failure', () => {
-    const source = loadScriptData();
-    let thrown: unknown;
-    try {
-      extract(
-        source,
-        {
-          title: {
-            paths: [[0, 0, 0]],
-            missing: required(),
-            schema: z.number(),
-            serviceRequestId: 'rpcFive',
-          },
-        },
-        'app',
-      );
-    } catch (error) {
-      thrown = error;
-    }
-    const specError = thrown as SpecError;
-    expect(specError.failures[0]?.paths).toEqual([['ds:5', 0, 0, 0]]);
   });
 });

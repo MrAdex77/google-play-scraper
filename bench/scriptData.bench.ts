@@ -1,6 +1,5 @@
 import { bench, describe } from 'vitest';
-import { parseScriptData, resolveDsKeys } from '../src/core/scriptData.js';
-import type { ScriptData } from '../src/core/scriptData.js';
+import { parseScriptData } from '../src/core/scriptData.js';
 import type { SpecMap } from '../src/core/spec.js';
 import { appSpecs } from '../src/features/app/specs.js';
 import { APP_FIXTURES, loadAppFixture } from './fixtures.js';
@@ -12,18 +11,13 @@ const BLOCK_PAYLOAD_REGEX = /data:([\s\S]*?), sideChannel: {}}\);<\//;
 
 const specs: SpecMap = appSpecs;
 
-function referencedDsKeys(data: ScriptData): Set<string> {
+function referencedDsKeys(): Set<string> {
   const keys = new Set<string>();
   for (const spec of Object.values(specs)) {
     for (const path of spec.paths) {
       const head = path[0];
       if (typeof head === 'string' && head.startsWith('ds:')) {
         keys.add(head);
-      }
-    }
-    if (spec.serviceRequestId !== undefined) {
-      for (const resolved of resolveDsKeys(data, spec.serviceRequestId)) {
-        keys.add(resolved);
       }
     }
   }
@@ -82,7 +76,7 @@ const sink = { total: 0 };
 
 for (const name of Object.keys(APP_FIXTURES) as AppFixtureName[]) {
   const html = loadAppFixture(name);
-  const referenced = referencedDsKeys(parseScriptData(html));
+  const referenced = referencedDsKeys();
 
   describe(name, () => {
     bench(
