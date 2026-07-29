@@ -1,11 +1,16 @@
 import { expect, it } from 'vitest';
+import type { IntegrityEvent } from '../src/index.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
 liveDescribe('datasafety live contract', () => {
   it('returns collected data, security practices, and a privacy policy url', async () => {
-    const result = await liveClient.dataSafety({ appId: TRANSLATE });
+    const events: IntegrityEvent[] = [];
+    const result = await liveClient.dataSafety({
+      appId: TRANSLATE,
+      onIntegrityEvent: (event) => events.push(event),
+    });
 
     expect(result.collectedData.length).toBeGreaterThan(0);
     for (const entry of result.collectedData) {
@@ -20,6 +25,7 @@ liveDescribe('datasafety live contract', () => {
     }
 
     expect(result.privacyPolicyUrl?.startsWith('http')).toBe(true);
+    expect(events).toEqual([]);
   });
 
   it('returns a typed safety report for the Where Am I geography game', async () => {

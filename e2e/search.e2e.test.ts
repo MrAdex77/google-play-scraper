@@ -2,7 +2,12 @@ import { expect, it } from 'vitest';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../src/core/http.js';
 import { app } from '../src/features/app/app.js';
 import { createSearch, fetchSearchFirstPage } from '../src/features/search/search.js';
-import { type App, type DegradationEvent, type SearchResult } from '../src/index.js';
+import {
+  type App,
+  type DegradationEvent,
+  type IntegrityEvent,
+  type SearchResult,
+} from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const FIRST_PAGE_CEILING = 40;
@@ -27,7 +32,12 @@ function memoizingResolveClient(): ResolveClient {
 
 liveDescribe('search live contract', () => {
   it('returns unique valid apps for a broad term', async () => {
-    const results = (await liveClient.search({ term: 'panda', num: 30 })) as SearchResult[];
+    const events: IntegrityEvent[] = [];
+    const results = (await liveClient.search({
+      term: 'panda',
+      num: 30,
+      onIntegrityEvent: (event) => events.push(event),
+    })) as SearchResult[];
 
     expect(results.length).toBeGreaterThan(10);
     expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
@@ -43,6 +53,7 @@ liveDescribe('search live contract', () => {
         expect(item.score).toBeLessThanOrEqual(5);
       }
     }
+    expect(events).toEqual([]);
   });
 
   it('surfaces the Where Am I game when searching for it', async () => {
