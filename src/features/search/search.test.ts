@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { createSearch, search, type SearchOptions } from './search.js';
-import { filterByPrice, matchesPriceFilter } from './specs.js';
+import { filterByPrice, matchesPriceFilter, SEARCH_RPC_ID } from './specs.js';
 import { searchResultSchema, type SearchResult } from './schema.js';
 import type { App } from '../app/schema.js';
 import type { DegradationEvent } from '../../core/degradation.js';
@@ -45,6 +45,13 @@ const sequenceFetch = (bodies: string[]): typeof fetch => {
 const buildScriptData = (key: string, value: unknown): string =>
   `<script>AF_initDataCallback({key: '${key}', hash: '1', data:${JSON.stringify(value)}, sideChannel: {}});</script>`;
 
+const buildServiceTable = (entries: Record<string, string>): string => {
+  const pairs = Object.entries(entries)
+    .map(([key, rpcId]) => `'${key}' : {id:'${rpcId}'}`)
+    .join(',');
+  return `<script>; var AF_dataServiceRequests = {${pairs}}; var AF_initDataChunkQueue = [];</script>`;
+};
+
 const coreData = (id: string): unknown[] => {
   const core: unknown[] = [];
   core[0] = [id];
@@ -58,13 +65,15 @@ const coreData = (id: string): unknown[] => {
   return core;
 };
 
-const searchPageHtml = (ids: string[], token: string): string => {
+const searchPageRoot = (ids: string[], token: string): unknown => {
   const apps = ids.map((id) => [coreData(id)]);
   const section: unknown[] = [];
   section[22] = [apps, [null, null, null, [null, token]]];
-  const ds4 = [[null, [section]]];
-  return buildScriptData('ds:4', ds4);
+  return [[null, [section]]];
 };
+
+const searchPageHtml = (ids: string[], token: string): string =>
+  buildScriptData('ds:4', searchPageRoot(ids, token));
 
 const clusterBatchOf = (apps: unknown[], nextToken: string | null): string => {
   const inner: unknown[] = [];
@@ -123,6 +132,20 @@ describe('search fixture parsing', () => {
     expect(results[0]?.appId).toBe('com.pandaexpress.app');
     expect(results[0]?.title).toBe('Panda Express');
     expect(results.filter((item) => item.appId === 'com.pandaexpress.app')).toHaveLength(1);
+  });
+
+  it('parses a search root moved behind the lGYRle route', async () => {
+    const html = `${buildScriptData('ds:4', ['malformed fallback'])}${buildScriptData(
+      'ds:11',
+      searchPageRoot(['routed'], ''),
+    )}${buildServiceTable({ 'ds:11': SEARCH_RPC_ID })}`;
+
+    const results = (await search({
+      term: 'routed',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['routed']);
   });
 });
 
@@ -204,15 +227,15 @@ const sectionWithApps = (ids: string[]): unknown[] => {
 };
 
 describe('search malformed pages', () => {
-  it('returns no results when the sections block is not an array', async () => {
+  it('rejects a response whose sections block is not an array', async () => {
     const html = buildScriptData('ds:4', [[null, 'not-sections']]);
 
-    const results = (await search({
-      term: 'panda',
-      requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
-
-    expect(results).toEqual([]);
+    await expect(
+      search({
+        term: 'panda',
+        requestOptions: { fetchImpl: fetchReturning(html) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
   });
 
   it('returns no results when no section carries apps', async () => {

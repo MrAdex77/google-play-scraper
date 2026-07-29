@@ -1,11 +1,13 @@
 import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
+import { ParseError } from '../../core/errors.js';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { fetchClusterApps } from '../../core/pagination.js';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.js';
-import { parseScriptData, type ScriptData } from '../../core/scriptData.js';
+import { parseScriptData } from '../../core/scriptData.js';
+import { resolveScriptRoot } from '../../core/scriptRoot.js';
 import { extract, type Extracted } from '../../core/spec.js';
 import { app } from '../app/app.js';
 import type { App } from '../app/schema.js';
@@ -18,6 +20,7 @@ import {
   priceGoogleValue,
   searchItemSpecs,
   searchPageItemSpecs,
+  searchRootSpec,
   SECTIONS_MAPPING,
 } from './specs.js';
 
@@ -67,11 +70,12 @@ export async function fetchSearchFirstPage(
   const client = resolveClient(query);
   const html = await client.request({ url: `${SEARCH_URL}?${params.toString()}` });
   const data = parseScriptData(html);
-  return { client, page: firstPage(data) };
+  const root = resolveScriptRoot(data, searchRootSpec, 'search root');
+  return { client, page: firstPage(root.root) };
 }
 
-function prependExactMatch(data: ScriptData, apps: SearchItem[]): SearchItem[] {
-  const exactMatchData = getPath(data.blocks, INITIAL_MAPPINGS.app);
+function prependExactMatch(root: unknown, apps: SearchItem[]): SearchItem[] {
+  const exactMatchData = getPath(root, INITIAL_MAPPINGS.app);
   if (exactMatchData === undefined || exactMatchData === null) {
     return apps;
   }
@@ -87,10 +91,10 @@ function prependExactMatch(data: ScriptData, apps: SearchItem[]): SearchItem[] {
   return [exactMatch, ...apps];
 }
 
-function firstPage(data: ScriptData): FirstPage {
-  const sections = getPath(data.blocks, INITIAL_MAPPINGS.sections);
+function firstPage(root: unknown): FirstPage {
+  const sections = getPath(root, INITIAL_MAPPINGS.sections);
   if (!Array.isArray(sections)) {
-    return { apps: [], token: undefined };
+    throw new ParseError(`${SEARCH_CONTEXT}: validated sections root is unavailable`);
   }
   for (const section of sections) {
     const apps = getPath(section, SECTIONS_MAPPING.apps);
@@ -98,7 +102,7 @@ function firstPage(data: ScriptData): FirstPage {
       const extracted = apps.map((item) => extract(item, searchItemSpecs, SEARCH_CONTEXT));
       const token = getPath(section, SECTIONS_MAPPING.token);
       return {
-        apps: prependExactMatch(data, extracted),
+        apps: prependExactMatch(root, extracted),
         token: typeof token === 'string' ? token : undefined,
       };
     }

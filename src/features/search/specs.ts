@@ -1,22 +1,33 @@
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
 import type { Path } from '../../core/path.js';
+import { rawArrayPathSchema } from '../../core/raw.js';
+import type { ScriptRootSpec } from '../../core/scriptRoot.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { searchResultSchema } from './schema.js';
+import * as z from 'zod/mini';
 
 const shape = searchResultSchema.shape;
 const REQUIRED = required();
 const OPTIONAL = optional();
 
 export type PriceFilter = 'all' | 'free' | 'paid';
+export const SEARCH_RPC_ID = 'lGYRle';
 
 function developerIdFromLink(value: unknown): string | undefined {
   return typeof value === 'string' ? value.split('?id=')[1] : undefined;
 }
 
 export const INITIAL_MAPPINGS = {
-  app: ['ds:4', 0, 1, 0, 23],
-  sections: ['ds:4', 0, 1],
+  app: [0, 1, 0, 23],
+  sections: [0, 1],
 } satisfies Record<string, Path>;
+
+export const searchRootSpec = {
+  rpcId: SEARCH_RPC_ID,
+  paths: [['ds:4']],
+  schema: rawArrayPathSchema(INITIAL_MAPPINGS.sections, z.array(z.unknown())),
+  missing: REQUIRED,
+} satisfies ScriptRootSpec;
 
 export const SECTIONS_MAPPING = {
   apps: [22, 0],
