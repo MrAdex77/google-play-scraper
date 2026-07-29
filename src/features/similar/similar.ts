@@ -17,6 +17,8 @@ import {
   PAGINATION_MAPPINGS,
   SIMILAR_MAX_APPS,
   similarClusterPageRootSpec,
+  similarClusterScriptDataSelection,
+  similarDetailsScriptDataSelection,
   similarClusterUrl,
   similarDetailsUrl,
   similarItemSpecs,
@@ -56,7 +58,7 @@ export function createSimilar(
     const detailsHtml = await client.request({
       url: similarDetailsUrl(parsed.appId, parsed.country),
     });
-    const details = parseScriptData(detailsHtml);
+    const details = parseScriptData(detailsHtml, similarDetailsScriptDataSelection);
 
     const clusterPath = findSimilarClusterPath(details, parsed.onIntegrityEvent);
     if (clusterPath === undefined) {
@@ -66,7 +68,7 @@ export function createSimilar(
     const clusterHtml = await client.request({
       url: similarClusterUrl(clusterPath, parsed.lang, parsed.country),
     });
-    const clusterData = parseScriptData(clusterHtml);
+    const clusterData = parseScriptData(clusterHtml, similarClusterScriptDataSelection);
     const clusterRoot = resolveScriptRoot(
       clusterData,
       similarClusterPageRootSpec,

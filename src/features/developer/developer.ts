@@ -13,6 +13,7 @@ import type { App } from '../app/schema.js';
 import { developerAppSchema, type DeveloperApp } from './schema.js';
 import {
   CLUSTER_MAPPINGS,
+  developerScriptDataSelection,
   developerUrl,
   isNumericDevId,
   NAME_INITIAL_MAPPINGS,
@@ -106,7 +107,7 @@ export async function fetchDeveloperFirstPage(
   const html = await client.request({
     url: developerUrl(query.devId, query.lang, query.country),
   });
-  const data = parseScriptData(html);
+  const data = parseScriptData(html, developerScriptDataSelection);
   const initial = extractInitial(data, numeric);
   return { client, apps: initial.apps, token: initial.token };
 }

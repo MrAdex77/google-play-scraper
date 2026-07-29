@@ -152,6 +152,19 @@ export function replaceScriptBlockData(html: string, key: string, value: unknown
   return `${html.slice(0, target.start)}${replaced}${html.slice(target.end)}`;
 }
 
+export function corruptScriptBlockData(html: string, key: string): string {
+  const target = scriptBlock(html, key);
+  const payload = /data:[\s\S]*?, sideChannel: {}}\);<\/script>/.exec(target.block)?.[0];
+  if (payload === undefined) {
+    throw new Error(`script block payload missing: ${key}`);
+  }
+  const replaced = target.block.replace(
+    payload,
+    'data:not valid json, sideChannel: {}});</script>',
+  );
+  return `${html.slice(0, target.start)}${replaced}${html.slice(target.end)}`;
+}
+
 export function removeScriptBlock(html: string, key: string): string {
   const target = scriptBlock(html, key);
   return `${html.slice(0, target.start)}${html.slice(target.end)}`;

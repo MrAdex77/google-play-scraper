@@ -6,7 +6,12 @@ import { parseScriptData } from '../../core/scriptData.js';
 import { resolveScriptRoot } from '../../core/scriptRoot.js';
 import { extract } from '../../core/spec.js';
 import { appSchema, type App } from './schema.js';
-import { appCommentsRootSpec, appDetailsRootSpec, appSpecs } from './specs.js';
+import {
+  appCommentsRootSpec,
+  appDetailsRootSpec,
+  appScriptDataSelection,
+  appSpecs,
+} from './specs.js';
 import { extractComments } from './transforms.js';
 
 export const appOptionsSchema = z.extend(baseOptionsSchema, {
@@ -30,7 +35,7 @@ export function createApp(resolveClient: ResolveClient = clientFromOptions) {
 
     const client = resolveClient(parsed);
     const html = await client.request({ url });
-    const data = parseScriptData(html);
+    const data = parseScriptData(html, appScriptDataSelection);
     const details = resolveScriptRoot(
       data,
       appDetailsRootSpec,

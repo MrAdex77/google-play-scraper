@@ -1,5 +1,6 @@
 import { getPath } from '../../core/path.js';
 import type { ScriptRootSpec } from '../../core/scriptRoot.js';
+import { deriveScriptDataSelection } from '../../core/scriptData.js';
 import { sanitizeText } from '../../core/text.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import * as z from 'zod/mini';
@@ -73,6 +74,11 @@ export const appCommentsRootSpec = {
   schema: appCommentsRootSchema,
   missing: defaulted(() => []),
 } satisfies ScriptRootSpec;
+
+export const appScriptDataSelection = deriveScriptDataSelection([
+  appDetailsRootSpec,
+  appCommentsRootSpec,
+]);
 
 export const appSpecs = {
   title: { paths: [[1, 2, 0, 0]], missing: REQUIRED, schema: shape.title },

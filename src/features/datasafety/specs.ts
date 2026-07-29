@@ -1,6 +1,7 @@
 import * as z from 'zod/mini';
 import { getPath, type Path } from '../../core/path.js';
 import type { ScriptRootSpec } from '../../core/scriptRoot.js';
+import { deriveScriptDataSelection } from '../../core/scriptData.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { dataEntrySchema, securityPracticeSchema } from './schema.js';
 
@@ -50,6 +51,8 @@ export const dataSafetyRootSpec = {
   schema: dataSafetyRootSchema,
   missing: required(),
 } satisfies ScriptRootSpec;
+
+export const dataSafetyScriptDataSelection = deriveScriptDataSelection([dataSafetyRootSpec]);
 
 function mapDataEntries(value: unknown): unknown {
   if (!Array.isArray(value)) {

@@ -6,7 +6,7 @@ import { parseScriptData } from '../../core/scriptData.js';
 import { resolveScriptRoot } from '../../core/scriptRoot.js';
 import { extract } from '../../core/spec.js';
 import { dataSafetySchema, type DataSafety } from './schema.js';
-import { dataSafetyRootSpec, dataSafetySpecs } from './specs.js';
+import { dataSafetyRootSpec, dataSafetyScriptDataSelection, dataSafetySpecs } from './specs.js';
 
 const DATA_SAFETY_CONTEXT = 'dataSafety';
 
@@ -40,7 +40,7 @@ export function createDataSafety(resolveClient: ResolveClient = clientFromOption
     if (html.includes(MISSING_APP_MARKER)) {
       return emptyDataSafetyReport();
     }
-    const data = parseScriptData(html);
+    const data = parseScriptData(html, dataSafetyScriptDataSelection);
     const root = resolveScriptRoot(
       data,
       dataSafetyRootSpec,

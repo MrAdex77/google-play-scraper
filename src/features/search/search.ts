@@ -22,6 +22,7 @@ import {
   searchItemSpecs,
   searchPageItemSpecs,
   searchRootSpec,
+  searchScriptDataSelection,
   SECTIONS_MAPPING,
 } from './specs.js';
 
@@ -70,7 +71,7 @@ export async function fetchSearchFirstPage(
 
   const client = resolveClient(query);
   const html = await client.request({ url: `${SEARCH_URL}?${params.toString()}` });
-  const data = parseScriptData(html);
+  const data = parseScriptData(html, searchScriptDataSelection);
   const root = resolveScriptRoot(data, searchRootSpec, 'search root', query.onIntegrityEvent);
   return { client, page: firstPage(root.root, query.onIntegrityEvent) };
 }

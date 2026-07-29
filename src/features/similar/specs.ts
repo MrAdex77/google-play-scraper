@@ -3,7 +3,7 @@ import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTr
 import { getPath, type Path } from '../../core/path.js';
 import { rawArrayPathSchema } from '../../core/raw.js';
 import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.js';
-import type { ScriptData } from '../../core/scriptData.js';
+import { deriveScriptDataSelection, type ScriptData } from '../../core/scriptData.js';
 import type { OnIntegrityEvent } from '../../core/integrity.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { similarAppSchema } from './schema.js';
@@ -46,6 +46,13 @@ export const similarClusterPageRootSpec = {
   ]),
   missing: required(),
 } satisfies ScriptRootSpec;
+
+export const similarDetailsScriptDataSelection = deriveScriptDataSelection([
+  similarDetailsRootSpec,
+]);
+export const similarClusterScriptDataSelection = deriveScriptDataSelection([
+  similarClusterPageRootSpec,
+]);
 
 export const PAGINATION_MAPPINGS = {
   apps: [0, 0, 0],

@@ -2,6 +2,7 @@ import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTr
 import type { Path } from '../../core/path.js';
 import { rawArrayPathSchema } from '../../core/raw.js';
 import type { ScriptRootSpec } from '../../core/scriptRoot.js';
+import { deriveScriptDataSelection } from '../../core/scriptData.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { searchResultSchema } from './schema.js';
 import * as z from 'zod/mini';
@@ -28,6 +29,8 @@ export const searchRootSpec = {
   schema: rawArrayPathSchema(INITIAL_MAPPINGS.sections, z.array(z.unknown())),
   missing: REQUIRED,
 } satisfies ScriptRootSpec;
+
+export const searchScriptDataSelection = deriveScriptDataSelection([searchRootSpec]);
 
 export const SECTIONS_MAPPING = {
   apps: [22, 0],

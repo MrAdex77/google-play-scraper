@@ -2,6 +2,7 @@ import { BASE_URL } from '../../constants.js';
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
 import { getPath, type Path } from '../../core/path.js';
 import type { ScriptRootSpec } from '../../core/scriptRoot.js';
+import { deriveScriptDataSelection } from '../../core/scriptData.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { developerAppSchema } from './schema.js';
 import * as z from 'zod/mini';
@@ -55,6 +56,11 @@ export const nameInitialRootSpec = {
   schema: initialLayoutRootSchema,
   missing: optional(),
 } satisfies ScriptRootSpec;
+
+export const developerScriptDataSelection = deriveScriptDataSelection([
+  numericInitialRootSpec,
+  nameInitialRootSpec,
+]);
 
 export const CLUSTER_MAPPINGS = {
   apps: [0, 6, 0],

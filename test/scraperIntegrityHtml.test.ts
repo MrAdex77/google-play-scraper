@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { app } from '../src/features/app/app.js';
-import { appSpecs } from '../src/features/app/specs.js';
+import { APP_DETAILS_RPC_ID, appScriptDataSelection, appSpecs } from '../src/features/app/specs.js';
 import { dataSafety } from '../src/features/datasafety/datasafety.js';
 import { search } from '../src/features/search/search.js';
 import { ParseError, SpecError } from '../src/core/errors.js';
@@ -10,6 +10,7 @@ import { getPath, type Path } from '../src/core/path.js';
 import { parseScriptData } from '../src/core/scriptData.js';
 import {
   changeRoutingTableEntry,
+  corruptScriptBlockData,
   deletePath,
   movePath,
   removeScriptBlock,
@@ -144,6 +145,31 @@ describe('app field mutations', () => {
 
     expect(result.score).toBeUndefined();
     expect(result.version).toBe('VARY');
+  });
+});
+
+describe('selected script block mutations', () => {
+  it('declares both app comment fallbacks and the details rpc id', () => {
+    expect(appScriptDataSelection.blockKeys).toEqual(new Set(['ds:5', 'ds:8', 'ds:9']));
+    expect(appScriptDataSelection.rpcIds).toEqual(new Set([APP_DETAILS_RPC_ID]));
+  });
+
+  it('rejects malformed json in a selected block', async () => {
+    const error = await caughtError(appWithHtml(corruptScriptBlockData(appHtml, 'ds:5')));
+
+    expect(error).toBeInstanceOf(ParseError);
+    expect((error as Error).message).toBe('script data block ds:5: invalid JSON');
+  });
+
+  it('ignores malformed json in an unselected block without changing the result', async () => {
+    const baseline = await appWithHtml(appHtml);
+    const events: IntegrityEvent[] = [];
+    const result = await appWithHtml(corruptScriptBlockData(appHtml, 'ds:0'), (event) =>
+      events.push(event),
+    );
+
+    expect(result).toEqual(baseline);
+    expect(events).toEqual([]);
   });
 });
 
