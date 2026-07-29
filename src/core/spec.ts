@@ -3,7 +3,7 @@ import type * as z from 'zod/mini';
 import type { Path } from './path.js';
 import { getPath } from './path.js';
 import type { ScriptData } from './scriptData.js';
-import { resolveDsKey } from './scriptData.js';
+import { resolveDsKeys } from './scriptData.js';
 import type { SpecFailure } from './errors.js';
 import { SpecError } from './errors.js';
 
@@ -36,7 +36,7 @@ function isScriptData(source: unknown): source is ScriptData {
 
 function candidatePaths(spec: FieldSpec, source: unknown): readonly Path[] {
   if (spec.serviceRequestId !== undefined && isScriptData(source)) {
-    const dsKey = resolveDsKey(source, spec.serviceRequestId);
+    const dsKey = resolveDsKeys(source, spec.serviceRequestId)[0];
     if (dsKey !== undefined) {
       return spec.paths.map((path) => [dsKey, ...path]);
     }

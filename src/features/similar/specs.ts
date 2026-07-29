@@ -1,6 +1,6 @@
 import { BASE_URL } from '../../constants.js';
 import { getPath, type Path } from '../../core/path.js';
-import { resolveDsKey, type ScriptData } from '../../core/scriptData.js';
+import { resolveDsKeys, type ScriptData } from '../../core/scriptData.js';
 import type { SpecMap } from '../../core/spec.js';
 import { similarAppSchema } from './schema.js';
 
@@ -40,20 +40,17 @@ export function similarClusterUrl(clusterPath: string, lang: string, country: st
 }
 
 export function findSimilarClusterPath(data: ScriptData): string | undefined {
-  const dsKey = resolveDsKey(data, CLUSTERS_RPC_ID);
-  if (dsKey === undefined) {
-    return undefined;
-  }
-  const clusters = getPath(data.blocks, [dsKey, ...CLUSTERS_PATH]);
-  if (!Array.isArray(clusters)) {
-    return undefined;
-  }
-  for (const cluster of clusters) {
-    const title = getPath(cluster, CLUSTER_MAPPING.title);
-    if (title === SIMILAR_APPS || title === SIMILAR_GAMES) {
-      const clusterPath = getPath(cluster, CLUSTER_MAPPING.url);
-      if (typeof clusterPath === 'string') {
-        return clusterPath;
+  for (const dsKey of resolveDsKeys(data, CLUSTERS_RPC_ID)) {
+    const clusters = getPath(data.blocks, [dsKey, ...CLUSTERS_PATH]);
+    if (Array.isArray(clusters)) {
+      for (const cluster of clusters) {
+        const title = getPath(cluster, CLUSTER_MAPPING.title);
+        if (title === SIMILAR_APPS || title === SIMILAR_GAMES) {
+          const clusterPath = getPath(cluster, CLUSTER_MAPPING.url);
+          if (typeof clusterPath === 'string') {
+            return clusterPath;
+          }
+        }
       }
     }
   }

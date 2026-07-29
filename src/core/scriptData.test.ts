@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { parseScriptData, resolveDsKey } from './scriptData.js';
+import { parseScriptData, resolveDsKeys } from './scriptData.js';
 
 const detailsLike = readFileSync(
   fileURLToPath(new URL('../../test/fixtures/synthetic/details-like.html', import.meta.url)),
@@ -37,15 +37,16 @@ describe('parseScriptData', () => {
   });
 });
 
-describe('resolveDsKey', () => {
-  it('returns the ds key whose rpc id matches', () => {
+describe('resolveDsKeys', () => {
+  it('returns every matching ds key in service table order', () => {
     const data = parseScriptData(detailsLike);
-    expect(resolveDsKey(data, 'rpcFive')).toBe('ds:5');
-    expect(resolveDsKey(data, 'rpcFour')).toBe('ds:4');
+    data.serviceRequests['ds:9'] = 'rpcFive';
+    expect(resolveDsKeys(data, 'rpcFive')).toEqual(['ds:5', 'ds:9']);
+    expect(resolveDsKeys(data, 'rpcFour')).toEqual(['ds:4']);
   });
 
-  it('returns undefined when no rpc id matches', () => {
+  it('returns an empty array when no rpc id matches', () => {
     const data = parseScriptData(detailsLike);
-    expect(resolveDsKey(data, 'unknown-rpc')).toBeUndefined();
+    expect(resolveDsKeys(data, 'unknown-rpc')).toEqual([]);
   });
 });

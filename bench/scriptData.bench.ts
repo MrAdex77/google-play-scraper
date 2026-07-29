@@ -1,5 +1,5 @@
 import { bench, describe } from 'vitest';
-import { parseScriptData, resolveDsKey } from '../src/core/scriptData.js';
+import { parseScriptData, resolveDsKeys } from '../src/core/scriptData.js';
 import type { ScriptData } from '../src/core/scriptData.js';
 import type { SpecMap } from '../src/core/spec.js';
 import { appSpecs } from '../src/features/app/specs.js';
@@ -22,8 +22,7 @@ function referencedDsKeys(data: ScriptData): Set<string> {
       }
     }
     if (spec.serviceRequestId !== undefined) {
-      const resolved = resolveDsKey(data, spec.serviceRequestId);
-      if (resolved !== undefined) {
+      for (const resolved of resolveDsKeys(data, spec.serviceRequestId)) {
         keys.add(resolved);
       }
     }

@@ -56,11 +56,12 @@ export function parseScriptData(html: string): ScriptData {
   };
 }
 
-export function resolveDsKey(data: ScriptData, rpcId: string): string | undefined {
+export function resolveDsKeys(data: ScriptData, rpcId: string): readonly string[] {
+  const keys: string[] = [];
   for (const [dsKey, id] of Object.entries(data.serviceRequests)) {
     if (id === rpcId) {
-      return dsKey;
+      keys.push(dsKey);
     }
   }
-  return undefined;
+  return keys;
 }
