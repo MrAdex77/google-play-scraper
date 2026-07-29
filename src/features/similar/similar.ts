@@ -6,6 +6,7 @@ import { clusterItemSpecs } from '../../core/clusterItem.js';
 import { fetchClusterApps } from '../../core/pagination.js';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.js';
 import { parseScriptData } from '../../core/scriptData.js';
+import { resolveScriptRoot } from '../../core/scriptRoot.js';
 import { extract, type Extracted } from '../../core/spec.js';
 import { app } from '../app/app.js';
 import type { App } from '../app/schema.js';
@@ -15,6 +16,7 @@ import {
   findSimilarClusterPath,
   PAGINATION_MAPPINGS,
   SIMILAR_MAX_APPS,
+  similarClusterPageRootSpec,
   similarClusterUrl,
   similarDetailsUrl,
   similarItemSpecs,
@@ -31,15 +33,15 @@ const SIMILAR_CONTEXT = 'similar';
 
 type SimilarItem = Extracted<typeof similarItemSpecs>;
 
-function extractClusterPage(blocks: Record<string, unknown>): {
+function extractClusterPage(root: unknown): {
   apps: SimilarItem[];
   token: string | undefined;
 } {
-  const appsData = getPath(blocks, CLUSTER_PAGE_MAPPINGS.apps);
+  const appsData = getPath(root, CLUSTER_PAGE_MAPPINGS.apps);
   const apps = Array.isArray(appsData)
     ? appsData.map((item) => extract(item, similarItemSpecs, SIMILAR_CONTEXT))
     : [];
-  const token = getPath(blocks, CLUSTER_PAGE_MAPPINGS.token);
+  const token = getPath(root, CLUSTER_PAGE_MAPPINGS.token);
   return { apps, token: typeof token === 'string' ? token : undefined };
 }
 
@@ -65,7 +67,12 @@ export function createSimilar(
       url: similarClusterUrl(clusterPath, parsed.lang, parsed.country),
     });
     const clusterData = parseScriptData(clusterHtml);
-    const page = extractClusterPage(clusterData.blocks);
+    const clusterRoot = resolveScriptRoot(
+      clusterData,
+      similarClusterPageRootSpec,
+      'similar cluster page',
+    );
+    const page = extractClusterPage(clusterRoot.root);
 
     const items = await fetchClusterApps({
       client,

@@ -37,12 +37,15 @@ export function resolveScriptRoot(
   context: string,
   onIntegrityEvent?: OnIntegrityEvent,
 ): ResolvedScriptRoot {
+  let invalidRoutedCandidate: { key: string; root: unknown } | undefined;
   if (spec.rpcId !== undefined) {
     const matches: { key: string; root: unknown }[] = [];
     for (const key of resolveDsKeys(data, spec.rpcId)) {
       const root = data.blocks[key];
       if (root !== undefined && root !== null && safeParse(spec.schema, root).success) {
         matches.push({ key, root });
+      } else if (root !== undefined && root !== null && invalidRoutedCandidate === undefined) {
+        invalidRoutedCandidate = { key, root };
       }
     }
     if (matches.length > 1) {
@@ -68,6 +71,14 @@ export function resolveScriptRoot(
       onIntegrityEvent?.({ context, reason: 'rpc-anchor-fallback', error });
     }
     return { root };
+  }
+
+  if (invalidRoutedCandidate !== undefined) {
+    parseRaw(
+      spec.schema,
+      invalidRoutedCandidate.root,
+      `${context} routed ${invalidRoutedCandidate.key}`,
+    );
   }
 
   return missingRoot(spec, context);

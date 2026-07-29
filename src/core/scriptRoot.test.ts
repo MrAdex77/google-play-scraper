@@ -55,8 +55,8 @@ describe('resolveScriptRoot', () => {
     const events: IntegrityEvent[] = [];
     const fallback = { title: 'Fallback' };
     const data = scriptData(
-      { 'ds:5': fallback, 'ds:9': { comments: [] } },
-      { 'ds:9': 'rpcDetails' },
+      { 'ds:5': fallback, 'ds:8': { clusters: [] }, 'ds:9': { comments: [] } },
+      { 'ds:8': 'rpcDetails', 'ds:9': 'rpcDetails' },
     );
 
     expect(
@@ -105,6 +105,19 @@ describe('resolveScriptRoot', () => {
   it('rejects an absent required root with its context', () => {
     expect(() => resolveScriptRoot(scriptData({}, {}), rootSpec(), 'search root')).toThrow(
       'search root: required script root missing',
+    );
+  });
+
+  it('rejects a malformed routed candidate instead of applying a default', () => {
+    const spec = rootSpec({
+      paths: [],
+      schema: z.array(z.string()),
+      missing: defaulted(() => []),
+    });
+    const data = scriptData({ 'ds:7': [5] }, { 'ds:7': 'rpcDetails' });
+
+    expect(() => resolveScriptRoot(data, spec, 'similar details')).toThrow(
+      'similar details routed ds:7: 0',
     );
   });
 });

@@ -1,8 +1,10 @@
 import { BASE_URL } from '../../constants.js';
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
-import type { Path } from '../../core/path.js';
+import { getPath, type Path } from '../../core/path.js';
+import type { ScriptRootSpec } from '../../core/scriptRoot.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { developerAppSchema } from './schema.js';
+import * as z from 'zod/mini';
 
 const shape = developerAppSchema.shape;
 const REQUIRED = required();
@@ -23,14 +25,36 @@ export function developerUrl(devId: string, lang: string, country: string): stri
 }
 
 export const NUMERIC_INITIAL_MAPPINGS = {
-  apps: ['ds:3', 0, 1, 0, 21, 0],
-  token: ['ds:3', 0, 1, 0, 21, 1, 3, 1],
+  apps: [0],
+  token: [1, 3, 1],
 } satisfies Record<string, Path>;
 
 export const NAME_INITIAL_MAPPINGS = {
-  apps: ['ds:3', 0, 1, 0, 22, 0],
-  token: ['ds:3', 0, 1, 0, 22, 1, 3, 1],
+  apps: [0],
+  token: [1, 3, 1],
 } satisfies Record<string, Path>;
+
+function isInitialLayoutRoot(value: unknown): boolean {
+  const apps = getPath(value, [0]);
+  const token = getPath(value, [1, 3, 1]);
+  return (
+    Array.isArray(apps) && (token === undefined || token === null || typeof token === 'string')
+  );
+}
+
+const initialLayoutRootSchema = z.custom<unknown[]>(isInitialLayoutRoot);
+
+export const numericInitialRootSpec = {
+  paths: [['ds:3', 0, 1, 0, 21]],
+  schema: initialLayoutRootSchema,
+  missing: optional(),
+} satisfies ScriptRootSpec;
+
+export const nameInitialRootSpec = {
+  paths: [['ds:3', 0, 1, 0, 22]],
+  schema: initialLayoutRootSchema,
+  missing: optional(),
+} satisfies ScriptRootSpec;
 
 export const CLUSTER_MAPPINGS = {
   apps: [0, 6, 0],

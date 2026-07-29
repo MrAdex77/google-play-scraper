@@ -2,12 +2,18 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { dataSafety, type DataSafetyOptions } from './datasafety.js';
-import { ValidationError } from '../../core/errors.js';
+import { ParseError, ValidationError } from '../../core/errors.js';
+import { DATA_SAFETY_RPC_ID } from './specs.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
 const fixture = readFileSync(
   fileURLToPath(new URL('../../../test/fixtures/datasafety/translate.html', import.meta.url)),
+  'utf8',
+);
+
+const missingFixture = readFileSync(
+  fileURLToPath(new URL('../../../test/fixtures/datasafety/missing.html', import.meta.url)),
   'utf8',
 );
 
@@ -57,8 +63,17 @@ describe('datasafety fixture parsing', () => {
   });
 });
 
-const buildDataSafetyHtml = (data: unknown): string =>
-  `<script>AF_initDataCallback({key: 'ds:3', hash: '1', data:${JSON.stringify(data)}, sideChannel: {}});</script>`;
+const buildScriptData = (key: string, data: unknown): string =>
+  `<script>AF_initDataCallback({key: '${key}', hash: '1', data:${JSON.stringify(data)}, sideChannel: {}});</script>`;
+
+const buildDataSafetyHtml = (data: unknown): string => buildScriptData('ds:3', data);
+
+const buildServiceTable = (entries: Record<string, string>): string => {
+  const pairs = Object.entries(entries)
+    .map(([key, rpcId]) => `'${key}' : {id:'${rpcId}'}`)
+    .join(',');
+  return `<script>; var AF_dataServiceRequests = {${pairs}}; var AF_initDataChunkQueue = [];</script>`;
+};
 
 const wrapSafetyNode = (node: Record<string, unknown>): unknown[] => {
   const inner: unknown[] = [];
@@ -71,6 +86,18 @@ const wrapSafetyNode = (node: Record<string, unknown>): unknown[] => {
 };
 
 describe('datasafety degraded pages', () => {
+  it('returns an empty report for the recorded missing-app page', async () => {
+    const result = await dataSafety({
+      appId: 'com.adex77.definitely.not.a.real.app',
+      requestOptions: { fetchImpl: fetchReturning(missingFixture) },
+    });
+
+    expect(result.sharedData).toEqual([]);
+    expect(result.collectedData).toEqual([]);
+    expect(result.securityPractices).toEqual([]);
+    expect(result.privacyPolicyUrl).toBeUndefined();
+  });
+
   it('returns empty defaults when the safety blocks are missing', async () => {
     const result = await dataSafety({
       appId: TRANSLATE,
@@ -81,6 +108,23 @@ describe('datasafety degraded pages', () => {
     expect(result.collectedData).toEqual([]);
     expect(result.securityPractices).toEqual([]);
     expect(result.privacyPolicyUrl).toBeUndefined();
+  });
+
+  it('returns empty defaults when report sections are explicitly null', async () => {
+    const node138: unknown[] = [];
+    node138[4] = [[null], [null]];
+    node138[9] = [null, null, null];
+
+    const result = await dataSafety({
+      appId: TRANSLATE,
+      requestOptions: {
+        fetchImpl: fetchReturning(buildDataSafetyHtml(wrapSafetyNode({ '138': node138 }))),
+      },
+    });
+
+    expect(result.sharedData).toEqual([]);
+    expect(result.collectedData).toEqual([]);
+    expect(result.securityPractices).toEqual([]);
   });
 
   it('skips entries without details and coerces the optional flag', async () => {
@@ -115,11 +159,14 @@ describe('datasafety degraded pages', () => {
     expect(result.privacyPolicyUrl).toBe('https://example.com/privacy');
   });
 
-  it('treats present non-array report sections as empty', async () => {
+  it('parses a report moved behind the Ws7gDc route', async () => {
     const node138: unknown[] = [];
-    node138[4] = [['invalid-shared'], ['invalid-collected']];
-    node138[9] = [null, null, 'invalid-practices'];
-    const html = buildDataSafetyHtml(wrapSafetyNode({ '138': node138 }));
+    node138[4] = [[], []];
+    const routed = wrapSafetyNode({ '138': node138 });
+    const html = `${buildScriptData('ds:3', ['malformed fallback'])}${buildScriptData(
+      'ds:11',
+      routed,
+    )}${buildServiceTable({ 'ds:11': DATA_SAFETY_RPC_ID })}`;
 
     const result = await dataSafety({
       appId: TRANSLATE,
@@ -129,6 +176,42 @@ describe('datasafety degraded pages', () => {
     expect(result.sharedData).toEqual([]);
     expect(result.collectedData).toEqual([]);
     expect(result.securityPractices).toEqual([]);
+  });
+
+  it('rejects present non-array report sections', async () => {
+    const node138: unknown[] = [];
+    node138[4] = [['invalid-shared'], ['invalid-collected']];
+    node138[9] = [null, null, 'invalid-practices'];
+    const html = buildDataSafetyHtml(wrapSafetyNode({ '138': node138 }));
+
+    await expect(
+      dataSafety({
+        appId: TRANSLATE,
+        requestOptions: { fetchImpl: fetchReturning(html) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
+  });
+
+  it('rejects a page with no declared report root', async () => {
+    await expect(
+      dataSafety({
+        appId: TRANSLATE,
+        requestOptions: { fetchImpl: fetchReturning('<html></html>') },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
+  });
+
+  it('rejects non-report ds:3 root variants', async () => {
+    const invalidRoots = [[null], wrapSafetyNode({}), wrapSafetyNode({ other: [] })];
+
+    for (const root of invalidRoots) {
+      await expect(
+        dataSafety({
+          appId: TRANSLATE,
+          requestOptions: { fetchImpl: fetchReturning(buildDataSafetyHtml(root)) },
+        }),
+      ).rejects.toBeInstanceOf(ParseError);
+    }
   });
 });
 
