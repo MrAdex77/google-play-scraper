@@ -789,6 +789,8 @@ An unknown `appId` or `devId` does not fail the same way everywhere, because Goo
 | Resolves with a typed empty value | `search` and `suggest` (`[]`), `reviews` (`{ data: [], nextPaginationToken: null }`), `permissions` (`[]`), `dataSafety` (empty arrays, no `privacyPolicyUrl`) |
 | Maps the throw to a status        | `availability` reports `unavailable`                                                                                                                           |
 
+Typed empties are limited to the documented response shapes above and other schema-backed empty variants. A structurally missing or malformed response root throws `ParseError`; a missing required field inside a valid root throws `SpecError`. Neither case is converted into an empty result, `0`, `false`, `Free`, or `VARY` unless that exact fallback is part of the documented field contract.
+
 ## Throttling and requestOptions
 
 Pass `throttle` to cap requests per second, and `requestOptions` to override the HTTP layer:
@@ -942,6 +944,24 @@ const results = await search({ term: 'panda', num: 100, onDegradation });
 
 A degraded call still resolves with the pages that parsed, so wire the callback to a metrics counter or log sink rather than treating it as an error path. If the callback itself throws, the error surfaces to the caller unchanged.
 
+Integrity events use the same shape but a separate type and callback:
+
+```typescript
+import { app, type IntegrityEvent } from '@mradex77/google-play-scraper';
+
+const onIntegrityEvent = (event: IntegrityEvent): void => {
+  metrics.increment('gplay.integrity', {
+    context: event.context,
+    reason: event.reason,
+  });
+};
+
+const details = await app({
+  appId: 'com.google.android.apps.translate',
+  onIntegrityEvent,
+});
+```
+
 | Callback           | Reason                   | Meaning                                                                |
 | ------------------ | ------------------------ | ---------------------------------------------------------------------- |
 | `onDegradation`    | `cluster-page-parse`     | A cluster continuation failed to parse and collected results returned. |
@@ -952,13 +972,15 @@ A degraded call still resolves with the pages that parsed, so wire the callback 
 Two boundaries to know:
 
 - An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion.
-- `reviews` pagination never degrades. A parse failure there propagates as a `ParseError`, so review reads fail loudly instead of silently shrinking.
+- `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`.
 
 With `memoized()`, `onDegradation`, `onIntegrityEvent`, and the lifecycle hooks `onRequest`, `onResponse`, and `onRetry` participate in the cache key by identity like any function option, so pass stable function references rather than inline closures to keep cache hits.
 
 ## Versioning and API stability
 
 This package follows [Semantic Versioning](https://semver.org). For a scraper the contract needs one clarification: semver covers the code surface this library controls, not the data Google serves.
+
+Integrity diagnostics use the additive API choice (Option B): the existing `DegradationEvent.reason` remains exactly `'cluster-page-parse'`, and the three new reasons live on the opt-in `onIntegrityEvent` callback. This preserves exhaustive switches and narrowly typed `onDegradation` handlers while adding observability without a major release.
 
 | Change                                                            | Release |
 | ----------------------------------------------------------------- | ------- |
