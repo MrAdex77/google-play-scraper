@@ -58,7 +58,7 @@ export function createSimilar(
     });
     const details = parseScriptData(detailsHtml);
 
-    const clusterPath = findSimilarClusterPath(details);
+    const clusterPath = findSimilarClusterPath(details, parsed.onIntegrityEvent);
     if (clusterPath === undefined) {
       return z.array(similarAppSchema).parse([]);
     }
@@ -71,6 +71,7 @@ export function createSimilar(
       clusterData,
       similarClusterPageRootSpec,
       'similar cluster page',
+      parsed.onIntegrityEvent,
     );
     const page = extractClusterPage(clusterRoot.root);
 
@@ -86,6 +87,7 @@ export function createSimilar(
       tokenPath: PAGINATION_MAPPINGS.token,
       context: SIMILAR_CONTEXT,
       onDegradation: parsed.onDegradation,
+      onIntegrityEvent: parsed.onIntegrityEvent,
     });
 
     if (parsed.fullDetail) {

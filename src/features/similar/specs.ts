@@ -4,6 +4,7 @@ import { getPath, type Path } from '../../core/path.js';
 import { rawArrayPathSchema } from '../../core/raw.js';
 import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.js';
 import type { ScriptData } from '../../core/scriptData.js';
+import type { OnIntegrityEvent } from '../../core/integrity.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { similarAppSchema } from './schema.js';
 import * as z from 'zod/mini';
@@ -60,8 +61,16 @@ export function similarClusterUrl(clusterPath: string, lang: string, country: st
   return `${BASE_URL}${clusterPath}&gl=${country}&hl=${lang}`;
 }
 
-export function findSimilarClusterPath(data: ScriptData): string | undefined {
-  const resolved = resolveScriptRoot(data, similarDetailsRootSpec, 'similar details');
+export function findSimilarClusterPath(
+  data: ScriptData,
+  onIntegrityEvent?: OnIntegrityEvent,
+): string | undefined {
+  const resolved = resolveScriptRoot(
+    data,
+    similarDetailsRootSpec,
+    'similar details',
+    onIntegrityEvent,
+  );
   const clusters = getPath(resolved.root, CLUSTERS_PATH);
   if (Array.isArray(clusters)) {
     for (const cluster of clusters) {

@@ -7,6 +7,7 @@ import { searchResultSchema, type SearchResult } from './schema.js';
 import type { App } from '../app/schema.js';
 import type { DegradationEvent } from '../../core/degradation.js';
 import { ParseError, ValidationError } from '../../core/errors.js';
+import type { IntegrityEvent } from '../../core/integrity.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -218,7 +219,7 @@ const exactMatchNode = (id: string): unknown[] => {
 };
 
 const searchPageWithSection = (section: unknown[]): string =>
-  buildScriptData('ds:4', [[null, [section]]]);
+  `${buildScriptData('ds:4', [[null, [section]]])}${buildServiceTable({ 'ds:4': SEARCH_RPC_ID })}`;
 
 const sectionWithApps = (ids: string[]): unknown[] => {
   const section: unknown[] = [];
@@ -253,6 +254,38 @@ describe('search malformed pages', () => {
   it('skips a malformed exact match block and keeps the section apps', async () => {
     const section = sectionWithApps(['a', 'b']);
     section[23] = ['garbage'];
+    const events: IntegrityEvent[] = [];
+
+    const results = (await search({
+      term: 'panda',
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('search');
+    expect(events[0]?.reason).toBe('optional-section-parse');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+  });
+
+  it('emits nothing when the exact match block is absent', async () => {
+    const events: IntegrityEvent[] = [];
+    const results = (await search({
+      term: 'panda',
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: {
+        fetchImpl: fetchReturning(searchPageWithSection(sectionWithApps(['a', 'b']))),
+      },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+    expect(events).toEqual([]);
+  });
+
+  it('keeps ordinary results when no exact match observer is configured', async () => {
+    const section = sectionWithApps(['a', 'b']);
+    section[23] = ['garbage'];
 
     const results = (await search({
       term: 'panda',
@@ -260,6 +293,21 @@ describe('search malformed pages', () => {
     })) as SearchResult[];
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+  });
+
+  it('lets a throwing exact match callback surface to the consumer', async () => {
+    const section = sectionWithApps(['a']);
+    section[23] = ['garbage'];
+
+    await expect(
+      search({
+        term: 'panda',
+        onIntegrityEvent: () => {
+          throw new Error('consumer handler bug');
+        },
+        requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+      }),
+    ).rejects.toThrow('consumer handler bug');
   });
 
   it('does not duplicate an exact match already present in the results', async () => {

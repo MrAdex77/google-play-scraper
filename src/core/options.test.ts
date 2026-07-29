@@ -81,6 +81,27 @@ describe('parseOptions', () => {
     expect(parsed.onDegradation).toBeUndefined();
   });
 
+  it('accepts a function as the integrity callback', () => {
+    const onIntegrityEvent = (): void => undefined;
+    const parsed = parseOptions(baseOptionsSchema, { onIntegrityEvent }, 'listApps');
+
+    expect(parsed.onIntegrityEvent).toBe(onIntegrityEvent);
+  });
+
+  it('rejects a non function integrity callback naming the field', () => {
+    const act = (): unknown =>
+      parseOptions(baseOptionsSchema, { onIntegrityEvent: 42 }, 'listApps');
+
+    expect(act).toThrow(ValidationError);
+    expect(act).toThrow(/onIntegrityEvent/);
+  });
+
+  it('parses the integrity callback to undefined when omitted', () => {
+    const parsed = parseOptions(baseOptionsSchema, {}, 'listApps');
+
+    expect(parsed.onIntegrityEvent).toBeUndefined();
+  });
+
   it('accepts the three lifecycle hooks in request options', () => {
     const onRequest = (): void => undefined;
     const onResponse = (): void => undefined;

@@ -1,6 +1,7 @@
 import * as z from 'zod/mini';
 import { sort } from '../../constants.js';
 import { parseBatchResponse } from '../../core/batchexecute.js';
+import { ParseError } from '../../core/errors.js';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
@@ -40,7 +41,7 @@ type ReviewItem = Extracted<typeof reviewItemSpecs>;
 
 export type ReviewPageQuery = Pick<
   ParsedReviewsOptions,
-  'appId' | 'sort' | 'lang' | 'country' | 'nextPaginationToken'
+  'appId' | 'sort' | 'lang' | 'country' | 'nextPaginationToken' | 'onIntegrityEvent'
 >;
 
 export interface ReviewsPage {
@@ -101,7 +102,16 @@ export async function* reviewPages(
     const page = await fetchReviewsPage(client, options, token);
     yield page;
 
-    if (page.token === undefined || seenTokens.has(page.token)) {
+    if (page.token === undefined) {
+      return;
+    }
+    if (seenTokens.has(page.token)) {
+      const error = new ParseError(`${REVIEWS_CONTEXT}: pagination token cycle detected`);
+      options.onIntegrityEvent?.({
+        context: REVIEWS_CONTEXT,
+        reason: 'pagination-token-cycle',
+        error,
+      });
       return;
     }
     seenTokens.add(page.token);

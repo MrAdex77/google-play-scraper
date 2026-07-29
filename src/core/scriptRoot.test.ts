@@ -68,6 +68,16 @@ describe('resolveScriptRoot', () => {
     expect(events[0]?.error.message).toContain('ds:5');
   });
 
+  it('lets a throwing integrity callback surface to the consumer', () => {
+    const data = scriptData({ 'ds:5': { title: 'Fallback' } }, {});
+
+    expect(() =>
+      resolveScriptRoot(data, rootSpec(), 'app details', () => {
+        throw new Error('consumer handler bug');
+      }),
+    ).toThrow('consumer handler bug');
+  });
+
   it('rejects a present malformed absolute fallback', () => {
     const data = scriptData({ 'ds:5': { title: 5 } }, {});
 

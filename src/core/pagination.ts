@@ -2,6 +2,7 @@ import { BATCH_URL, parseBatchResponse } from './batchexecute.js';
 import type { OnDegradation } from './degradation.js';
 import { ParseError } from './errors.js';
 import type { HttpClient } from './http.js';
+import type { OnIntegrityEvent } from './integrity.js';
 import { getPath, type Path } from './path.js';
 import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.js';
 import { extract, type Extracted, type SpecMap } from './spec.js';
@@ -37,6 +38,7 @@ export interface ClusterPagesParams<M extends SpecMap> {
   tokenPath: Path;
   context: string;
   onDegradation?: OnDegradation;
+  onIntegrityEvent?: OnIntegrityEvent;
 }
 
 export interface FetchClusterAppsParams<M extends SpecMap> extends ClusterPagesParams<M> {
@@ -71,7 +73,12 @@ export async function* clusterPages<M extends SpecMap>(
     z.nullable(z.string()),
   );
 
-  while (token !== undefined && !seenTokens.has(token)) {
+  while (token !== undefined) {
+    if (seenTokens.has(token)) {
+      const error = new ParseError(`${context}: pagination token cycle detected`);
+      params.onIntegrityEvent?.({ context, reason: 'pagination-token-cycle', error });
+      return;
+    }
     seenTokens.add(token);
     const body = buildClusterBody(CLUSTER_PAGE_SIZE, token);
 

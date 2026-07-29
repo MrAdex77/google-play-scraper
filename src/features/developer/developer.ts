@@ -131,6 +131,7 @@ export function createDeveloper(
       tokenPath: CLUSTER_MAPPINGS.token,
       context: DEVELOPER_CONTEXT,
       onDegradation: parsed.onDegradation,
+      onIntegrityEvent: parsed.onIntegrityEvent,
     });
 
     const sliced = items.slice(0, parsed.num);

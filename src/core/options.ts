@@ -2,6 +2,7 @@ import { safeParse, type $ZodType } from 'zod/v4/core';
 import * as z from 'zod/mini';
 import type { OnDegradation } from './degradation.js';
 import type { OnRequest, OnResponse, OnRetry } from './http.js';
+import type { OnIntegrityEvent } from './integrity.js';
 import { ValidationError } from './errors.js';
 
 export const requestOptionsSchema = z.object({
@@ -23,6 +24,7 @@ export const baseOptionsSchema = z.object({
   throttle: z.optional(z.number().check(z.positive(), z.lte(50))),
   requestOptions: z.optional(requestOptionsSchema),
   onDegradation: z.optional(z.custom<OnDegradation>((value) => typeof value === 'function')),
+  onIntegrityEvent: z.optional(z.custom<OnIntegrityEvent>((value) => typeof value === 'function')),
 });
 
 export type BaseOptions = z.infer<typeof baseOptionsSchema>;

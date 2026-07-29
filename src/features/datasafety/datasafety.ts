@@ -41,7 +41,12 @@ export function createDataSafety(resolveClient: ResolveClient = clientFromOption
       return emptyDataSafetyReport();
     }
     const data = parseScriptData(html);
-    const root = resolveScriptRoot(data, dataSafetyRootSpec, `${DATA_SAFETY_CONTEXT} root`);
+    const root = resolveScriptRoot(
+      data,
+      dataSafetyRootSpec,
+      `${DATA_SAFETY_CONTEXT} root`,
+      parsed.onIntegrityEvent,
+    );
     const extracted = extract(root.root, dataSafetySpecs, DATA_SAFETY_CONTEXT);
 
     return dataSafetySchema.parse(extracted);

@@ -2,6 +2,7 @@ import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
 import { ParseError } from '../../core/errors.js';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
+import { parseOptionalSection, type OnIntegrityEvent } from '../../core/integrity.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
 import { fetchClusterApps } from '../../core/pagination.js';
@@ -42,7 +43,7 @@ type SearchItem = Extracted<typeof searchPageItemSpecs>;
 
 export type SearchQuery = Pick<
   ParsedSearchOptions,
-  'term' | 'lang' | 'country' | 'price' | 'throttle' | 'requestOptions'
+  'term' | 'lang' | 'country' | 'price' | 'throttle' | 'requestOptions' | 'onIntegrityEvent'
 >;
 
 interface FirstPage {
@@ -70,19 +71,25 @@ export async function fetchSearchFirstPage(
   const client = resolveClient(query);
   const html = await client.request({ url: `${SEARCH_URL}?${params.toString()}` });
   const data = parseScriptData(html);
-  const root = resolveScriptRoot(data, searchRootSpec, 'search root');
-  return { client, page: firstPage(root.root) };
+  const root = resolveScriptRoot(data, searchRootSpec, 'search root', query.onIntegrityEvent);
+  return { client, page: firstPage(root.root, query.onIntegrityEvent) };
 }
 
-function prependExactMatch(root: unknown, apps: SearchItem[]): SearchItem[] {
+function prependExactMatch(
+  root: unknown,
+  apps: SearchItem[],
+  onIntegrityEvent?: OnIntegrityEvent,
+): SearchItem[] {
   const exactMatchData = getPath(root, INITIAL_MAPPINGS.app);
   if (exactMatchData === undefined || exactMatchData === null) {
     return apps;
   }
-  let exactMatch: SearchItem;
-  try {
-    exactMatch = extract(exactMatchData, exactMatchSpecs, SEARCH_CONTEXT);
-  } catch {
+  const exactMatch = parseOptionalSection(
+    SEARCH_CONTEXT,
+    () => extract(exactMatchData, exactMatchSpecs, SEARCH_CONTEXT),
+    onIntegrityEvent,
+  );
+  if (exactMatch === undefined) {
     return apps;
   }
   if (apps.some((item) => item.appId === exactMatch.appId)) {
@@ -91,7 +98,7 @@ function prependExactMatch(root: unknown, apps: SearchItem[]): SearchItem[] {
   return [exactMatch, ...apps];
 }
 
-function firstPage(root: unknown): FirstPage {
+function firstPage(root: unknown, onIntegrityEvent?: OnIntegrityEvent): FirstPage {
   const sections = getPath(root, INITIAL_MAPPINGS.sections);
   if (!Array.isArray(sections)) {
     throw new ParseError(`${SEARCH_CONTEXT}: validated sections root is unavailable`);
@@ -102,7 +109,7 @@ function firstPage(root: unknown): FirstPage {
       const extracted = apps.map((item) => extract(item, searchItemSpecs, SEARCH_CONTEXT));
       const token = getPath(section, SECTIONS_MAPPING.token);
       return {
-        apps: prependExactMatch(root, extracted),
+        apps: prependExactMatch(root, extracted, onIntegrityEvent),
         token: typeof token === 'string' ? token : undefined,
       };
     }
@@ -130,6 +137,7 @@ export function createSearch(
       tokenPath: CLUSTER_MAPPINGS.token,
       context: SEARCH_CONTEXT,
       onDegradation: parsed.onDegradation,
+      onIntegrityEvent: parsed.onIntegrityEvent,
     });
 
     const sliced = filterByPrice(items, parsed.price).slice(0, parsed.num);

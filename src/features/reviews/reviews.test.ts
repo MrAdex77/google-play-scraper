@@ -7,6 +7,7 @@ import { reviewSchema } from './schema.js';
 import { createHttpClient } from '../../core/http.js';
 import { sort } from '../../constants.js';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
+import type { IntegrityEvent } from '../../core/integrity.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -150,15 +151,40 @@ describe('reviews degraded payloads', () => {
       reviewsBatch([reviewEntry('r3')], 'repeated-token'),
     ]);
 
+    const events: IntegrityEvent[] = [];
     const result = await reviews({
       appId: TRANSLATE,
       num: 100,
+      onIntegrityEvent: (event) => events.push(event),
       requestOptions: { fetchImpl },
     });
 
     expect(count()).toBe(2);
     expect(result.data.map((review) => review.id)).toEqual(['r1', 'r2', 'r3']);
     expect(result.nextPaginationToken).toBeNull();
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('reviews');
+    expect(events[0]?.reason).toBe('pagination-token-cycle');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+    expect(events[0]?.error.message).not.toContain('repeated-token');
+  });
+
+  it('lets a throwing review token cycle callback surface to the consumer', async () => {
+    const { fetchImpl } = sequenceFetch([
+      reviewsBatch([reviewEntry('r1')], 'repeated-token'),
+      reviewsBatch([reviewEntry('r2')], 'repeated-token'),
+    ]);
+
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        num: 100,
+        onIntegrityEvent: () => {
+          throw new Error('consumer handler bug');
+        },
+        requestOptions: { fetchImpl },
+      }),
+    ).rejects.toThrow('consumer handler bug');
   });
 
   it('treats an empty token as the final page', async () => {

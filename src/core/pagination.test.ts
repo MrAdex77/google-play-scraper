@@ -11,6 +11,7 @@ import { BATCH_URL } from './batchexecute.js';
 import type { DegradationEvent } from './degradation.js';
 import { ParseError } from './errors.js';
 import type { HttpClient, HttpRequest } from './http.js';
+import type { IntegrityEvent } from './integrity.js';
 import { required, type SpecMap } from './spec.js';
 
 const itemSpecs = {
@@ -194,6 +195,7 @@ describe('clusterPages', () => {
       batchResponse([['b']], 'repeated-token'),
     ]);
 
+    const events: IntegrityEvent[] = [];
     const pages = await collectPages(
       clusterPages({
         client,
@@ -205,11 +207,37 @@ describe('clusterPages', () => {
         appsPath: APPS_PATH,
         tokenPath: TOKEN_PATH,
         context: 'test',
+        onIntegrityEvent: (event) => events.push(event),
       }),
     );
 
     expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
     expect(requests).toHaveLength(1);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('test');
+    expect(events[0]?.reason).toBe('pagination-token-cycle');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+    expect(events[0]?.error.message).not.toContain('repeated-token');
+  });
+
+  it('lets a throwing token cycle callback surface to the consumer', async () => {
+    const { client } = queuedClient([batchResponse([['a']], 'repeated-token')]);
+    const generator = clusterPages({
+      client,
+      lang: 'en',
+      country: 'us',
+      initialApps: [],
+      initialToken: 'repeated-token',
+      itemSpecs,
+      appsPath: APPS_PATH,
+      tokenPath: TOKEN_PATH,
+      context: 'test',
+      onIntegrityEvent: () => {
+        throw new Error('consumer handler bug');
+      },
+    });
+
+    await expect(collectPages(generator)).rejects.toThrow('consumer handler bug');
   });
 
   it('stops gracefully when a continuation page fails to parse', async () => {
