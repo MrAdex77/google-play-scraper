@@ -3,7 +3,9 @@ import type { OnDegradation } from './degradation.js';
 import { ParseError } from './errors.js';
 import type { HttpClient } from './http.js';
 import { getPath, type Path } from './path.js';
+import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.js';
 import { extract, type Extracted, type SpecMap } from './spec.js';
+import * as z from 'zod/mini';
 
 export const CLUSTER_RPC_ID = 'qnKhOb';
 export const CLUSTER_PAGE_SIZE = 100;
@@ -41,6 +43,17 @@ export interface FetchClusterAppsParams<M extends SpecMap> extends ClusterPagesP
   num: number;
 }
 
+function numericPath(path: Path, context: string): number[] {
+  const result: number[] = [];
+  for (const segment of path) {
+    if (typeof segment !== 'number') {
+      throw new ParseError(`${context} response path must contain only array indexes`);
+    }
+    result.push(segment);
+  }
+  return result;
+}
+
 export async function* clusterPages<M extends SpecMap>(
   params: ClusterPagesParams<M>,
 ): AsyncGenerator<Extracted<M>[], void, undefined> {
@@ -52,6 +65,11 @@ export async function* clusterPages<M extends SpecMap>(
 
   const seenTokens = new Set<string>();
   let token = asToken(params.initialToken);
+  const appsPageSchema = rawArrayPathSchema(numericPath(appsPath, context), z.array(z.unknown()));
+  const tokenPageSchema = rawOptionalArrayPathSchema(
+    numericPath(tokenPath, context),
+    z.nullable(z.string()),
+  );
 
   while (token !== undefined && !seenTokens.has(token)) {
     seenTokens.add(token);
@@ -61,6 +79,8 @@ export async function* clusterPages<M extends SpecMap>(
     try {
       const text = await client.request({ url: clusterUrl(lang, country), method: 'POST', body });
       const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
+      parseRaw(appsPageSchema, payload, `${context} continuation apps response`);
+      parseRaw(tokenPageSchema, payload, `${context} continuation token response`);
 
       const apps = getPath(payload, appsPath);
       if (!Array.isArray(apps) || apps.length === 0) {

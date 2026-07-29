@@ -1,6 +1,7 @@
 import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.js';
 import type { Path } from '../../core/path.js';
+import { rawArrayPathSchema, rawOptionalArrayPathSchema } from '../../core/raw.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { sanitizeText } from '../../core/text.js';
 import { reviewSchema } from './schema.js';
@@ -28,6 +29,16 @@ export const REVIEWS_RESPONSE_PATHS = {
   reviews: [0],
   token: [1, 1],
 } satisfies Record<string, Path>;
+
+export const reviewsCollectionResponseSchema = z.union([
+  z.literal(null),
+  z.tuple([]),
+  rawArrayPathSchema(REVIEWS_RESPONSE_PATHS.reviews, z.nullable(z.array(z.unknown()))),
+]);
+export const reviewsTokenResponseSchema = z.union([
+  z.literal(null),
+  rawOptionalArrayPathSchema(REVIEWS_RESPONSE_PATHS.token, z.nullable(z.string())),
+]);
 
 const shape = reviewSchema.shape;
 const REQUIRED = required();

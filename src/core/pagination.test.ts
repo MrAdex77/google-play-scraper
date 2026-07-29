@@ -29,6 +29,14 @@ const batchResponse = (apps: unknown[], token: string | null): string => {
   return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
 };
 
+const batchResponseWithoutToken = (apps: unknown[]): string => {
+  const inner: unknown[] = [];
+  inner[0] = apps;
+  const payload = [[inner]];
+  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
+  return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
+};
+
 const queuedClient = (responses: string[]): { client: HttpClient; requests: HttpRequest[] } => {
   const requests: HttpRequest[] = [];
   let index = 0;
@@ -138,6 +146,46 @@ describe('clusterPages', () => {
 
     expect(pages).toHaveLength(1);
     expect(requests).toHaveLength(1);
+  });
+
+  it('ends when a page omits the continuation token holder', async () => {
+    const { client, requests } = queuedClient([batchResponseWithoutToken([['a']])]);
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+      }),
+    );
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
+    expect(requests).toHaveLength(1);
+  });
+
+  it('rejects a response path containing a non-array segment', async () => {
+    const { client } = queuedClient([]);
+    const generator = clusterPages({
+      client,
+      lang: 'en',
+      country: 'us',
+      initialApps: [],
+      initialToken: 't1',
+      itemSpecs,
+      appsPath: ['root'],
+      tokenPath: TOKEN_PATH,
+      context: 'test',
+    });
+
+    await expect(collectPages(generator)).rejects.toThrow(
+      'test response path must contain only array indexes',
+    );
   });
 
   it('stops when the server repeats a pagination token', async () => {

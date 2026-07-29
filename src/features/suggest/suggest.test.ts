@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { suggest } from './suggest.js';
 import { SUGGEST_RPC_ID } from './specs.js';
-import { ValidationError } from '../../core/errors.js';
+import { ParseError, ValidationError } from '../../core/errors.js';
 
 const pandFixture = readFileSync(
   fileURLToPath(new URL('../../../test/fixtures/suggest/pand.txt', import.meta.url)),
@@ -50,17 +50,31 @@ describe('suggest', () => {
     expect(results).toEqual([]);
   });
 
-  it('returns an empty array when the suggestion entries are not an array', async () => {
-    const payload = JSON.stringify([['not-entries']]);
+  it('returns an empty array when the suggestion collection is null', async () => {
+    const payload = JSON.stringify([[null, ['metadata']]]);
     const frame = JSON.stringify([
       ['wrb.fr', SUGGEST_RPC_ID, payload, null, null, null, 'generic'],
     ]);
+
     const results = await suggest({
       term: 'pand',
       requestOptions: { fetchImpl: fetchReturning(`)]}'\n\n${frame}`) },
     });
 
     expect(results).toEqual([]);
+  });
+
+  it('rejects a response whose suggestion entries are not an array', async () => {
+    const payload = JSON.stringify([['not-entries']]);
+    const frame = JSON.stringify([
+      ['wrb.fr', SUGGEST_RPC_ID, payload, null, null, null, 'generic'],
+    ]);
+    await expect(
+      suggest({
+        term: 'pand',
+        requestOptions: { fetchImpl: fetchReturning(`)]}'\n\n${frame}`) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
   });
 
   it('posts a body that decodes back to the expected payload', async () => {

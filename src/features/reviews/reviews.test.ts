@@ -6,7 +6,7 @@ import { REVIEWS_RPC_ID } from './specs.js';
 import { reviewSchema } from './schema.js';
 import { createHttpClient } from '../../core/http.js';
 import { sort } from '../../constants.js';
-import { SpecError, ValidationError } from '../../core/errors.js';
+import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -134,12 +134,14 @@ const reviewEntry = (id: string): unknown[] => {
   return entry;
 };
 
-const reviewsBatch = (entries: unknown, token: string | null): string => {
-  const payload = [entries, [null, token]];
+const reviewsPayloadBatch = (payload: unknown): string => {
   const frame = [['wrb.fr', REVIEWS_RPC_ID, JSON.stringify(payload), null, null, null, 'generic']];
   const json = JSON.stringify(frame);
   return `)]}'\n\n${json.length.toString()}\n${json}`;
 };
+
+const reviewsBatch = (entries: unknown, token: string | null): string =>
+  reviewsPayloadBatch([entries, [null, token]]);
 
 describe('reviews degraded payloads', () => {
   it('stops accumulating when the server repeats a pagination token', async () => {
@@ -164,6 +166,17 @@ describe('reviews degraded payloads', () => {
       appId: TRANSLATE,
       paginate: true,
       requestOptions: { fetchImpl: fetchReturning(reviewsBatch([reviewEntry('r1')], '')) },
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('treats an omitted token holder as the final page', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsPayloadBatch([[reviewEntry('r1')]])) },
     });
 
     expect(result.data).toHaveLength(1);
@@ -249,6 +262,27 @@ describe('reviews degraded payloads', () => {
 
     expect(result.data).toEqual([]);
     expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('returns an empty page for the recorded missing-app payload', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsPayloadBatch([])) },
+    });
+
+    expect(result.data).toEqual([]);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('rejects a response whose reviews block is not an array or null', async () => {
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        requestOptions: { fetchImpl: fetchReturning(reviewsBatch('invalid', null)) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
   });
 
   it('drops a reply date that does not resolve to a valid time', async () => {

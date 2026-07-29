@@ -8,6 +8,7 @@ import { parseBatchResponse } from '../../core/batchexecute.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
+import { parseRaw } from '../../core/raw.js';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.js';
 import { extract } from '../../core/spec.js';
 import { app } from '../app/app.js';
@@ -19,6 +20,7 @@ import {
   CLUSTER_NAMES,
   listItemSpecs,
   LIST_RPC_ID,
+  listResponseSchema,
   listUrl,
 } from './specs.js';
 
@@ -52,6 +54,7 @@ export function createList(getApp: GetApp<App>, resolveClient: ResolveClient = c
     });
 
     const payload = parseBatchResponse(text, LIST_RPC_ID);
+    parseRaw(listResponseSchema, payload, `${LIST_CONTEXT} response`);
     const appsData = getPath(payload, APPS_PATH);
     const items = Array.isArray(appsData)
       ? appsData.map((item) => extract(item, listItemSpecs, LIST_CONTEXT))

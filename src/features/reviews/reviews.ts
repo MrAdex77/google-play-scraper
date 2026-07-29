@@ -4,6 +4,7 @@ import { parseBatchResponse } from '../../core/batchexecute.js';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
+import { parseRaw } from '../../core/raw.js';
 import { extract, type Extracted } from '../../core/spec.js';
 import { reviewsResultSchema, type ReviewsResult } from './schema.js';
 import {
@@ -12,6 +13,8 @@ import {
   REVIEWS_RESPONSE_PATHS,
   REVIEWS_RPC_ID,
   reviewItemSpecs,
+  reviewsCollectionResponseSchema,
+  reviewsTokenResponseSchema,
   reviewsUrl,
 } from './specs.js';
 
@@ -63,6 +66,8 @@ async function fetchReviewsPage(
   });
 
   const payload = parseBatchResponse(text, REVIEWS_RPC_ID);
+  parseRaw(reviewsCollectionResponseSchema, payload, `${REVIEWS_CONTEXT} collection response`);
+  parseRaw(reviewsTokenResponseSchema, payload, `${REVIEWS_CONTEXT} token response`);
   const rawReviews = getPath(payload, REVIEWS_RESPONSE_PATHS.reviews);
   const reviews = Array.isArray(rawReviews)
     ? rawReviews.map((item) => extract(item, reviewItemSpecs, REVIEWS_CONTEXT))
