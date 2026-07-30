@@ -59,6 +59,17 @@ describe('list degraded payloads', () => {
     expect(items).toEqual([]);
   });
 
+  it('returns an empty list when google reports a collection with no entries', async () => {
+    const items = (await list({
+      collection: 'TOP_PAID',
+      requestOptions: {
+        fetchImpl: fetchReturning(listBatch([[null, null, null, [], false, ['token']]])),
+      },
+    })) as ListItem[];
+
+    expect(items).toEqual([]);
+  });
+
   it('rejects a payload with no apps path', async () => {
     await expect(
       list({ requestOptions: { fetchImpl: fetchReturning(listBatch([])) } }),

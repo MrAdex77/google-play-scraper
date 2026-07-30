@@ -50,7 +50,11 @@ export function buildListBody({ num, collection, category }: ListBodyParams): st
 }
 
 export const APPS_PATH: readonly number[] = [0, 1, 0, 28, 0];
-export const listResponseSchema = rawArrayPathSchema(APPS_PATH, z.array(z.unknown()));
+const EMPTY_COLLECTION_PATH: readonly number[] = [0, 1];
+export const listResponseSchema = z.union([
+  rawArrayPathSchema(EMPTY_COLLECTION_PATH, z.null()),
+  rawArrayPathSchema(APPS_PATH, z.array(z.unknown())),
+]);
 
 export const listItemSpecs = {
   title: { paths: [[0, 3]], missing: REQUIRED, schema: shape.title },
