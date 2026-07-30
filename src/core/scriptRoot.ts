@@ -96,11 +96,11 @@ export function resolveScriptRoot(
   context: string,
   onIntegrityEvent?: OnIntegrityEvent,
 ): ResolvedScriptRoot {
-  const matches = (candidates: readonly RootCandidate[]): RootCandidate[] =>
-    candidates.filter((candidate) => safeParse(spec.schema, candidate.root).success);
+  const matchesSchema = (candidate: RootCandidate): boolean =>
+    safeParse(spec.schema, candidate.root).success;
 
   const routed = routedCandidates(data, spec.rpcId);
-  const routedMatches = matches(routed);
+  const routedMatches = routed.filter(matchesSchema);
   if (spec.rpcId !== undefined && routedMatches.length > 1) {
     const names = routedMatches.map((candidate) => candidate.name).join(', ');
     throw new ParseError(`${context}: rpc ${spec.rpcId} is ambiguous across ${names}`);
@@ -111,7 +111,7 @@ export function resolveScriptRoot(
   }
 
   const fallbacks = fallbackCandidates(data, spec.paths);
-  const fallbackMatch = matches(fallbacks)[0];
+  const fallbackMatch = fallbacks.find(matchesSchema);
   if (fallbackMatch !== undefined) {
     if (spec.rpcId !== undefined) {
       const error = new ParseError(
