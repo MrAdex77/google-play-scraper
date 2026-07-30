@@ -130,8 +130,12 @@ export function movePath<T>(value: T, sourcePath: MutationPath, targetPath: Muta
   }
   const sourceParent = containerAt(cloned, sourcePath.slice(0, -1));
   const targetParent = containerAt(cloned, targetPath.slice(0, -1));
-  Reflect.deleteProperty(sourceParent, sourceSegment);
-  Reflect.set(targetParent, targetSegment, sourceValue);
+  if (!Reflect.deleteProperty(sourceParent, sourceSegment)) {
+    throw new Error(`mutation source path could not be deleted: ${pathLabel(sourcePath)}`);
+  }
+  if (!Reflect.set(targetParent, targetSegment, sourceValue)) {
+    throw new Error(`mutation target path could not be set: ${pathLabel(targetPath)}`);
+  }
   return cloned;
 }
 
