@@ -152,7 +152,7 @@ Every method accepts a single options object. These options are available on all
 | `throttle`         | `number`   | none    | Maximum requests per second across a single call.                                                              |
 | `requestOptions`   | `object`   | none    | HTTP overrides. See [Throttling and requestOptions](#throttling-and-requestoptions).                           |
 | `onDegradation`    | `function` | none    | Callback fired when a call degrades gracefully. See [Monitoring drift](#monitoring-drift).                     |
-| `onIntegrityEvent` | `function` | none    | Callback fired when routing or best-effort parsing needs attention. See [Monitoring drift](#monitoring-drift). |
+| `onIntegrityEvent` | `function` | none    | Callback fired when routing, parsing or pagination needs attention. See [Monitoring drift](#monitoring-drift). |
 
 ## Shared client
 
@@ -972,6 +972,7 @@ const details = await app({
 Two boundaries to know:
 
 - An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion.
+- `app` emits `optional-section-parse` with context `app comments` for listings that serve no featured comment block, which is common for small and new apps. Treat a rising rate as a signal, not each event.
 - `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`.
 
 With `memoized()`, `onDegradation`, `onIntegrityEvent`, and the lifecycle hooks `onRequest`, `onResponse`, and `onRetry` participate in the cache key by identity like any function option, so pass stable function references rather than inline closures to keep cache hits.
