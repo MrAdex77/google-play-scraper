@@ -119,9 +119,10 @@ export const appSpecs = {
       typeof value === 'number' && value !== 0 ? microsToUnits(value) : undefined,
   },
   discountEndDate: {
-    paths: [[1, 2, 57, 0, 0, 0, 0, 14, 1]],
+    paths: [[1, 2, 57, 0, 0, 0, 0, 14, 0, 0]],
     missing: OPTIONAL,
     schema: shape.discountEndDate,
+    transform: (value) => (typeof value === 'number' ? value * 1000 : value),
   },
   free: {
     paths: [[1, 2, 57, 0, 0, 0, 0, 1, 0, 0]],

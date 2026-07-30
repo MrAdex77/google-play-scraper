@@ -287,6 +287,36 @@ describe('app', () => {
     expect(result.free).toBe(false);
   });
 
+  it('reads the discount end date from the timestamp beside its localized labels', async () => {
+    const data = parseScriptData(minecraftHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
+    offer[14] = [[1786492799], 'Sale ends in 12 days', 'Offer ends 8/12/26, 1:59 AM'];
+
+    const result = await app({
+      appId: 'com.mojang.minecraftpe',
+      requestOptions: { fetchImpl: fetchReturning(buildScriptData('ds:5', ds5)) },
+    });
+
+    expect(result.discountEndDate).toBe(1786492799000);
+  });
+
+  it('rejects a discount end date that is not a timestamp', async () => {
+    const data = parseScriptData(minecraftHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
+    offer[14] = [['not a timestamp'], 'Sale ends in 12 days'];
+
+    await expect(
+      app({
+        appId: 'com.mojang.minecraftpe',
+        requestOptions: { fetchImpl: fetchReturning(buildScriptData('ds:5', ds5)) },
+      }),
+    ).rejects.toBeInstanceOf(SpecError);
+  });
+
   it('throws a SpecError naming the field when the title path is blank', async () => {
     const data = parseScriptData(translateHtml);
     const ds5 = data.blocks['ds:5'] as unknown[];

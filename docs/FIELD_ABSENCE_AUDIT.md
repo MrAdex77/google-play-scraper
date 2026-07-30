@@ -27,7 +27,7 @@
 | app          | `histogram`                 | default zeroed                                      | established test | unrated listings yield a zero filled histogram              |
 | app          | `price`                     | required                                            | recorded fixture | price micros present in all app fixtures                    |
 | app          | `originalPrice`             | optional                                            | recorded fixture | absent in all app fixtures without an active discount       |
-| app          | `discountEndDate`           | optional                                            | recorded fixture | absent in all app fixtures without an active discount       |
+| app          | `discountEndDate`           | optional                                            | established test | discount timestamp parses, non numeric timestamp rejects    |
 | app          | `free`                      | required                                            | recorded fixture | price micros present in all app fixtures                    |
 | app          | `currency`                  | optional                                            | pinned reference | absent currency remains undefined                           |
 | app          | `priceText`                 | required                                            | recorded fixture | price text present in all app fixtures                      |
