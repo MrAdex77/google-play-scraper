@@ -24,14 +24,14 @@
 | app          | `scoreText`                 | optional                                            | pinned reference | unrated listings may omit score metadata                    |
 | app          | `ratings`                   | optional                                            | pinned reference | unrated listings may omit rating counts                     |
 | app          | `reviews`                   | optional                                            | pinned reference | listings may omit review counts                             |
-| app          | `histogram`                 | required                                            | recorded fixture | histogram source present in all app fixtures                |
+| app          | `histogram`                 | default zeroed                                      | established test | unrated listings yield a zero filled histogram              |
 | app          | `price`                     | required                                            | recorded fixture | price micros present in all app fixtures                    |
 | app          | `originalPrice`             | optional                                            | recorded fixture | absent in all app fixtures without an active discount       |
 | app          | `discountEndDate`           | optional                                            | recorded fixture | absent in all app fixtures without an active discount       |
 | app          | `free`                      | required                                            | recorded fixture | price micros present in all app fixtures                    |
 | app          | `currency`                  | optional                                            | pinned reference | absent currency remains undefined                           |
 | app          | `priceText`                 | required                                            | recorded fixture | price text present in all app fixtures                      |
-| app          | `available`                 | required                                            | recorded fixture | availability source present in all app fixtures             |
+| app          | `available`                 | default `false`                                     | established test | absent availability source yields an unavailable listing    |
 | app          | `offersIAP`                 | optional                                            | recorded fixture | absent in `translate.html`                                  |
 | app          | `IAPRange`                  | optional                                            | recorded fixture | absent in `translate.html`                                  |
 | app          | `androidVersion`            | default `VARY`                                      | established test | absent version block yields `VARY`                          |
@@ -64,8 +64,8 @@
 | app          | `updated`                   | required                                            | recorded fixture | update timestamp present in all app fixtures                |
 | app          | `version`                   | default `VARY`                                      | established test | absent version block yields `VARY`                          |
 | app          | `recentChanges`             | optional                                            | pinned reference | absent changelog remains undefined                          |
-| app          | `comments`                  | required                                            | pinned reference | extraction currently receives the declared whole-block root |
-| app          | `preregister`               | required                                            | recorded fixture | availability source present in all app fixtures             |
+| app          | `comments`                  | default `[]` declared, unreachable in `app()`       | established test | an absent-marker root yields `[]`, a malformed root rejects |
+| app          | `preregister`               | default `false`                                     | established test | absent availability source yields no preregistration        |
 | app          | `earlyAccessEnabled`        | default `false`                                     | recorded fixture | absent in all three app fixtures                            |
 | app          | `isAvailableInPlayPass`     | default `false`                                     | recorded fixture | absent in all three app fixtures                            |
 | search       | `title`                     | required                                            | recorded fixture | search fixtures populate every result title                 |
@@ -129,3 +129,13 @@
 | dataSafety   | `collectedData`             | default `[]`                                        | established test | missing-app response yields an empty report                 |
 | dataSafety   | `securityPractices`         | default `[]`                                        | established test | missing-app response yields an empty report                 |
 | dataSafety   | `privacyPolicyUrl`          | optional                                            | established test | missing-app response omits the policy link                  |
+
+## Reading the evidence column
+
+`recorded fixture` evidence means a field is present in every recorded fixture. That is evidence a field is
+usually populated, not evidence it is structurally guaranteed. The fixture set records popular, rated, globally
+available listings, so a source that is present in all three fixtures can still be absent on an unrated listing,
+a brand new listing, or a listing restricted to another storefront. Classify a field as `required` only when an
+absent source means the response is genuinely unusable, and prefer `established test` evidence that exercises
+the absent case directly. The live contract tests in `e2e/edgeCases.e2e.test.ts` cover the listing shapes the
+fixtures do not.

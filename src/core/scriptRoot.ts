@@ -6,17 +6,53 @@ import { parseRaw } from './raw.js';
 import { resolveDsKeys, type ScriptData } from './scriptData.js';
 import type { MissingPolicy } from './spec.js';
 
+export type UnparsableCandidatePolicy = 'reject' | 'skip';
+
 export interface ScriptRootSpec {
   rpcId?: string;
   paths: readonly Path[];
   schema: $ZodType;
   missing: MissingPolicy;
+  unparsableCandidates?: UnparsableCandidatePolicy;
 }
 
-export type ResolvedScriptRoot = { root: unknown } | { root: undefined };
+export interface ResolvedScriptRoot {
+  root: unknown;
+}
 
-function pathLabel(path: Path): string {
-  return path.join('.');
+interface RootCandidate {
+  kind: 'routed' | 'fallback';
+  name: string;
+  root: unknown;
+}
+
+function candidateLabel(candidate: RootCandidate): string {
+  return `${candidate.kind} ${candidate.name}`;
+}
+
+function routedCandidates(data: ScriptData, rpcId: string | undefined): RootCandidate[] {
+  if (rpcId === undefined) {
+    return [];
+  }
+  const candidates: RootCandidate[] = [];
+  for (const name of resolveDsKeys(data, rpcId)) {
+    const root = data.blocks[name];
+    if (root !== undefined && root !== null) {
+      candidates.push({ kind: 'routed', name, root });
+    }
+  }
+  return candidates;
+}
+
+function fallbackCandidates(data: ScriptData, paths: readonly Path[]): RootCandidate[] {
+  const candidates: RootCandidate[] = [];
+  for (const path of paths) {
+    const root = getPath(data.blocks, path);
+    if (root !== undefined && root !== null) {
+      candidates.push({ kind: 'fallback', name: path.join('.'), root });
+    }
+  }
+  return candidates;
 }
 
 function missingRoot(spec: ScriptRootSpec, context: string): ResolvedScriptRoot {
@@ -31,55 +67,60 @@ function missingRoot(spec: ScriptRootSpec, context: string): ResolvedScriptRoot 
   return { root };
 }
 
+function rejectCandidate(spec: ScriptRootSpec, context: string, candidate: RootCandidate): never {
+  const label = candidateLabel(candidate);
+  parseRaw(spec.schema, candidate.root, `${context} ${label}`);
+  throw new ParseError(`${context}: ${label} does not match the expected root`);
+}
+
+function unmatchedRoot(
+  spec: ScriptRootSpec,
+  context: string,
+  rejected: RootCandidate | undefined,
+  onIntegrityEvent?: OnIntegrityEvent,
+): ResolvedScriptRoot {
+  if (rejected === undefined) {
+    return missingRoot(spec, context);
+  }
+  if (spec.unparsableCandidates !== 'skip') {
+    return rejectCandidate(spec, context, rejected);
+  }
+  const error = new ParseError(`${context}: skipped unparsable ${candidateLabel(rejected)}`);
+  onIntegrityEvent?.({ context, reason: 'optional-section-parse', error });
+  return missingRoot(spec, context);
+}
+
 export function resolveScriptRoot(
   data: ScriptData,
   spec: ScriptRootSpec,
   context: string,
   onIntegrityEvent?: OnIntegrityEvent,
 ): ResolvedScriptRoot {
-  let invalidRoutedCandidate: { key: string; root: unknown } | undefined;
-  if (spec.rpcId !== undefined) {
-    const matches: { key: string; root: unknown }[] = [];
-    for (const key of resolveDsKeys(data, spec.rpcId)) {
-      const root = data.blocks[key];
-      if (root !== undefined && root !== null && safeParse(spec.schema, root).success) {
-        matches.push({ key, root });
-      } else if (root !== undefined && root !== null && invalidRoutedCandidate === undefined) {
-        invalidRoutedCandidate = { key, root };
-      }
-    }
-    if (matches.length > 1) {
-      const keys = matches.map((match) => match.key).join(', ');
-      throw new ParseError(`${context}: rpc ${spec.rpcId} is ambiguous across ${keys}`);
-    }
-    const match = matches[0];
-    if (match !== undefined) {
-      return { root: match.root };
-    }
+  const matches = (candidates: readonly RootCandidate[]): RootCandidate[] =>
+    candidates.filter((candidate) => safeParse(spec.schema, candidate.root).success);
+
+  const routed = routedCandidates(data, spec.rpcId);
+  const routedMatches = matches(routed);
+  if (spec.rpcId !== undefined && routedMatches.length > 1) {
+    const names = routedMatches.map((candidate) => candidate.name).join(', ');
+    throw new ParseError(`${context}: rpc ${spec.rpcId} is ambiguous across ${names}`);
+  }
+  const routedMatch = routedMatches[0];
+  if (routedMatch !== undefined) {
+    return { root: routedMatch.root };
   }
 
-  for (const path of spec.paths) {
-    const root = getPath(data.blocks, path);
-    if (root === undefined || root === null) {
-      continue;
-    }
-    parseRaw(spec.schema, root, `${context} fallback ${pathLabel(path)}`);
+  const fallbacks = fallbackCandidates(data, spec.paths);
+  const fallbackMatch = matches(fallbacks)[0];
+  if (fallbackMatch !== undefined) {
     if (spec.rpcId !== undefined) {
       const error = new ParseError(
-        `${context}: used absolute fallback ${pathLabel(path)} for rpc ${spec.rpcId}`,
+        `${context}: used absolute ${candidateLabel(fallbackMatch)} for rpc ${spec.rpcId}`,
       );
       onIntegrityEvent?.({ context, reason: 'rpc-anchor-fallback', error });
     }
-    return { root };
+    return { root: fallbackMatch.root };
   }
 
-  if (invalidRoutedCandidate !== undefined) {
-    parseRaw(
-      spec.schema,
-      invalidRoutedCandidate.root,
-      `${context} routed ${invalidRoutedCandidate.key}`,
-    );
-  }
-
-  return missingRoot(spec, context);
+  return unmatchedRoot(spec, context, fallbacks[0] ?? routed[0], onIntegrityEvent);
 }

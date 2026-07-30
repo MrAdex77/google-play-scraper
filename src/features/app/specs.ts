@@ -1,4 +1,5 @@
-import { getPath } from '../../core/path.js';
+import { microsToUnits } from '../../core/appItemTransforms.js';
+import { getPath, isRecord } from '../../core/path.js';
 import type { ScriptRootSpec } from '../../core/scriptRoot.js';
 import { deriveScriptDataSelection } from '../../core/scriptData.js';
 import { sanitizeText } from '../../core/text.js';
@@ -12,7 +13,6 @@ import {
   descriptionText,
   developerIdFromUrl,
   extractScreenshots,
-  microsToUnits,
   normalizeAndroidVersion,
   priceText,
 } from './transforms.js';
@@ -24,10 +24,6 @@ const DEFAULT_FALSE = defaulted(() => false);
 const DEFAULT_VARY = defaulted(() => 'VARY');
 
 export const APP_DETAILS_RPC_ID = 'Ws7gDc';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isDetailsRoot(value: unknown): boolean {
   const details = getPath(value, [1, 2]);
@@ -73,6 +69,7 @@ export const appCommentsRootSpec = {
   paths: [['ds:8'], ['ds:9']],
   schema: appCommentsRootSchema,
   missing: defaulted(() => []),
+  unparsableCandidates: 'skip',
 } satisfies ScriptRootSpec;
 
 export const appScriptDataSelection = deriveScriptDataSelection([
@@ -104,7 +101,7 @@ export const appSpecs = {
   reviews: { paths: [[1, 2, 51, 3, 1]], missing: OPTIONAL, schema: shape.reviews },
   histogram: {
     paths: [[1, 2, 51, 1]],
-    missing: REQUIRED,
+    missing: defaulted(() => buildHistogram(undefined)),
     schema: shape.histogram,
     transform: buildHistogram,
   },
@@ -145,7 +142,7 @@ export const appSpecs = {
   },
   available: {
     paths: [[1, 2, 18, 0]],
-    missing: REQUIRED,
+    missing: DEFAULT_FALSE,
     schema: shape.available,
     transform: (value) => Boolean(value),
   },
@@ -318,7 +315,7 @@ export const appSpecs = {
   },
   preregister: {
     paths: [[1, 2, 18, 0]],
-    missing: REQUIRED,
+    missing: DEFAULT_FALSE,
     schema: shape.preregister,
     transform: (value) => value === 1,
   },

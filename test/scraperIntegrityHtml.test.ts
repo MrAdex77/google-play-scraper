@@ -121,17 +121,29 @@ describe('app field mutations', () => {
     await expectAppSpecFailure(replaceScriptBlockData(appHtml, 'ds:5', details), ['price', 'free']);
   });
 
-  it('rejects a missing availability source without false defaults', async () => {
+  it('treats a missing availability source as unavailable rather than a failure', async () => {
     const details = deletePath(appDetails(), appSpecs.available.paths[0] ?? []);
-    await expectAppSpecFailure(replaceScriptBlockData(appHtml, 'ds:5', details), [
-      'available',
-      'preregister',
-    ]);
+    const events: IntegrityEvent[] = [];
+
+    const result = await appWithHtml(replaceScriptBlockData(appHtml, 'ds:5', details), (event) =>
+      events.push(event),
+    );
+
+    expect(result.available).toBe(false);
+    expect(result.preregister).toBe(false);
+    expect(events).toEqual([]);
   });
 
-  it('rejects a missing histogram source without an empty aggregate', async () => {
+  it('treats a missing histogram source as an unrated listing', async () => {
     const details = deletePath(appDetails(), appSpecs.histogram.paths[0] ?? []);
-    await expectAppSpecFailure(replaceScriptBlockData(appHtml, 'ds:5', details), ['histogram']);
+    const events: IntegrityEvent[] = [];
+
+    const result = await appWithHtml(replaceScriptBlockData(appHtml, 'ds:5', details), (event) =>
+      events.push(event),
+    );
+
+    expect(result.histogram).toEqual({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+    expect(events).toEqual([]);
   });
 
   it('preserves optional and documented default behavior only', async () => {
@@ -145,6 +157,43 @@ describe('app field mutations', () => {
 
     expect(result.score).toBeUndefined();
     expect(result.version).toBe('VARY');
+  });
+});
+
+describe('app comments root mutations', () => {
+  it('yields an empty comment list from the validated absent-marker root', async () => {
+    const events: IntegrityEvent[] = [];
+
+    const result = await appWithHtml(appHtml, (event) => events.push(event));
+
+    expect(result.comments).toEqual([]);
+    expect(events).toEqual([]);
+  });
+
+  it('defaults to an empty comment list when no candidate root validates', async () => {
+    const withoutRoots = removeScriptBlock(removeScriptBlock(appHtml, 'ds:8'), 'ds:9');
+    const events: IntegrityEvent[] = [];
+
+    const result = await appWithHtml(withoutRoots, (event) => events.push(event));
+
+    expect(result.comments).toEqual([]);
+    expect(result.title).toContain('Translate');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('app comments');
+    expect(events[0]?.reason).toBe('optional-section-parse');
+  });
+
+  it('reports a structurally invalid comments root as an integrity event', async () => {
+    const withoutSimilar = removeScriptBlock(appHtml, 'ds:8');
+    const malformed = replaceScriptBlockData(withoutSimilar, 'ds:9', ['not a comments root']);
+    const events: IntegrityEvent[] = [];
+
+    const result = await appWithHtml(malformed, (event) => events.push(event));
+
+    expect(result.comments).toEqual([]);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('optional-section-parse');
+    expect(events[0]?.error.message).toContain('fallback ds:9');
   });
 });
 
@@ -236,7 +285,7 @@ describe('rpc routing mutations', () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.context).toBe('app details');
     expect(events[0]?.reason).toBe('rpc-anchor-fallback');
-    expect(events[0]?.error.message).toContain('Ws7gDc');
+    expect(events[0]?.error.message).toContain(APP_DETAILS_RPC_ID);
     expect(events[0]?.error.message).toContain('ds:5');
   });
 
@@ -257,7 +306,7 @@ describe('rpc routing mutations', () => {
 
     expect(error).toBeInstanceOf(ParseError);
     expect((error as Error).message).toContain('app details');
-    expect((error as Error).message).toContain('Ws7gDc');
+    expect((error as Error).message).toContain(APP_DETAILS_RPC_ID);
     expect((error as Error).message).toContain('ds:5');
     expect((error as Error).message).toContain('ds:9');
   });

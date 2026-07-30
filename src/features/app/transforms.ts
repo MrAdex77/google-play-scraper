@@ -4,7 +4,6 @@ import { sanitizeText } from '../../core/text.js';
 import type { AppCategory } from './schema.js';
 
 const MAX_COMMENTS = 5;
-const MICROS_PER_UNIT = 1_000_000;
 
 export function descriptionHtmlLocalized(value: unknown): string | undefined {
   const translated = getPath(value, [12, 0, 0, 1]);
@@ -48,13 +47,6 @@ export function buildHistogram(container: unknown): Record<number, number> {
 function histogramCount(container: unknown, star: number): number {
   const bucket = getPath(container, [star, 1]);
   return typeof bucket === 'number' ? bucket : 0;
-}
-
-export function microsToUnits(value: unknown): number {
-  if (typeof value !== 'number') {
-    return 0;
-  }
-  return value / MICROS_PER_UNIT || 0;
 }
 
 export function developerIdFromUrl(value: unknown): string | undefined {

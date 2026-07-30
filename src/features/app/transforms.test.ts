@@ -8,7 +8,6 @@ import {
   extractCategories,
   extractComments,
   extractScreenshots,
-  microsToUnits,
   normalizeAndroidVersion,
   priceText,
 } from './transforms.js';
@@ -76,18 +75,6 @@ describe('buildHistogram', () => {
 
   it('fills zeros when the container is missing', () => {
     expect(buildHistogram(undefined)).toEqual({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
-  });
-});
-
-describe('microsToUnits', () => {
-  it('converts micros to currency units', () => {
-    expect(microsToUnits(3_990_000)).toBe(3.99);
-  });
-
-  it('returns zero for NaN and non numeric values', () => {
-    expect(microsToUnits(Number.NaN)).toBe(0);
-    expect(microsToUnits('3990000')).toBe(0);
-    expect(microsToUnits(undefined)).toBe(0);
   });
 });
 
