@@ -38,9 +38,7 @@ liveDescribe('unrated and unreviewed listings live contract', () => {
     expect(result.free).toBe(true);
     expect(result.available).toBe(true);
     expect(result.screenshots.length).toBeGreaterThan(0);
-    for (const event of events) {
-      expect(event.context).toBe('app comments');
-    }
+    expect(events.filter((event) => event.context !== 'app comments')).toEqual([]);
   });
 
   it('returns an empty review page for an app that has no reviews', async () => {
@@ -132,9 +130,9 @@ liveDescribe('availability and catalogue edges live contract', () => {
     expect(result.comments).toEqual([]);
     expect(result.title.length).toBeGreaterThan(0);
     expect(result.minInstalls).toBeGreaterThan(0);
-    for (const event of events) {
-      expect(event.context).toBe('app comments');
-    }
+    expect(events.map((event) => `${event.context}/${event.reason}`)).toEqual([
+      'app comments/optional-section-parse',
+    ]);
   });
 
   it('returns an empty similar cluster for an app with no recommendations', async () => {
