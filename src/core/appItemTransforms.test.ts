@@ -9,9 +9,12 @@ describe('app item transforms', () => {
     expect(resolveAppUrl(null)).toBeUndefined();
   });
 
-  it('converts numeric micros and rejects non-numeric values', () => {
+  it('converts numeric micros and rejects present non-numeric values', () => {
     expect(microsToUnits(3_990_000)).toBe(3.99);
-    expect(microsToUnits('3990000')).toBe(0);
+    expect(microsToUnits(0)).toBe(0);
+    expect(microsToUnits(Number.NaN)).toBe(0);
+    expect(microsToUnits('3990000')).toBeUndefined();
+    expect(microsToUnits(undefined)).toBeUndefined();
   });
 
   it('recognizes only exact zero as free', () => {

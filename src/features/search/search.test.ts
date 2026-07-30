@@ -334,6 +334,7 @@ describe('search malformed pages', () => {
     expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
     expect(results[0]?.developerId).toBe('x-dev');
     expect(results[0]?.price).toBe(0);
+    expect(results[0]?.free).toBe(false);
     expect(results[0]?.url).toBe('https://play.google.com/store/apps/details?id=x');
   });
 
