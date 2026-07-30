@@ -1,7 +1,7 @@
 import { BASE_URL, permission } from '../../constants.js';
 import { buildBatchBody } from '../../core/batchexecute.js';
 import { getPath, type Path } from '../../core/path.js';
-import { rawArrayPathSchema } from '../../core/raw.js';
+import { rawOptionalArrayPathSchema } from '../../core/raw.js';
 import type { AppPermission } from './schema.js';
 import * as z from 'zod/mini';
 
@@ -21,13 +21,14 @@ export function buildPermissionsBody(appId: string): string {
 }
 
 const PERMISSION_SECTIONS = [permission.COMMON, permission.OTHER] as const;
+const permissionSectionSchema = z.nullable(z.array(z.unknown()));
 export const commonPermissionsResponseSchema = z.union([
   z.literal(null),
-  rawArrayPathSchema([permission.COMMON], z.array(z.unknown())),
+  rawOptionalArrayPathSchema([permission.COMMON], permissionSectionSchema),
 ]);
 export const otherPermissionsResponseSchema = z.union([
   z.literal(null),
-  rawArrayPathSchema([permission.OTHER], z.array(z.unknown())),
+  rawOptionalArrayPathSchema([permission.OTHER], permissionSectionSchema),
 ]);
 const GROUP_PERMISSIONS_PATH: Path = [2];
 const PERMISSION_TEXT_PATH: Path = [1];

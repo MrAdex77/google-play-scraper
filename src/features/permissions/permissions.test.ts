@@ -120,11 +120,20 @@ describe('permissions guards', () => {
     expect(result).toEqual([]);
   });
 
-  it('rejects a non-null payload without permission sections', async () => {
+  it('returns an empty array for an app that declares no permission sections', async () => {
+    const result = await permissions({
+      appId: TRANSLATE,
+      requestOptions: { fetchImpl: fetchReturning(permissionsBatch([])) },
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('rejects a payload whose permission section is not a collection', async () => {
     await expect(
       permissions({
         appId: TRANSLATE,
-        requestOptions: { fetchImpl: fetchReturning(permissionsBatch([])) },
+        requestOptions: { fetchImpl: fetchReturning(permissionsBatch(['not-a-section'])) },
       }),
     ).rejects.toBeInstanceOf(ParseError);
   });

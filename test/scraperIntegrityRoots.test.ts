@@ -70,20 +70,47 @@ describe('batchexecute response root mutations', () => {
     expectRawFailure(reviewsCollectionResponseSchema, mutated, 'reviews collection response');
   });
 
-  it('rejects each deleted permissions section', () => {
+  it('accepts a deleted permissions section as an app without that section', () => {
     const payload = parseBatchResponse(
       readFixture('permissions/translate.txt'),
       PERMISSIONS_RPC_ID,
     );
 
+    expect(
+      parseRaw(
+        commonPermissionsResponseSchema,
+        deletePath(payload, [permission.COMMON]),
+        'permissions common response',
+      ),
+    ).toBeDefined();
+    expect(
+      parseRaw(
+        otherPermissionsResponseSchema,
+        deletePath(payload, [permission.OTHER]),
+        'permissions other response',
+      ),
+    ).toBeDefined();
+  });
+
+  it('rejects each permissions section replaced by a non-collection', () => {
+    const payload = parseBatchResponse(
+      readFixture('permissions/translate.txt'),
+      PERMISSIONS_RPC_ID,
+    );
+    const withScalarSection = (index: number): unknown => {
+      const mutated = structuredClone(payload) as unknown[];
+      mutated[index] = 'not-a-section';
+      return mutated;
+    };
+
     expectRawFailure(
       commonPermissionsResponseSchema,
-      deletePath(payload, [permission.COMMON]),
+      withScalarSection(permission.COMMON),
       'permissions common response',
     );
     expectRawFailure(
       otherPermissionsResponseSchema,
-      deletePath(payload, [permission.OTHER]),
+      withScalarSection(permission.OTHER),
       'permissions other response',
     );
   });
