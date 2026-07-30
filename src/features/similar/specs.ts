@@ -34,7 +34,10 @@ export const CLUSTER_PAGE_MAPPINGS = {
 export const similarDetailsRootSpec = {
   rpcId: CLUSTERS_RPC_ID,
   paths: [],
-  schema: z.union([z.tuple([]), rawArrayPathSchema(CLUSTERS_PATH, z.array(z.unknown()))]),
+  schema: z.union([
+    z.tuple([]),
+    rawArrayPathSchema(CLUSTERS_PATH, z.nullable(z.array(z.unknown()))),
+  ]),
   missing: defaulted(() => []),
 } satisfies ScriptRootSpec;
 

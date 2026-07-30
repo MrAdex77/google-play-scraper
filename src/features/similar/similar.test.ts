@@ -112,6 +112,11 @@ describe('similar cluster fallbacks', () => {
     expect(() => findSimilarClusterPath(data)).toThrow(ParseError);
   });
 
+  it('accepts the null cluster collection google serves for apps with no recommendations', () => {
+    const data = parseScriptData(detailsWithClusters(null));
+    expect(findSimilarClusterPath(data)).toBeUndefined();
+  });
+
   it('skips unrelated titles and non string paths', () => {
     const clusters = [
       clusterEntry('More by this developer', '/unrelated'),
