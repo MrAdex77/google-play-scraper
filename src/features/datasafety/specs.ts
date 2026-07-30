@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { getPath, type Path } from '../../core/path.js';
+import { getPath, isRecord, type Path } from '../../core/path.js';
 import type { ScriptRootSpec } from '../../core/scriptRoot.js';
 import { deriveScriptDataSelection } from '../../core/scriptData.js';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
@@ -19,10 +19,6 @@ const DETAIL_OPTIONAL_PATH: Path = [1];
 const DETAIL_PURPOSE_PATH: Path = [2];
 const PRACTICE_LABEL_PATH: Path = [1];
 const PRACTICE_DESCRIPTION_PATH: Path = [2, 1];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isOptionalArray(value: unknown): boolean {
   return value === undefined || value === null || Array.isArray(value);

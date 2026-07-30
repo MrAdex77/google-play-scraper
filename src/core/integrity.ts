@@ -11,6 +11,21 @@ export interface IntegrityEvent {
 
 export type OnIntegrityEvent = (event: IntegrityEvent) => void;
 
+export function detectPaginationTokenCycle(
+  seenTokens: Set<string>,
+  token: string,
+  context: string,
+  onIntegrityEvent?: OnIntegrityEvent,
+): boolean {
+  if (!seenTokens.has(token)) {
+    seenTokens.add(token);
+    return false;
+  }
+  const error = new ParseError(`${context}: pagination token cycle detected`);
+  onIntegrityEvent?.({ context, reason: 'pagination-token-cycle', error });
+  return true;
+}
+
 export function parseOptionalSection<T>(
   context: string,
   parseSection: () => T,
