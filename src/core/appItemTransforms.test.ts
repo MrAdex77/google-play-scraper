@@ -9,10 +9,12 @@ describe('app item transforms', () => {
     expect(resolveAppUrl(null)).toBeUndefined();
   });
 
-  it('converts numeric micros and rejects present non-numeric values', () => {
+  it('converts finite micros and rejects every other present value', () => {
     expect(microsToUnits(3_990_000)).toBe(3.99);
     expect(microsToUnits(0)).toBe(0);
-    expect(microsToUnits(Number.NaN)).toBe(0);
+    expect(microsToUnits(Number.NaN)).toBeUndefined();
+    expect(microsToUnits(Number.POSITIVE_INFINITY)).toBeUndefined();
+    expect(microsToUnits(Number.NEGATIVE_INFINITY)).toBeUndefined();
     expect(microsToUnits('3990000')).toBeUndefined();
     expect(microsToUnits(undefined)).toBeUndefined();
   });

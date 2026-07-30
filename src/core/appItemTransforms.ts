@@ -7,7 +7,7 @@ export function resolveAppUrl(value: unknown): string | undefined {
 }
 
 export function microsToUnits(value: unknown): number | undefined {
-  return typeof value === 'number' ? value / MICROS_PER_UNIT || 0 : undefined;
+  return typeof value === 'number' && Number.isFinite(value) ? value / MICROS_PER_UNIT : undefined;
 }
 
 export function isFreeMicros(value: unknown): boolean {
