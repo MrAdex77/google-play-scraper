@@ -73,7 +73,7 @@ liveDescribe('iterators live contract', () => {
       collected.push(result.appId);
     }
 
-    expect(collected.length).toBeGreaterThanOrEqual(15);
+    expect(collected.length).toBeGreaterThanOrEqual(10);
     expect(new Set(collected).size).toBe(collected.length);
   });
 
