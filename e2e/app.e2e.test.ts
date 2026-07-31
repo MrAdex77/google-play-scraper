@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { NotFoundError } from '../src/index.js';
+import { NotFoundError, type IntegrityEvent } from '../src/index.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
 const TRANSLATE_STABLE_FIELDS = [
@@ -31,7 +31,11 @@ const MINECRAFT_RICH_FIELDS = [
 liveDescribe('app live contract', () => {
   it('returns details for a popular free app', async () => {
     const appId = 'com.google.android.apps.translate';
-    const result = await liveClient.app({ appId });
+    const events: IntegrityEvent[] = [];
+    const result = await liveClient.app({
+      appId,
+      onIntegrityEvent: (event) => events.push(event),
+    });
 
     expect(result.title.length).toBeGreaterThan(0);
     expect(result.appId).toBe(appId);
@@ -40,6 +44,7 @@ liveDescribe('app live contract', () => {
     expect(result.score).toBeLessThanOrEqual(5);
     expect(result.ratings).toBeGreaterThan(100000);
     expect(result.free).toBe(true);
+    expect(events).toEqual([]);
   });
 
   it('returns details for a mobile geography game', async () => {

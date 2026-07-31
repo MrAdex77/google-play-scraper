@@ -1,11 +1,17 @@
 import { BASE_URL } from '../constants.js';
+import * as z from 'zod/mini';
 import { ParseError } from './errors.js';
+import { parseRaw } from './raw.js';
 
 export const BATCH_URL = `${BASE_URL}/_/PlayStoreUi/data/batchexecute`;
 
 const DEFAULT_ENVELOPE_TAIL: readonly unknown[] = [null, 'generic'];
 const WRB_FRAME_MARKER = 'wrb.fr';
 const SNIPPET_LENGTH = 200;
+const targetFrameSchema = z.tuple(
+  [z.literal(WRB_FRAME_MARKER), z.string(), z.nullable(z.string())],
+  z.unknown(),
+);
 
 function isArray(value: unknown): value is readonly unknown[] {
   return Array.isArray(value);
@@ -36,11 +42,15 @@ function matchEnvelope(frames: readonly unknown[], rpcId: string): EnvelopeMatch
       continue;
     }
     if (frame[0] === WRB_FRAME_MARKER && frame[1] === rpcId) {
-      const raw = frame[2];
-      if (typeof raw === 'string') {
-        return { found: true, value: JSON.parse(raw) };
+      const raw = parseRaw(targetFrameSchema, frame, `batchexecute ${rpcId} envelope`)[2];
+      if (raw === null) {
+        return { found: true, value: null };
       }
-      return { found: true, value: null };
+      try {
+        return { found: true, value: JSON.parse(raw) };
+      } catch {
+        throw new ParseError(`batchexecute ${rpcId} payload is not valid JSON`);
+      }
     }
   }
   return { found: false, value: undefined };

@@ -145,13 +145,14 @@ More runnable examples live in [examples/](https://github.com/MrAdex77/google-pl
 
 Every method accepts a single options object. These options are available on all of them:
 
-| Option           | Type       | Default | Description                                                                                |
-| ---------------- | ---------- | ------- | ------------------------------------------------------------------------------------------ |
-| `lang`           | `string`   | `'en'`  | Two letter language code used to fetch the page.                                           |
-| `country`        | `string`   | `'us'`  | Two letter country code. Needed for apps available only in some regions.                   |
-| `throttle`       | `number`   | none    | Maximum requests per second across a single call.                                          |
-| `requestOptions` | `object`   | none    | HTTP overrides. See [Throttling and requestOptions](#throttling-and-requestoptions).       |
-| `onDegradation`  | `function` | none    | Callback fired when a call degrades gracefully. See [Monitoring drift](#monitoring-drift). |
+| Option             | Type       | Default | Description                                                                                                    |
+| ------------------ | ---------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| `lang`             | `string`   | `'en'`  | Two letter language code used to fetch the page.                                                               |
+| `country`          | `string`   | `'us'`  | Two letter country code. Needed for apps available only in some regions.                                       |
+| `throttle`         | `number`   | none    | Maximum requests per second across a single call.                                                              |
+| `requestOptions`   | `object`   | none    | HTTP overrides. See [Throttling and requestOptions](#throttling-and-requestoptions).                           |
+| `onDegradation`    | `function` | none    | Callback fired when a call degrades gracefully. See [Monitoring drift](#monitoring-drift).                     |
+| `onIntegrityEvent` | `function` | none    | Callback fired when routing, parsing or pagination needs attention. See [Monitoring drift](#monitoring-drift). |
 
 ## Shared client
 
@@ -788,6 +789,8 @@ An unknown `appId` or `devId` does not fail the same way everywhere, because Goo
 | Resolves with a typed empty value | `search` and `suggest` (`[]`), `reviews` (`{ data: [], nextPaginationToken: null }`), `permissions` (`[]`), `dataSafety` (empty arrays, no `privacyPolicyUrl`) |
 | Maps the throw to a status        | `availability` reports `unavailable`                                                                                                                           |
 
+Typed empties are limited to the documented response shapes above and other schema-backed empty variants. A structurally missing or malformed response root throws `ParseError`; a missing required field inside a valid root throws `SpecError`. Neither case is converted into an empty result, `0`, `false`, `Free`, or `VARY` unless that exact fallback is part of the documented field contract.
+
 ## Throttling and requestOptions
 
 Pass `throttle` to cap requests per second, and `requestOptions` to override the HTTP layer:
@@ -839,7 +842,7 @@ const details = await app({
 
 Every event carries `url`, `method`, and a 1-based `attempt`: the first try is attempt 1, a `RetryEvent` carries the number of the attempt that just failed, and the subsequent `RequestEvent` is that attempt plus one. `ResponseEvent` adds `status` and `durationMs`, measured from just before the fetch (throttle wait excluded) and, on success, through the transfer of the full body. `RetryEvent` adds the scheduled `delayMs`, a `reason` of `'status'` or `'network'`, and the HTTP `status` when the reason is a retryable status. A retry-free happy path emits exactly one `RequestEvent` and one `ResponseEvent`.
 
-Hooks are telemetry, never control flow. A hook that throws or returns a rejecting promise is swallowed and the request proceeds unchanged — the deliberate opposite of [`onDegradation`](#monitoring-drift), which rethrows because it is a data-integrity signal. When a client-level and a call-level `requestOptions` set the same hook, the call-level one replaces it for that call; hooks do not chain.
+Hooks are telemetry, never control flow. A hook that throws or returns a rejecting promise is swallowed and the request proceeds unchanged — the deliberate opposite of [`onDegradation` and `onIntegrityEvent`](#monitoring-drift), which rethrow because they are data-integrity signals. When a client-level and a call-level `requestOptions` set the same hook, the call-level one replaces it for that call; hooks do not chain.
 
 ### Routing requests through a proxy
 
@@ -922,7 +925,7 @@ To catch breakage before users do, the `e2e/` suite runs against live Google Pla
 
 ## Monitoring drift
 
-Cluster pagination degrades gracefully: when a continuation page from Google stops parsing, the call keeps everything collected so far and returns instead of throwing. That is the right default for consumers, but it can hide the day Google changes its layout. The `onDegradation` callback makes every swallowed continuation failure observable.
+Cluster pagination degrades gracefully: when a continuation page from Google stops parsing, the call keeps everything collected so far and returns instead of throwing. The `onDegradation` callback makes every swallowed continuation failure observable. The separate `onIntegrityEvent` callback reports routing fallbacks, skipped best-effort sections, and pagination token cycles without widening the existing `DegradationEvent` contract.
 
 The option exists on every method for uniformity, but only the methods that paginate through the cluster endpoint can emit: `search`, `searchIterator`, `similar`, `developer`, and `developerIterator`. Each event carries the feature `context`, the machine readable `reason` (`'cluster-page-parse'`), and the underlying `ParseError`:
 
@@ -941,16 +944,44 @@ const results = await search({ term: 'panda', num: 100, onDegradation });
 
 A degraded call still resolves with the pages that parsed, so wire the callback to a metrics counter or log sink rather than treating it as an error path. If the callback itself throws, the error surfaces to the caller unchanged.
 
+Integrity events use the same shape but a separate type and callback:
+
+```typescript
+import { app, type IntegrityEvent } from '@mradex77/google-play-scraper';
+
+const onIntegrityEvent = (event: IntegrityEvent): void => {
+  metrics.increment('gplay.integrity', {
+    context: event.context,
+    reason: event.reason,
+  });
+};
+
+const details = await app({
+  appId: 'com.google.android.apps.translate',
+  onIntegrityEvent,
+});
+```
+
+| Callback           | Reason                   | Meaning                                                                |
+| ------------------ | ------------------------ | ---------------------------------------------------------------------- |
+| `onDegradation`    | `cluster-page-parse`     | A cluster continuation failed to parse and collected results returned. |
+| `onIntegrityEvent` | `rpc-anchor-fallback`    | An RPC anchor used its validated absolute fallback.                    |
+| `onIntegrityEvent` | `optional-section-parse` | A present best-effort section failed to parse and was skipped.         |
+| `onIntegrityEvent` | `pagination-token-cycle` | A repeated token stopped pagination before a duplicate request.        |
+
 Two boundaries to know:
 
 - An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion.
-- `reviews` pagination never degrades. A parse failure there propagates as a `ParseError`, so review reads fail loudly instead of silently shrinking.
+- `app` emits `optional-section-parse` with context `app comments` for listings that serve no featured comment block, which is common for small and new apps. Treat a rising rate as a signal, not each event.
+- `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`.
 
-With `memoized()`, `onDegradation` and the lifecycle hooks `onRequest`, `onResponse`, and `onRetry` participate in the cache key by identity like any function option, so pass stable function references rather than inline closures to keep cache hits.
+With `memoized()`, `onDegradation`, `onIntegrityEvent`, and the lifecycle hooks `onRequest`, `onResponse`, and `onRetry` participate in the cache key by identity like any function option, so pass stable function references rather than inline closures to keep cache hits.
 
 ## Versioning and API stability
 
 This package follows [Semantic Versioning](https://semver.org). For a scraper the contract needs one clarification: semver covers the code surface this library controls, not the data Google serves.
+
+Integrity diagnostics use the additive API choice (Option B): the existing `DegradationEvent.reason` remains exactly `'cluster-page-parse'`, and the three new reasons live on the opt-in `onIntegrityEvent` callback. This preserves exhaustive switches and narrowly typed `onDegradation` handlers while adding observability without a major release.
 
 | Change                                                            | Release |
 | ----------------------------------------------------------------- | ------- |

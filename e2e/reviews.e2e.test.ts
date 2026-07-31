@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { sort } from '../src/index.js';
+import { sort, type IntegrityEvent } from '../src/index.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -19,11 +19,17 @@ liveDescribe('reviews live contract', () => {
   });
 
   it('accumulates exactly the requested number of reviews with unique ids', async () => {
-    const result = await liveClient.reviews({ appId: TRANSLATE, num: 320 });
+    const events: IntegrityEvent[] = [];
+    const result = await liveClient.reviews({
+      appId: TRANSLATE,
+      num: 320,
+      onIntegrityEvent: (event) => events.push(event),
+    });
 
     expect(result.data).toHaveLength(320);
     expect(result.nextPaginationToken).toBeNull();
     expect(new Set(result.data.map((review) => review.id)).size).toBe(320);
+    expect(events).toEqual([]);
   });
 
   it('walks two manual pages that surface different first reviews', async () => {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
-import { extract } from './spec.js';
+import { defaulted, extract, optional, required } from './spec.js';
 import { parseScriptData, type ScriptData } from './scriptData.js';
 import { SpecError } from './errors.js';
 
@@ -18,7 +18,7 @@ describe('extract', () => {
     const source = loadScriptData();
     const result = extract(
       source,
-      { title: { paths: [['ds:5', 0, 0, 0]], schema: z.string() } },
+      { title: { paths: [['ds:5', 0, 0, 0]], missing: required(), schema: z.string() } },
       'app',
     );
     expect(result.title).toBe('Panda App');
@@ -34,6 +34,7 @@ describe('extract', () => {
             ['ds:5', 1, 0],
             ['ds:5', 1, 1],
           ],
+          missing: required(),
           schema: z.string(),
         },
       },
@@ -42,41 +43,18 @@ describe('extract', () => {
     expect(result.installs).toBe('5,000,000+');
   });
 
-  it('resolves relative paths through the service request id', () => {
-    const source = loadScriptData();
-    const result = extract(
-      source,
-      { title: { paths: [[0, 0, 0]], schema: z.string(), serviceRequestId: 'rpcFive' } },
-      'app',
-    );
-    expect(result.title).toBe('Panda App');
-  });
-
-  it('falls through to absolute paths when the service request id is unknown', () => {
-    const source = loadScriptData();
-    const result = extract(
-      source,
-      {
-        title: { paths: [['ds:5', 0, 0, 0]], schema: z.string(), serviceRequestId: 'missing-rpc' },
-      },
-      'app',
-    );
-    expect(result.title).toBe('Panda App');
-  });
-
-  it('passes the raw value and the source to a transform', () => {
+  it('passes only the raw value to a transform', () => {
     const source = loadScriptData();
     let seenRaw: unknown;
-    let seenSource: unknown;
     const result = extract(
       source,
       {
         appId: {
           paths: [['ds:5', 0, 1, 0]],
+          missing: required(),
           schema: z.string(),
-          transform: (value, providedSource) => {
+          transform: (value) => {
             seenRaw = value;
-            seenSource = providedSource;
             return typeof value === 'string' ? value.toUpperCase() : value;
           },
         },
@@ -84,7 +62,6 @@ describe('extract', () => {
       'app',
     );
     expect(seenRaw).toBe('com.panda.app');
-    expect(seenSource).toBe(source);
     expect(result.appId).toBe('COM.PANDA.APP');
   });
 
@@ -92,15 +69,102 @@ describe('extract', () => {
     const source = loadScriptData();
     const result = extract(
       source,
-      { subtitle: { paths: [['ds:5', 9, 9, 9]], schema: z.optional(z.string()) } },
+      {
+        subtitle: {
+          paths: [['ds:5', 9, 9, 9]],
+          missing: optional(),
+          schema: z.optional(z.string()),
+        },
+      },
       'app',
     );
     expect(result.subtitle).toBeUndefined();
   });
 
+  it('reports a missing required field without running its transform', () => {
+    const source = loadScriptData();
+    let transformed = false;
+    let thrown: unknown;
+    try {
+      extract(
+        source,
+        {
+          title: {
+            paths: [['ds:5', 9, 9, 9]],
+            missing: required(),
+            schema: z.string(),
+            transform: () => {
+              transformed = true;
+              return 'manufactured';
+            },
+          },
+        },
+        'app',
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(transformed).toBe(false);
+    expect(thrown).toBeInstanceOf(SpecError);
+    expect((thrown as SpecError).failures).toEqual([
+      {
+        field: 'title',
+        paths: [['ds:5', 9, 9, 9]],
+        message: 'required value missing',
+      },
+    ]);
+  });
+
+  it('creates a fresh default without running the transform', () => {
+    const source = loadScriptData();
+    let transformed = false;
+    const result = extract(
+      source,
+      {
+        tags: {
+          paths: [['ds:5', 9, 9, 9]],
+          missing: defaulted(() => []),
+          schema: z.array(z.string()),
+          transform: () => {
+            transformed = true;
+            return ['manufactured'];
+          },
+        },
+      },
+      'app',
+    );
+    expect(result.tags).toEqual([]);
+    expect(transformed).toBe(false);
+  });
+
+  it('does not retry after a present candidate fails validation', () => {
+    let thrown: unknown;
+    try {
+      extract(
+        { primary: 42, fallback: 'valid' },
+        {
+          value: {
+            paths: [['primary'], ['fallback']],
+            missing: required(),
+            schema: z.string(),
+          },
+        },
+        'terminal',
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(SpecError);
+    expect((thrown as SpecError).failures[0]?.paths).toEqual([['primary'], ['fallback']]);
+  });
+
   it('treats a plain value as the root when the source is not script data', () => {
     const payload = [['header'], ['nested', 'value']];
-    const result = extract(payload, { cell: { paths: [[1, 1]], schema: z.string() } }, 'batch');
+    const result = extract(
+      payload,
+      { cell: { paths: [[1, 1]], missing: required(), schema: z.string() } },
+      'batch',
+    );
     expect(result.cell).toBe('value');
   });
 
@@ -111,8 +175,8 @@ describe('extract', () => {
       extract(
         source,
         {
-          rating: { paths: [['ds:5', 0, 0, 0]], schema: z.number() },
-          installs: { paths: [['ds:5', 1, 0]], schema: z.string() },
+          rating: { paths: [['ds:5', 0, 0, 0]], missing: required(), schema: z.number() },
+          installs: { paths: [['ds:5', 1, 0]], missing: required(), schema: z.string() },
         },
         'app',
       );
@@ -138,7 +202,13 @@ describe('extract', () => {
     try {
       extract(
         [{ name: 42 }],
-        { entry: { paths: [[0]], schema: z.object({ name: z.string() }) } },
+        {
+          entry: {
+            paths: [[0]],
+            missing: required(),
+            schema: z.object({ name: z.string() }),
+          },
+        },
         'nested',
       );
     } catch (error) {
@@ -158,6 +228,7 @@ describe('extract', () => {
         {
           title: {
             paths: [['ds:5', 0, 0, 0]],
+            missing: required(),
             schema: z.string(),
             transform: () => {
               throw new Error('transform blew up');
@@ -181,6 +252,7 @@ describe('extract', () => {
         {
           title: {
             paths: [['ds:5', 0, 0, 0]],
+            missing: required(),
             schema: z.string(),
             transform: () => {
               const failure: unknown = 'plain string failure';
@@ -205,6 +277,7 @@ describe('extract', () => {
         {
           title: {
             paths: [['ds:5', 0, 0, 0]],
+            missing: required(),
             schema: z.string(),
             transform: () => {
               const failure: unknown = 42;
@@ -218,21 +291,5 @@ describe('extract', () => {
       thrown = error;
     }
     expect((thrown as SpecError).message).toContain('non-error thrown during extraction');
-  });
-
-  it('reports the resolved service request paths in the failure', () => {
-    const source = loadScriptData();
-    let thrown: unknown;
-    try {
-      extract(
-        source,
-        { title: { paths: [[0, 0, 0]], schema: z.number(), serviceRequestId: 'rpcFive' } },
-        'app',
-      );
-    } catch (error) {
-      thrown = error;
-    }
-    const specError = thrown as SpecError;
-    expect(specError.failures[0]?.paths).toEqual([['ds:5', 0, 0, 0]]);
   });
 });

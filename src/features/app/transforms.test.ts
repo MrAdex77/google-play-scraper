@@ -8,7 +8,6 @@ import {
   extractCategories,
   extractComments,
   extractScreenshots,
-  microsToUnits,
   normalizeAndroidVersion,
   priceText,
 } from './transforms.js';
@@ -79,18 +78,6 @@ describe('buildHistogram', () => {
   });
 });
 
-describe('microsToUnits', () => {
-  it('converts micros to currency units', () => {
-    expect(microsToUnits(3_990_000)).toBe(3.99);
-  });
-
-  it('returns zero for NaN and non numeric values', () => {
-    expect(microsToUnits(Number.NaN)).toBe(0);
-    expect(microsToUnits('3990000')).toBe(0);
-    expect(microsToUnits(undefined)).toBe(0);
-  });
-});
-
 describe('developerIdFromUrl', () => {
   it('takes everything after the id parameter', () => {
     expect(developerIdFromUrl('/store/apps/dev?id=5700313618786177705')).toBe(
@@ -114,24 +101,22 @@ const commentEntry = (text: unknown): unknown[] => {
 };
 
 describe('extractComments', () => {
-  it('collects up to five string comments from the primary root', () => {
+  it('collects up to five string comments from a validated root', () => {
     const comments = Array.from({ length: 7 }, (_unused, index) =>
       commentEntry(`comment ${index.toString()}`),
     );
-    const source = { 'ds:8': [comments] };
-    const result = extractComments(source);
+    const result = extractComments([comments]);
     expect(result).toHaveLength(5);
     expect(result[0]).toBe('comment 0');
   });
 
-  it('falls back to the secondary root and skips non string texts', () => {
+  it('skips non string texts', () => {
     const comments = [commentEntry('kept'), commentEntry(null)];
-    const source = { 'ds:9': [comments] };
-    expect(extractComments(source)).toEqual(['kept']);
+    expect(extractComments([comments])).toEqual(['kept']);
   });
 
-  it('returns an empty list when no root carries review markers', () => {
-    expect(extractComments({})).toEqual([]);
+  it('returns an empty list for an absent root', () => {
+    expect(extractComments([])).toEqual([]);
     expect(extractComments(undefined)).toEqual([]);
   });
 });

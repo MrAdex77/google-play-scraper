@@ -5,7 +5,7 @@ import { permissions, type PermissionsOptions } from './permissions.js';
 import { mapPermissions } from './specs.js';
 import { permissionSchema, type AppPermission } from './schema.js';
 import { permission } from '../../constants.js';
-import { ValidationError } from '../../core/errors.js';
+import { ParseError, ValidationError } from '../../core/errors.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -15,6 +15,11 @@ const fixture = readFileSync(
 );
 
 const NULL_RESPONSE = `)]}'\n[["wrb.fr","xdSrCf",null,null,null,null,"1"]]`;
+
+const permissionsBatch = (payload: unknown): string => {
+  const frame = [['wrb.fr', 'xdSrCf', JSON.stringify(payload), null, null, null, '1']];
+  return `)]}'\n${JSON.stringify(frame)}`;
+};
 
 const fetchReturning =
   (body: string): typeof fetch =>
@@ -113,5 +118,23 @@ describe('permissions guards', () => {
     });
 
     expect(result).toEqual([]);
+  });
+
+  it('returns an empty array for an app that declares no permission sections', async () => {
+    const result = await permissions({
+      appId: TRANSLATE,
+      requestOptions: { fetchImpl: fetchReturning(permissionsBatch([])) },
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('rejects a payload whose permission section is not a collection', async () => {
+    await expect(
+      permissions({
+        appId: TRANSLATE,
+        requestOptions: { fetchImpl: fetchReturning(permissionsBatch(['not-a-section'])) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
   });
 });

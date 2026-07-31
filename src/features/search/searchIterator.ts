@@ -34,6 +34,7 @@ async function* streamSearch(
     tokenPath: CLUSTER_MAPPINGS.token,
     context: SEARCH_CONTEXT,
     onDegradation: options.onDegradation,
+    onIntegrityEvent: options.onIntegrityEvent,
   });
 
   for await (const clusterPage of pages) {

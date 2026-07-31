@@ -72,6 +72,11 @@ describe('parseBatchResponse', () => {
     expect(parseBatchResponse(text, 'rpcMixed')).toEqual([true]);
   });
 
+  it('skips protocol metadata and malformed frames for other rpc ids', () => {
+    const text = `)]}'\n[["di",38],["wrb.fr","rpcOther",5],["wrb.fr","rpcTarget","[9]"]]`;
+    expect(parseBatchResponse(text, 'rpcTarget')).toEqual([9]);
+  });
+
   it('skips unparsable lines and matches the envelope on a later line', () => {
     const text = `)]}'\n[not json\n[["wrb.fr","rpcLater","[7]",null,null,null,"generic"]]`;
     expect(parseBatchResponse(text, 'rpcLater')).toEqual([7]);
@@ -79,6 +84,21 @@ describe('parseBatchResponse', () => {
 
   it('throws a ParseError when no envelope matches the rpc id', () => {
     expect(() => parseBatchResponse(chunked, 'unknown-rpc')).toThrow(ParseError);
+  });
+
+  it('throws a ParseError when the target frame has no payload', () => {
+    const text = `)]}'\n[["wrb.fr","rpcTarget"]]`;
+    expect(() => parseBatchResponse(text, 'rpcTarget')).toThrow(ParseError);
+  });
+
+  it('throws a ParseError when the target frame payload has an invalid type', () => {
+    const text = `)]}'\n[["wrb.fr","rpcTarget",5]]`;
+    expect(() => parseBatchResponse(text, 'rpcTarget')).toThrow(ParseError);
+  });
+
+  it('throws a ParseError when the target frame payload is not json', () => {
+    const text = `)]}'\n[["wrb.fr","rpcTarget","not json"]]`;
+    expect(() => parseBatchResponse(text, 'rpcTarget')).toThrow(ParseError);
   });
 
   it('throws a ParseError when there is no array to parse', () => {

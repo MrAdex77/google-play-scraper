@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { createSearch, search, type SearchOptions } from './search.js';
-import { filterByPrice, matchesPriceFilter } from './specs.js';
+import { filterByPrice, matchesPriceFilter, SEARCH_RPC_ID } from './specs.js';
 import { searchResultSchema, type SearchResult } from './schema.js';
 import type { App } from '../app/schema.js';
 import type { DegradationEvent } from '../../core/degradation.js';
 import { ParseError, ValidationError } from '../../core/errors.js';
+import type { IntegrityEvent } from '../../core/integrity.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -45,6 +46,13 @@ const sequenceFetch = (bodies: string[]): typeof fetch => {
 const buildScriptData = (key: string, value: unknown): string =>
   `<script>AF_initDataCallback({key: '${key}', hash: '1', data:${JSON.stringify(value)}, sideChannel: {}});</script>`;
 
+const buildServiceTable = (entries: Record<string, string>): string => {
+  const pairs = Object.entries(entries)
+    .map(([key, rpcId]) => `'${key}' : {id:'${rpcId}'}`)
+    .join(',');
+  return `<script>; var AF_dataServiceRequests = {${pairs}}; var AF_initDataChunkQueue = [];</script>`;
+};
+
 const coreData = (id: string): unknown[] => {
   const core: unknown[] = [];
   core[0] = [id];
@@ -58,13 +66,15 @@ const coreData = (id: string): unknown[] => {
   return core;
 };
 
-const searchPageHtml = (ids: string[], token: string): string => {
+const searchPageRoot = (ids: string[], token: string): unknown => {
   const apps = ids.map((id) => [coreData(id)]);
   const section: unknown[] = [];
   section[22] = [apps, [null, null, null, [null, token]]];
-  const ds4 = [[null, [section]]];
-  return buildScriptData('ds:4', ds4);
+  return [[null, [section]]];
 };
+
+const searchPageHtml = (ids: string[], token: string): string =>
+  buildScriptData('ds:4', searchPageRoot(ids, token));
 
 const clusterBatchOf = (apps: unknown[], nextToken: string | null): string => {
   const inner: unknown[] = [];
@@ -123,6 +133,20 @@ describe('search fixture parsing', () => {
     expect(results[0]?.appId).toBe('com.pandaexpress.app');
     expect(results[0]?.title).toBe('Panda Express');
     expect(results.filter((item) => item.appId === 'com.pandaexpress.app')).toHaveLength(1);
+  });
+
+  it('parses a search root moved behind the lGYRle route', async () => {
+    const html = `${buildScriptData('ds:4', ['malformed fallback'])}${buildScriptData(
+      'ds:11',
+      searchPageRoot(['routed'], ''),
+    )}${buildServiceTable({ 'ds:11': SEARCH_RPC_ID })}`;
+
+    const results = (await search({
+      term: 'routed',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['routed']);
   });
 });
 
@@ -195,7 +219,7 @@ const exactMatchNode = (id: string): unknown[] => {
 };
 
 const searchPageWithSection = (section: unknown[]): string =>
-  buildScriptData('ds:4', [[null, [section]]]);
+  `${buildScriptData('ds:4', [[null, [section]]])}${buildServiceTable({ 'ds:4': SEARCH_RPC_ID })}`;
 
 const sectionWithApps = (ids: string[]): unknown[] => {
   const section: unknown[] = [];
@@ -204,15 +228,15 @@ const sectionWithApps = (ids: string[]): unknown[] => {
 };
 
 describe('search malformed pages', () => {
-  it('returns no results when the sections block is not an array', async () => {
+  it('rejects a response whose sections block is not an array', async () => {
     const html = buildScriptData('ds:4', [[null, 'not-sections']]);
 
-    const results = (await search({
-      term: 'panda',
-      requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
-
-    expect(results).toEqual([]);
+    await expect(
+      search({
+        term: 'panda',
+        requestOptions: { fetchImpl: fetchReturning(html) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
   });
 
   it('returns no results when no section carries apps', async () => {
@@ -230,6 +254,38 @@ describe('search malformed pages', () => {
   it('skips a malformed exact match block and keeps the section apps', async () => {
     const section = sectionWithApps(['a', 'b']);
     section[23] = ['garbage'];
+    const events: IntegrityEvent[] = [];
+
+    const results = (await search({
+      term: 'panda',
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('search');
+    expect(events[0]?.reason).toBe('optional-section-parse');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+  });
+
+  it('emits nothing when the exact match block is absent', async () => {
+    const events: IntegrityEvent[] = [];
+    const results = (await search({
+      term: 'panda',
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: {
+        fetchImpl: fetchReturning(searchPageWithSection(sectionWithApps(['a', 'b']))),
+      },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+    expect(events).toEqual([]);
+  });
+
+  it('keeps ordinary results when no exact match observer is configured', async () => {
+    const section = sectionWithApps(['a', 'b']);
+    section[23] = ['garbage'];
 
     const results = (await search({
       term: 'panda',
@@ -237,6 +293,21 @@ describe('search malformed pages', () => {
     })) as SearchResult[];
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+  });
+
+  it('lets a throwing exact match callback surface to the consumer', async () => {
+    const section = sectionWithApps(['a']);
+    section[23] = ['garbage'];
+
+    await expect(
+      search({
+        term: 'panda',
+        onIntegrityEvent: () => {
+          throw new Error('consumer handler bug');
+        },
+        requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+      }),
+    ).rejects.toThrow('consumer handler bug');
   });
 
   it('does not duplicate an exact match already present in the results', async () => {
@@ -263,7 +334,28 @@ describe('search malformed pages', () => {
     expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
     expect(results[0]?.developerId).toBe('x-dev');
     expect(results[0]?.price).toBe(0);
+    expect(results[0]?.free).toBe(false);
     expect(results[0]?.url).toBe('https://play.google.com/store/apps/details?id=x');
+  });
+
+  it('keeps an exact match with a present invalid developer link', async () => {
+    const section = sectionWithApps(['a']);
+    const exactMatch = exactMatchNode('x');
+    const node16 = exactMatch[16] as unknown[];
+    const detail = node16[2] as unknown[];
+    const developer = detail[68] as unknown[];
+    const developerMetadata = developer[1] as unknown[];
+    const developerLink = developerMetadata[4] as unknown[];
+    developerLink[2] = 42;
+    section[23] = exactMatch;
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(results[0]?.developerId).toBeUndefined();
   });
 });
 

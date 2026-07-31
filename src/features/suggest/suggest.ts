@@ -3,11 +3,13 @@ import { buildBatchBody, parseBatchResponse } from '../../core/batchexecute.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 import { getPath } from '../../core/path.js';
+import { parseRaw } from '../../core/raw.js';
 import {
   buildSuggestPayload,
   SUGGEST_RPC_ID,
   SUGGESTION_TEXT_PATH,
   SUGGESTIONS_PATH,
+  suggestResponseSchema,
   suggestUrl,
 } from './specs.js';
 
@@ -33,6 +35,7 @@ export function createSuggest(resolveClient: ResolveClient = clientFromOptions) 
     });
 
     const payload = parseBatchResponse(text, SUGGEST_RPC_ID);
+    parseRaw(suggestResponseSchema, payload, `${SUGGEST_CONTEXT} response`);
     if (payload === null) {
       return [];
     }

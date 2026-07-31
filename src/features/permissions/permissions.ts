@@ -3,10 +3,13 @@ import { permission } from '../../constants.js';
 import { parseBatchResponse } from '../../core/batchexecute.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import { baseOptionsSchema, parseOptions } from '../../core/options.js';
+import { parseRaw } from '../../core/raw.js';
 import { permissionSchema, type AppPermission } from './schema.js';
 import {
   buildPermissionsBody,
+  commonPermissionsResponseSchema,
   mapPermissions,
+  otherPermissionsResponseSchema,
   PERMISSIONS_RPC_ID,
   permissionsUrl,
 } from './specs.js';
@@ -36,6 +39,8 @@ export function createPermissions(resolveClient: ResolveClient = clientFromOptio
     });
 
     const payload = parseBatchResponse(text, PERMISSIONS_RPC_ID);
+    parseRaw(commonPermissionsResponseSchema, payload, `${PERMISSIONS_CONTEXT} common response`);
+    parseRaw(otherPermissionsResponseSchema, payload, `${PERMISSIONS_CONTEXT} other response`);
     const entries = permissionsResultSchema.parse(mapPermissions(payload));
 
     if (!parsed.short) {

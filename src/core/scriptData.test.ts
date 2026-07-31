@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { parseScriptData, resolveDsKey } from './scriptData.js';
+import * as z from 'zod/mini';
+import { ParseError } from './errors.js';
+import { deriveScriptDataSelection, parseScriptData, resolveDsKeys } from './scriptData.js';
+import { optional, required } from './spec.js';
 
 const detailsLike = readFileSync(
   fileURLToPath(new URL('../../test/fixtures/synthetic/details-like.html', import.meta.url)),
@@ -35,17 +38,106 @@ describe('parseScriptData', () => {
     expect(data.blocks).toEqual({});
     expect(data.serviceRequests).toEqual({});
   });
-});
 
-describe('resolveDsKey', () => {
-  it('returns the ds key whose rpc id matches', () => {
-    const data = parseScriptData(detailsLike);
-    expect(resolveDsKey(data, 'rpcFive')).toBe('ds:5');
-    expect(resolveDsKey(data, 'rpcFour')).toBe('ds:4');
+  it('unions absolute keys with keys resolved from requested rpc ids', () => {
+    const selection = deriveScriptDataSelection([
+      {
+        rpcId: 'rpcFive',
+        paths: [['ds:4']],
+        schema: z.unknown(),
+        missing: required(),
+      },
+    ]);
+    const data = parseScriptData(detailsLike, selection);
+
+    expect(data.blocks).toEqual({
+      'ds:4': [['from-ds4']],
+      'ds:5': [
+        [['Panda App'], ['com.panda.app']],
+        [null, '5,000,000+'],
+        { nested: { deep: 'value' } },
+      ],
+    });
+    expect(data.serviceRequests).toEqual({ 'ds:4': 'rpcFour', 'ds:5': 'rpcFive' });
   });
 
-  it('returns undefined when no rpc id matches', () => {
+  it('skips malformed unselected blocks', () => {
+    const selection = deriveScriptDataSelection([
+      { paths: [['ds:4']], schema: z.unknown(), missing: optional() },
+    ]);
+    const data = parseScriptData(detailsLike, selection);
+
+    expect(data.blocks).toEqual({ 'ds:4': [['from-ds4']] });
+  });
+
+  it('rejects malformed selected json without exposing its payload', () => {
+    const selection = deriveScriptDataSelection([
+      { paths: [['ds:9']], schema: z.unknown(), missing: optional() },
+    ]);
+    let thrown: unknown;
+    try {
+      parseScriptData(detailsLike, selection);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(ParseError);
+    expect((thrown as Error).message).toBe('script data block ds:9: invalid JSON');
+    expect((thrown as Error).message).not.toContain('oops');
+  });
+
+  it('rejects duplicate selected callback keys', () => {
+    const block = `<script>AF_initDataCallback({key: 'ds:4', hash: '1', data:[4], sideChannel: {}});</script>`;
+    const selection = deriveScriptDataSelection([
+      { paths: [['ds:4']], schema: z.unknown(), missing: optional() },
+    ]);
+
+    expect(() => parseScriptData(`${block}${block}`, selection)).toThrow(
+      'script data block ds:4: duplicate selected callback',
+    );
+  });
+});
+
+describe('deriveScriptDataSelection', () => {
+  it('derives absolute field keys without inspecting transforms', () => {
+    const selection = deriveScriptDataSelection([
+      {
+        paths: [['ds:7', 1]],
+        schema: z.string(),
+        missing: required(),
+        transform: () => {
+          throw new Error('must not run');
+        },
+      },
+    ]);
+
+    expect(selection.blockKeys).toEqual(new Set(['ds:7']));
+    expect(selection.rpcIds).toEqual(new Set());
+  });
+
+  it('rejects a requirement without an absolute key or rpc id', () => {
+    expect(() =>
+      deriveScriptDataSelection([
+        {
+          paths: [[]],
+          schema: z.unknown(),
+          missing: optional(),
+        },
+      ]),
+    ).toThrow('script data requirement has no statically resolvable key');
+  });
+});
+
+describe('resolveDsKeys', () => {
+  it('returns every matching ds key in service table order', () => {
     const data = parseScriptData(detailsLike);
-    expect(resolveDsKey(data, 'unknown-rpc')).toBeUndefined();
+    data.serviceRequests['ds:9'] = 'rpcFive';
+    expect(resolveDsKeys(data, 'rpcFive')).toEqual(['ds:5', 'ds:9']);
+    expect(resolveDsKeys(data, 'rpcFour')).toEqual(['ds:4']);
+  });
+
+  it('returns an empty array when no rpc id matches', () => {
+    const data = parseScriptData(detailsLike);
+    expect(resolveDsKeys(data, 'unknown-rpc')).toEqual([]);
   });
 });

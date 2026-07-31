@@ -32,11 +32,11 @@ Before opening a pull request, make sure `pnpm lint`, `pnpm typecheck`, `pnpm te
 
 ## Benchmarks
 
-`pnpm bench` runs the Vitest benchmark suite in `bench/` over the recorded app fixtures: script data parsing (`bench/scriptData.bench.ts`) and the full offline `app()` pipeline plus spec extraction (`bench/app.bench.ts`). A single file or name filter works as `pnpm bench scriptData` or `pnpm bench -t referenced`.
+`pnpm bench` runs `bench/scriptData.bench.ts` over the three recorded app fixtures. Each fixture measures the production parser in all-block mode, the production parser with the app's derived block selection, and the full offline `app()` pipeline. A name filter works as `pnpm bench -t 'selected blocks'` or `pnpm bench -t 'app() offline'`.
 
 Benchmarks never run in CI: shared runners have noisy neighbors and frequency scaling, so any hz threshold there would flake. For a pull request that touches `src/core/scriptData.ts`, `src/core/spec.ts`, `src/core/path.ts`, or `src/features/app/`, run `pnpm bench` locally on `main`, run it again on your branch, and paste both tables into the PR description.
 
-`bench/scriptData.bench.ts` mirrors the three block regexes from `src/core/scriptData.ts` (they are module-private there). If `scriptData.ts` ever changes them, update the mirrors in the bench file to match.
+Benchmarks report performance rather than gate it. Never narrow a declared selection, remove a fallback, weaken a schema, or replace the production parser with a benchmark-only implementation to improve the numbers.
 
 ## Conventions
 

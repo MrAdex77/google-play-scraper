@@ -5,6 +5,7 @@ import { app, type AppOptions } from './app.js';
 import { getPath } from '../../core/path.js';
 import { parseScriptData } from '../../core/scriptData.js';
 import { NotFoundError, SpecError, ValidationError } from '../../core/errors.js';
+import { APP_DETAILS_RPC_ID, appCommentsRootSchema, appDetailsRootSchema } from './specs.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -23,6 +24,28 @@ const fetchReturning = (body: string, status = 200): typeof fetch => {
 
 const buildScriptData = (key: string, value: unknown): string =>
   `<script>AF_initDataCallback({key: '${key}', hash: '1', data:${JSON.stringify(value)}, sideChannel: {}});</script>`;
+
+const buildServiceTable = (entries: Record<string, string>): string => {
+  const pairs = Object.entries(entries)
+    .map(([key, rpcId]) => `'${key}' : {id:'${rpcId}'}`)
+    .join(',');
+  return `<script>; var AF_dataServiceRequests = {${pairs}}; var AF_initDataChunkQueue = [];</script>`;
+};
+
+const commentEntry = (text: string): unknown[] => {
+  const entry: unknown[] = [];
+  entry[1] = ['Reviewer'];
+  entry[4] = text;
+  entry[5] = [1700000000];
+  entry[10] = '1.2.3';
+  return entry;
+};
+
+const appHtmlWithCommentRoot = (key: string, comments: unknown[], routed: boolean): string => {
+  const details = parseScriptData(translateHtml).blocks['ds:5'];
+  const routing = routed ? buildServiceTable({ [key]: APP_DETAILS_RPC_ID }) : '';
+  return `${buildScriptData('ds:5', details)}${buildScriptData(key, [comments])}${routing}`;
+};
 
 describe('app', () => {
   it('parses the translate details page into a validated result', async () => {
@@ -48,6 +71,7 @@ describe('app', () => {
     expect(result.installs?.endsWith('+')).toBe(true);
     expect(result.appId).toBe(appId);
     expect(result.url).toContain(`id=${appId}`);
+    expect(result.comments).toEqual([]);
   });
 
   it('parses paid app fields from the minecraft details page', async () => {
@@ -60,6 +84,7 @@ describe('app', () => {
     expect(result.price).toBeGreaterThan(0);
     expect(result.currency).toMatch(/^[A-Z]{3}$/);
     expect(typeof result.offersIAP).toBe('boolean');
+    expect(result.comments).toEqual([]);
   });
 
   it('parses the Where Am I geography game details page', async () => {
@@ -78,6 +103,64 @@ describe('app', () => {
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.score).toBeLessThanOrEqual(5);
     expect(result.screenshots.length).toBeGreaterThan(0);
+    expect(result.comments).toEqual([]);
+  });
+
+  it('parses non-empty comments from the ds:8 fallback', async () => {
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: {
+        fetchImpl: fetchReturning(
+          appHtmlWithCommentRoot('ds:8', [commentEntry('primary comment')], false),
+        ),
+      },
+    });
+
+    expect(result.comments).toEqual(['primary comment']);
+  });
+
+  it('parses non-empty comments from the ds:9 fallback', async () => {
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: {
+        fetchImpl: fetchReturning(
+          appHtmlWithCommentRoot('ds:9', [commentEntry('secondary comment')], false),
+        ),
+      },
+    });
+
+    expect(result.comments).toEqual(['secondary comment']);
+  });
+
+  it('parses non-empty comments reached through the Ws7gDc route', async () => {
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: {
+        fetchImpl: fetchReturning(
+          appHtmlWithCommentRoot('ds:11', [commentEntry('routed comment')], true),
+        ),
+      },
+    });
+
+    expect(result.comments).toEqual(['routed comment']);
+  });
+
+  it('keeps details and comments root schemas mutually exclusive', () => {
+    const data = parseScriptData(translateHtml);
+    const details = data.blocks['ds:5'];
+    const comments = [[commentEntry('comment')]];
+
+    expect(appDetailsRootSchema.safeParse(details).success).toBe(true);
+    expect(appCommentsRootSchema.safeParse(details).success).toBe(false);
+    expect(appDetailsRootSchema.safeParse(comments).success).toBe(false);
+    expect(appCommentsRootSchema.safeParse(comments).success).toBe(true);
+  });
+
+  it('rejects the current similar cluster as comments and accepts the empty ds:9 variant', () => {
+    const data = parseScriptData(translateHtml);
+
+    expect(appCommentsRootSchema.safeParse(data.blocks['ds:8']).success).toBe(false);
+    expect(appCommentsRootSchema.safeParse(data.blocks['ds:9']).success).toBe(true);
   });
 
   it('sanitizes control characters out of the changelog and description', async () => {
@@ -131,7 +214,7 @@ describe('app', () => {
     const ds5 = data.blocks['ds:5'] as unknown[];
     const details = (ds5[1] as unknown[])[2] as unknown[];
     details[140] = null;
-    details[69] = null;
+    details[69] = [];
     const blankedHtml = buildScriptData('ds:5', ds5);
 
     const result = await app({
@@ -147,12 +230,50 @@ describe('app', () => {
     expect(result.developerLegalPhoneNumber).toBeUndefined();
   });
 
+  it('distinguishes absent commercial flags from present enabled flags', async () => {
+    const absent = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(translateHtml) },
+    });
+
+    expect(absent.offersIAP).toBeUndefined();
+    expect(absent.adSupported).toBe(false);
+    expect(absent.earlyAccessEnabled).toBe(false);
+    expect(absent.isAvailableInPlayPass).toBe(false);
+
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const availability = details[18] as unknown[];
+    availability[2] = 'early-access';
+    details[62] = ['play-pass'];
+    const enabledHtml = buildScriptData('ds:5', ds5);
+
+    const enabled = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(enabledHtml) },
+    });
+
+    expect(enabled.earlyAccessEnabled).toBe(true);
+    expect(enabled.isAvailableInPlayPass).toBe(true);
+  });
+
   it('exposes the original price when a discount is active', async () => {
     const data = parseScriptData(minecraftHtml);
     const ds5 = data.blocks['ds:5'] as unknown[];
     const details = (ds5[1] as unknown[])[2] as unknown[];
     const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
     const pricePair = offer[1] as unknown[];
+    pricePair[1] = [0];
+    const undiscountedHtml = buildScriptData('ds:5', ds5);
+
+    const undiscounted = await app({
+      appId: 'com.mojang.minecraftpe',
+      requestOptions: { fetchImpl: fetchReturning(undiscountedHtml) },
+    });
+
+    expect(undiscounted.originalPrice).toBeUndefined();
+
     pricePair[1] = [10_990_000];
     const discountedHtml = buildScriptData('ds:5', ds5);
 
@@ -164,6 +285,36 @@ describe('app', () => {
     expect(result.originalPrice).toBe(10.99);
     expect(result.price).toBeGreaterThan(0);
     expect(result.free).toBe(false);
+  });
+
+  it('reads the discount end date from the timestamp beside its localized labels', async () => {
+    const data = parseScriptData(minecraftHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
+    offer[14] = [[1786492799], 'Sale ends in 12 days', 'Offer ends 8/12/26, 1:59 AM'];
+
+    const result = await app({
+      appId: 'com.mojang.minecraftpe',
+      requestOptions: { fetchImpl: fetchReturning(buildScriptData('ds:5', ds5)) },
+    });
+
+    expect(result.discountEndDate).toBe(1786492799000);
+  });
+
+  it('rejects a discount end date that is not a timestamp', async () => {
+    const data = parseScriptData(minecraftHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
+    offer[14] = [['not a timestamp'], 'Sale ends in 12 days'];
+
+    await expect(
+      app({
+        appId: 'com.mojang.minecraftpe',
+        requestOptions: { fetchImpl: fetchReturning(buildScriptData('ds:5', ds5)) },
+      }),
+    ).rejects.toBeInstanceOf(SpecError);
   });
 
   it('throws a SpecError naming the field when the title path is blank', async () => {

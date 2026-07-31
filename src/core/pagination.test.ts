@@ -11,10 +11,11 @@ import { BATCH_URL } from './batchexecute.js';
 import type { DegradationEvent } from './degradation.js';
 import { ParseError } from './errors.js';
 import type { HttpClient, HttpRequest } from './http.js';
-import type { SpecMap } from './spec.js';
+import type { IntegrityEvent } from './integrity.js';
+import { required, type SpecMap } from './spec.js';
 
 const itemSpecs = {
-  id: { paths: [[0]], schema: z.string() },
+  id: { paths: [[0]], missing: required(), schema: z.string() },
 } satisfies SpecMap;
 
 const APPS_PATH = [0, 0, 0];
@@ -24,6 +25,14 @@ const batchResponse = (apps: unknown[], token: string | null): string => {
   const inner: unknown[] = [];
   inner[0] = apps;
   inner[7] = [null, token];
+  const payload = [[inner]];
+  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
+  return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
+};
+
+const batchResponseWithoutToken = (apps: unknown[]): string => {
+  const inner: unknown[] = [];
+  inner[0] = apps;
   const payload = [[inner]];
   const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
   return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
@@ -140,12 +149,53 @@ describe('clusterPages', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('ends when a page omits the continuation token holder', async () => {
+    const { client, requests } = queuedClient([batchResponseWithoutToken([['a']])]);
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+      }),
+    );
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
+    expect(requests).toHaveLength(1);
+  });
+
+  it('rejects a response path containing a non-array segment', async () => {
+    const { client } = queuedClient([]);
+    const generator = clusterPages({
+      client,
+      lang: 'en',
+      country: 'us',
+      initialApps: [],
+      initialToken: 't1',
+      itemSpecs,
+      appsPath: ['root'],
+      tokenPath: TOKEN_PATH,
+      context: 'test',
+    });
+
+    await expect(collectPages(generator)).rejects.toThrow(
+      'test response path must contain only array indexes',
+    );
+  });
+
   it('stops when the server repeats a pagination token', async () => {
     const { client, requests } = queuedClient([
       batchResponse([['a']], 'repeated-token'),
       batchResponse([['b']], 'repeated-token'),
     ]);
 
+    const events: IntegrityEvent[] = [];
     const pages = await collectPages(
       clusterPages({
         client,
@@ -157,11 +207,37 @@ describe('clusterPages', () => {
         appsPath: APPS_PATH,
         tokenPath: TOKEN_PATH,
         context: 'test',
+        onIntegrityEvent: (event) => events.push(event),
       }),
     );
 
     expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
     expect(requests).toHaveLength(1);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('test');
+    expect(events[0]?.reason).toBe('pagination-token-cycle');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+    expect(events[0]?.error.message).not.toContain('repeated-token');
+  });
+
+  it('lets a throwing token cycle callback surface to the consumer', async () => {
+    const { client } = queuedClient([batchResponse([['a']], 'repeated-token')]);
+    const generator = clusterPages({
+      client,
+      lang: 'en',
+      country: 'us',
+      initialApps: [],
+      initialToken: 'repeated-token',
+      itemSpecs,
+      appsPath: APPS_PATH,
+      tokenPath: TOKEN_PATH,
+      context: 'test',
+      onIntegrityEvent: () => {
+        throw new Error('consumer handler bug');
+      },
+    });
+
+    await expect(collectPages(generator)).rejects.toThrow('consumer handler bug');
   });
 
   it('stops gracefully when a continuation page fails to parse', async () => {

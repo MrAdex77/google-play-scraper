@@ -6,7 +6,8 @@ import { REVIEWS_RPC_ID } from './specs.js';
 import { reviewSchema } from './schema.js';
 import { createHttpClient } from '../../core/http.js';
 import { sort } from '../../constants.js';
-import { SpecError, ValidationError } from '../../core/errors.js';
+import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
+import type { IntegrityEvent } from '../../core/integrity.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -134,12 +135,14 @@ const reviewEntry = (id: string): unknown[] => {
   return entry;
 };
 
-const reviewsBatch = (entries: unknown, token: string | null): string => {
-  const payload = [entries, [null, token]];
+const reviewsPayloadBatch = (payload: unknown): string => {
   const frame = [['wrb.fr', REVIEWS_RPC_ID, JSON.stringify(payload), null, null, null, 'generic']];
   const json = JSON.stringify(frame);
   return `)]}'\n\n${json.length.toString()}\n${json}`;
 };
+
+const reviewsBatch = (entries: unknown, token: string | null): string =>
+  reviewsPayloadBatch([entries, [null, token]]);
 
 describe('reviews degraded payloads', () => {
   it('stops accumulating when the server repeats a pagination token', async () => {
@@ -148,15 +151,40 @@ describe('reviews degraded payloads', () => {
       reviewsBatch([reviewEntry('r3')], 'repeated-token'),
     ]);
 
+    const events: IntegrityEvent[] = [];
     const result = await reviews({
       appId: TRANSLATE,
       num: 100,
+      onIntegrityEvent: (event) => events.push(event),
       requestOptions: { fetchImpl },
     });
 
     expect(count()).toBe(2);
     expect(result.data.map((review) => review.id)).toEqual(['r1', 'r2', 'r3']);
     expect(result.nextPaginationToken).toBeNull();
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('reviews');
+    expect(events[0]?.reason).toBe('pagination-token-cycle');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+    expect(events[0]?.error.message).not.toContain('repeated-token');
+  });
+
+  it('lets a throwing review token cycle callback surface to the consumer', async () => {
+    const { fetchImpl } = sequenceFetch([
+      reviewsBatch([reviewEntry('r1')], 'repeated-token'),
+      reviewsBatch([reviewEntry('r2')], 'repeated-token'),
+    ]);
+
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        num: 100,
+        onIntegrityEvent: () => {
+          throw new Error('consumer handler bug');
+        },
+        requestOptions: { fetchImpl },
+      }),
+    ).rejects.toThrow('consumer handler bug');
   });
 
   it('treats an empty token as the final page', async () => {
@@ -164,6 +192,17 @@ describe('reviews degraded payloads', () => {
       appId: TRANSLATE,
       paginate: true,
       requestOptions: { fetchImpl: fetchReturning(reviewsBatch([reviewEntry('r1')], '')) },
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('treats an omitted token holder as the final page', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsPayloadBatch([[reviewEntry('r1')]])) },
     });
 
     expect(result.data).toHaveLength(1);
@@ -199,6 +238,32 @@ describe('reviews degraded payloads', () => {
     expect(review?.version).toBe('9.9.9');
   });
 
+  it('maps a present non-array criteria collection to an empty list', async () => {
+    const entry = reviewEntry('r1');
+    entry[12] = ['invalid-criteria-collection'];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    expect(result.data[0]?.criterias).toEqual([]);
+  });
+
+  it('rejects a present non-array criteria entry', async () => {
+    const entry = reviewEntry('r1');
+    entry[12] = [[42]];
+
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+      }),
+    ).rejects.toBeInstanceOf(SpecError);
+  });
+
   it('strips control characters from review text and reply text', async () => {
     const entry = reviewEntry('r1');
     entry[4] = 'Great\u0000 app\u0007 loved it';
@@ -225,6 +290,27 @@ describe('reviews degraded payloads', () => {
     expect(result.nextPaginationToken).toBeNull();
   });
 
+  it('returns an empty page for the recorded missing-app payload', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsPayloadBatch([])) },
+    });
+
+    expect(result.data).toEqual([]);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('rejects a response whose reviews block is not an array or null', async () => {
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        requestOptions: { fetchImpl: fetchReturning(reviewsBatch('invalid', null)) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
+  });
+
   it('drops a reply date that does not resolve to a valid time', async () => {
     const entry = reviewEntry('r1');
     entry[7] = [null, 'thanks', ['garbage-seconds', 0]];
@@ -237,6 +323,19 @@ describe('reviews degraded payloads', () => {
 
     expect(result.data[0]?.replyDate).toBeUndefined();
     expect(result.data[0]?.replyText).toBe('thanks');
+  });
+
+  it('defaults omitted date nanoseconds to zero', async () => {
+    const entry = reviewEntry('r1');
+    entry[5] = [1700000000];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    expect(result.data[0]?.date).toBe('2023-11-14T22:13:20.000Z');
   });
 
   it('drops a reply date with fractional seconds or out of range nanoseconds', async () => {

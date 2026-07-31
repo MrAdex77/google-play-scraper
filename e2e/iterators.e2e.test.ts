@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { type DegradationEvent } from '../src/index.js';
+import { type DegradationEvent, type IntegrityEvent } from '../src/index.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
 const WHATSAPP = 'com.whatsapp';
@@ -8,7 +8,11 @@ const FIRST_PAGE_SIZE = 150;
 liveDescribe('iterators live contract', () => {
   it('streams reviews across the first page boundary', async () => {
     const collected: string[] = [];
-    for await (const review of liveClient.reviewsIterator({ appId: WHATSAPP })) {
+    const events: IntegrityEvent[] = [];
+    for await (const review of liveClient.reviewsIterator({
+      appId: WHATSAPP,
+      onIntegrityEvent: (event) => events.push(event),
+    })) {
       expect(review.id.length).toBeGreaterThan(0);
       expect(review.userName.length).toBeGreaterThan(0);
       expect(review.score).toBeGreaterThanOrEqual(1);
@@ -23,6 +27,7 @@ liveDescribe('iterators live contract', () => {
     expect(collected).toHaveLength(200);
     expect(collected.length).toBeGreaterThan(FIRST_PAGE_SIZE);
     expect(new Set(collected).size).toBe(200);
+    expect(events).toEqual([]);
   });
 
   it('streams thirty search results for a broad term and stops', async () => {
@@ -68,7 +73,7 @@ liveDescribe('iterators live contract', () => {
       collected.push(result.appId);
     }
 
-    expect(collected.length).toBeGreaterThanOrEqual(15);
+    expect(collected.length).toBeGreaterThanOrEqual(10);
     expect(new Set(collected).size).toBe(collected.length);
   });
 

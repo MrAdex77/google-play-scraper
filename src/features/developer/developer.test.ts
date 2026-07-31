@@ -5,7 +5,7 @@ import { createDeveloper, developer, type DeveloperOptions } from './developer.j
 import { developerAppSchema, type DeveloperApp } from './schema.js';
 import { developerUrl } from './specs.js';
 import type { App } from '../app/schema.js';
-import { SpecError, ValidationError } from '../../core/errors.js';
+import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -124,6 +124,27 @@ describe('developer degraded pages', () => {
     })) as DeveloperApp[];
 
     expect(items).toEqual([]);
+  });
+
+  it('returns an empty list from a valid empty developer layout', async () => {
+    const items = (await developer({
+      devId: 'Adex77',
+      requestOptions: { fetchImpl: fetchReturning(namePageHtml([])) },
+    })) as DeveloperApp[];
+
+    expect(items).toEqual([]);
+  });
+
+  it('rejects a malformed matching developer layout', async () => {
+    const section: unknown[] = [];
+    section[22] = 'not-a-layout';
+
+    await expect(
+      developer({
+        devId: 'Adex77',
+        requestOptions: { fetchImpl: fetchReturning(buildDsThree([[null, [section]]])) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
   });
 });
 

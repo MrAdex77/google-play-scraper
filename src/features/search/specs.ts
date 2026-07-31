@@ -1,33 +1,36 @@
-import { BASE_URL } from '../../constants.js';
+import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
 import type { Path } from '../../core/path.js';
-import type { SpecMap } from '../../core/spec.js';
+import { rawArrayPathSchema } from '../../core/raw.js';
+import type { ScriptRootSpec } from '../../core/scriptRoot.js';
+import { deriveScriptDataSelection } from '../../core/scriptData.js';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
 import { searchResultSchema } from './schema.js';
+import * as z from 'zod/mini';
 
-const MICROS_PER_UNIT = 1_000_000;
 const shape = searchResultSchema.shape;
+const REQUIRED = required();
+const OPTIONAL = optional();
 
 export type PriceFilter = 'all' | 'free' | 'paid';
-
-function resolveUrl(value: unknown): string | undefined {
-  return typeof value === 'string' ? new URL(value, BASE_URL).toString() : undefined;
-}
-
-function microsToUnits(value: unknown): number {
-  return typeof value === 'number' ? value / MICROS_PER_UNIT || 0 : 0;
-}
-
-function isFree(value: unknown): boolean {
-  return value === 0;
-}
+export const SEARCH_RPC_ID = 'lGYRle';
 
 function developerIdFromLink(value: unknown): string | undefined {
   return typeof value === 'string' ? value.split('?id=')[1] : undefined;
 }
 
 export const INITIAL_MAPPINGS = {
-  app: ['ds:4', 0, 1, 0, 23],
-  sections: ['ds:4', 0, 1],
+  app: [0, 1, 0, 23],
+  sections: [0, 1],
 } satisfies Record<string, Path>;
+
+export const searchRootSpec = {
+  rpcId: SEARCH_RPC_ID,
+  paths: [['ds:4']],
+  schema: rawArrayPathSchema(INITIAL_MAPPINGS.sections, z.array(z.unknown())),
+  missing: REQUIRED,
+} satisfies ScriptRootSpec;
+
+export const searchScriptDataSelection = deriveScriptDataSelection([searchRootSpec]);
 
 export const SECTIONS_MAPPING = {
   apps: [22, 0],
@@ -40,50 +43,81 @@ export const CLUSTER_MAPPINGS = {
 } satisfies Record<string, Path>;
 
 export const searchItemSpecs = {
-  title: { paths: [[0, 3]], schema: shape.title },
-  appId: { paths: [[0, 0, 0]], schema: shape.appId },
-  url: { paths: [[0, 10, 4, 2]], schema: shape.url, transform: resolveUrl },
-  icon: { paths: [[0, 1, 3, 2]], schema: shape.icon },
-  developer: { paths: [[0, 14]], schema: shape.developer },
-  currency: { paths: [[0, 8, 1, 0, 1]], schema: shape.currency },
-  price: { paths: [[0, 8, 1, 0, 0]], schema: shape.price, transform: microsToUnits },
-  free: { paths: [[0, 8, 1, 0, 0]], schema: shape.free, transform: isFree },
-  summary: { paths: [[0, 13, 1]], schema: shape.summary },
-  scoreText: { paths: [[0, 4, 0]], schema: shape.scoreText },
-  score: { paths: [[0, 4, 1]], schema: shape.score },
+  title: { paths: [[0, 3]], missing: REQUIRED, schema: shape.title },
+  appId: { paths: [[0, 0, 0]], missing: REQUIRED, schema: shape.appId },
+  url: { paths: [[0, 10, 4, 2]], missing: REQUIRED, schema: shape.url, transform: resolveAppUrl },
+  icon: { paths: [[0, 1, 3, 2]], missing: REQUIRED, schema: shape.icon },
+  developer: { paths: [[0, 14]], missing: REQUIRED, schema: shape.developer },
+  currency: { paths: [[0, 8, 1, 0, 1]], missing: OPTIONAL, schema: shape.currency },
+  price: {
+    paths: [[0, 8, 1, 0, 0]],
+    missing: REQUIRED,
+    schema: shape.price,
+    transform: microsToUnits,
+  },
+  free: {
+    paths: [[0, 8, 1, 0, 0]],
+    missing: REQUIRED,
+    schema: shape.free,
+    transform: isFreeMicros,
+  },
+  summary: { paths: [[0, 13, 1]], missing: OPTIONAL, schema: shape.summary },
+  scoreText: { paths: [[0, 4, 0]], missing: OPTIONAL, schema: shape.scoreText },
+  score: { paths: [[0, 4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
 
 export const searchPageItemSpecs = {
-  title: { paths: [[3]], schema: shape.title },
-  appId: { paths: [[0, 0]], schema: shape.appId },
-  url: { paths: [[10, 4, 2]], schema: shape.url, transform: resolveUrl },
-  icon: { paths: [[1, 3, 2]], schema: shape.icon },
-  developer: { paths: [[14]], schema: shape.developer },
-  currency: { paths: [[8, 1, 0, 1]], schema: shape.currency },
-  price: { paths: [[8, 1, 0, 0]], schema: shape.price, transform: microsToUnits },
-  free: { paths: [[8, 1, 0, 0]], schema: shape.free, transform: isFree },
-  summary: { paths: [[13, 1]], schema: shape.summary },
-  scoreText: { paths: [[4, 0]], schema: shape.scoreText },
-  score: { paths: [[4, 1]], schema: shape.score },
+  title: { paths: [[3]], missing: REQUIRED, schema: shape.title },
+  appId: { paths: [[0, 0]], missing: REQUIRED, schema: shape.appId },
+  url: { paths: [[10, 4, 2]], missing: REQUIRED, schema: shape.url, transform: resolveAppUrl },
+  icon: { paths: [[1, 3, 2]], missing: REQUIRED, schema: shape.icon },
+  developer: { paths: [[14]], missing: REQUIRED, schema: shape.developer },
+  currency: { paths: [[8, 1, 0, 1]], missing: OPTIONAL, schema: shape.currency },
+  price: {
+    paths: [[8, 1, 0, 0]],
+    missing: REQUIRED,
+    schema: shape.price,
+    transform: microsToUnits,
+  },
+  free: { paths: [[8, 1, 0, 0]], missing: REQUIRED, schema: shape.free, transform: isFreeMicros },
+  summary: { paths: [[13, 1]], missing: OPTIONAL, schema: shape.summary },
+  scoreText: { paths: [[4, 0]], missing: OPTIONAL, schema: shape.scoreText },
+  score: { paths: [[4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
 
 export const exactMatchSpecs = {
-  title: { paths: [[16, 2, 0, 0]], schema: shape.title },
-  appId: { paths: [[16, 3, '12', 0, 0]], schema: shape.appId },
-  url: { paths: [[17, 0, 0, 4, 2]], schema: shape.url, transform: resolveUrl },
-  icon: { paths: [[16, 2, 95, 0, 3, 2]], schema: shape.icon },
-  developer: { paths: [[16, 2, 68, 0]], schema: shape.developer },
+  title: { paths: [[16, 2, 0, 0]], missing: REQUIRED, schema: shape.title },
+  appId: { paths: [[16, 3, '12', 0, 0]], missing: REQUIRED, schema: shape.appId },
+  url: {
+    paths: [[17, 0, 0, 4, 2]],
+    missing: REQUIRED,
+    schema: shape.url,
+    transform: resolveAppUrl,
+  },
+  icon: { paths: [[16, 2, 95, 0, 3, 2]], missing: REQUIRED, schema: shape.icon },
+  developer: { paths: [[16, 2, 68, 0]], missing: REQUIRED, schema: shape.developer },
   developerId: {
     paths: [[16, 2, 68, 1, 4, 2]],
+    missing: OPTIONAL,
     schema: shape.developerId,
     transform: developerIdFromLink,
   },
-  currency: { paths: [[17, 0, 2, 0, 1, 0, 1]], schema: shape.currency },
-  price: { paths: [[17, 0, 2, 0, 1, 0, 0]], schema: shape.price, transform: microsToUnits },
-  free: { paths: [[17, 0, 2, 0, 1, 0, 0]], schema: shape.free, transform: isFree },
-  summary: { paths: [[16, 2, 73, 0, 1]], schema: shape.summary },
-  scoreText: { paths: [[16, 2, 51, 0, 0]], schema: shape.scoreText },
-  score: { paths: [[16, 2, 51, 0, 1]], schema: shape.score },
+  currency: { paths: [[17, 0, 2, 0, 1, 0, 1]], missing: OPTIONAL, schema: shape.currency },
+  price: {
+    paths: [[17, 0, 2, 0, 1, 0, 0]],
+    missing: defaulted(() => 0),
+    schema: shape.price,
+    transform: microsToUnits,
+  },
+  free: {
+    paths: [[17, 0, 2, 0, 1, 0, 0]],
+    missing: defaulted(() => false),
+    schema: shape.free,
+    transform: isFreeMicros,
+  },
+  summary: { paths: [[16, 2, 73, 0, 1]], missing: OPTIONAL, schema: shape.summary },
+  scoreText: { paths: [[16, 2, 51, 0, 0]], missing: OPTIONAL, schema: shape.scoreText },
+  score: { paths: [[16, 2, 51, 0, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
 
 export function priceGoogleValue(value: PriceFilter): number {

@@ -6,17 +6,21 @@ import { clusterItemSpecs } from '../../core/clusterItem.js';
 import { fetchClusterApps } from '../../core/pagination.js';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.js';
 import { parseScriptData } from '../../core/scriptData.js';
+import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.js';
 import { extract, type Extracted } from '../../core/spec.js';
 import { app } from '../app/app.js';
 import type { App } from '../app/schema.js';
 import { developerAppSchema, type DeveloperApp } from './schema.js';
 import {
   CLUSTER_MAPPINGS,
+  developerScriptDataSelection,
   developerUrl,
   isNumericDevId,
   NAME_INITIAL_MAPPINGS,
+  nameInitialRootSpec,
   nameItemSpecs,
   NUMERIC_INITIAL_MAPPINGS,
+  numericInitialRootSpec,
   numericItemSpecs,
 } from './specs.js';
 
@@ -46,40 +50,47 @@ export interface DeveloperFirstPage {
 }
 
 interface DeveloperLayout {
+  rootSpec: ScriptRootSpec;
   mappings: typeof NUMERIC_INITIAL_MAPPINGS;
   itemSpecs: typeof numericItemSpecs;
 }
 
 const NUMERIC_LAYOUT: DeveloperLayout = {
+  rootSpec: numericInitialRootSpec,
   mappings: NUMERIC_INITIAL_MAPPINGS,
   itemSpecs: numericItemSpecs,
 };
 
 const NAME_LAYOUT: DeveloperLayout = {
+  rootSpec: nameInitialRootSpec,
   mappings: NAME_INITIAL_MAPPINGS,
   itemSpecs: nameItemSpecs,
 };
 
 function extractLayout(
-  blocks: Record<string, unknown>,
+  data: ReturnType<typeof parseScriptData>,
   layout: DeveloperLayout,
 ): { apps: DeveloperItem[]; token: string | undefined } | undefined {
-  const appsData = getPath(blocks, layout.mappings.apps);
+  const resolved = resolveScriptRoot(data, layout.rootSpec, `${DEVELOPER_CONTEXT} layout`);
+  if (resolved.root === undefined) {
+    return undefined;
+  }
+  const appsData = getPath(resolved.root, layout.mappings.apps);
   if (!Array.isArray(appsData) || appsData.length === 0) {
     return undefined;
   }
   const apps = appsData.map((item) => extract(item, layout.itemSpecs, DEVELOPER_CONTEXT));
-  const token = getPath(blocks, layout.mappings.token);
+  const token = getPath(resolved.root, layout.mappings.token);
   return { apps, token: typeof token === 'string' ? token : undefined };
 }
 
 function extractInitial(
-  blocks: Record<string, unknown>,
+  data: ReturnType<typeof parseScriptData>,
   numeric: boolean,
 ): { apps: DeveloperItem[]; token: string | undefined } {
   const ordered = numeric ? [NUMERIC_LAYOUT, NAME_LAYOUT] : [NAME_LAYOUT, NUMERIC_LAYOUT];
   for (const layout of ordered) {
-    const extracted = extractLayout(blocks, layout);
+    const extracted = extractLayout(data, layout);
     if (extracted !== undefined) {
       return extracted;
     }
@@ -96,8 +107,8 @@ export async function fetchDeveloperFirstPage(
   const html = await client.request({
     url: developerUrl(query.devId, query.lang, query.country),
   });
-  const data = parseScriptData(html);
-  const initial = extractInitial(data.blocks, numeric);
+  const data = parseScriptData(html, developerScriptDataSelection);
+  const initial = extractInitial(data, numeric);
   return { client, apps: initial.apps, token: initial.token };
 }
 
@@ -121,6 +132,7 @@ export function createDeveloper(
       tokenPath: CLUSTER_MAPPINGS.token,
       context: DEVELOPER_CONTEXT,
       onDegradation: parsed.onDegradation,
+      onIntegrityEvent: parsed.onIntegrityEvent,
     });
 
     const sliced = items.slice(0, parsed.num);

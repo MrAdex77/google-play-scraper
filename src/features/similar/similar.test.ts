@@ -6,7 +6,7 @@ import { similarAppSchema, type SimilarApp } from './schema.js';
 import { findSimilarClusterPath } from './specs.js';
 import { parseScriptData } from '../../core/scriptData.js';
 import type { App } from '../app/schema.js';
-import { ValidationError } from '../../core/errors.js';
+import { ParseError, ValidationError } from '../../core/errors.js';
 
 const SOURCE_APP_ID = 'com.google.android.apps.translate';
 
@@ -107,8 +107,13 @@ const clusterEntry = (title: string, path: unknown): unknown[] => {
 };
 
 describe('similar cluster fallbacks', () => {
-  it('returns undefined when the clusters block is not an array', () => {
+  it('rejects a routed clusters block that is not an array', () => {
     const data = parseScriptData(detailsWithClusters('not-clusters'));
+    expect(() => findSimilarClusterPath(data)).toThrow(ParseError);
+  });
+
+  it('accepts the null cluster collection google serves for apps with no recommendations', () => {
+    const data = parseScriptData(detailsWithClusters(null));
     expect(findSimilarClusterPath(data)).toBeUndefined();
   });
 
@@ -168,6 +173,20 @@ describe('similar cluster fallbacks', () => {
 
     expect(items).toEqual([]);
     expect(count()).toBe(2);
+  });
+
+  it('rejects a malformed cluster page root', async () => {
+    const details = detailsWithClusters([
+      clusterEntry('Similar apps', '/store/apps/collection/cluster?gsr=apps'),
+    ]);
+    const malformedClusterPage = `<script>AF_initDataCallback({key: 'ds:3', hash: '1', data:[null], sideChannel: {}});</script>`;
+
+    await expect(
+      similar({
+        appId: SOURCE_APP_ID,
+        requestOptions: { fetchImpl: sequenceFetch([details, malformedClusterPage]).fetchImpl },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
   });
 });
 

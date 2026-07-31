@@ -14,6 +14,7 @@ export {
 export type { SpecFailure } from './core/errors.js';
 
 export type { DegradationEvent, OnDegradation } from './core/degradation.js';
+export type { IntegrityEvent, IntegrityReason, OnIntegrityEvent } from './core/integrity.js';
 
 export type {
   OnRequest,

@@ -22,15 +22,51 @@ This runbook turns that break into a fifteen minute patch.
    the new path before the old one so both page generations keep working during
    rollout.
 
-4. **Check moved blocks.** When a whole `ds:` block moved, check whether the
-   field's `serviceRequestId` anchor resolves; add one when the routing table
-   exposes a stable RPC id.
+4. **Check moved blocks.** When a whole `ds:` block moved, inspect
+   `AF_dataServiceRequests` in the refreshed fixture. One RPC ID may bind several
+   `ds:` blocks. The parser evaluates every block bound to the declared RPC ID
+   and selects the only candidate that passes the root's structural schema. If
+   the RPC ID changed, update the root spec's `rpcId`. Do not change it merely
+   because the absolute block key moved.
 
 5. **Verify and ship.** Verify with `pnpm test && pnpm test:e2e`, commit as
    `fix(<feature>): repair <field> paths after play store change`, merge, and let
    Release Please cut the patch.
 
 6. **Close out.** Close the breakage issue with a link to the fix commit.
+
+## RPC anchor diagnostics
+
+An `rpc-anchor-fallback` integrity event means no block reached through the
+declared RPC ID passed structural validation, but a declared absolute `ds:`
+fallback did. Treat the event as an early contract-drift warning even when the
+public result still looks correct.
+
+1. Refresh only the affected fixture with `pnpm fixtures:update <feature>` and
+   reproduce with `pnpm test`.
+2. Inspect `AF_dataServiceRequests` and list every key bound to the event's RPC
+   ID. Compare each block with the root schema and the recorded fixture before
+   changing the anchor.
+3. Update the `rpcId` only when Google changed the stable RPC ID for the same
+   response semantics.
+4. Update an absolute fallback only after confirming that the new block carries
+   the same semantic root. Keep still-valid fallbacks during a rollout.
+5. Add or update an in-memory routing mutation that moves the root, reverses
+   routing order, and proves no fallback event is emitted on the repaired route.
+
+An ambiguity `ParseError` names two or more routed keys because more than one
+candidate passed the structural root schema. Routing-table order must not decide
+the winner. Inspect the candidates and tighten the schema around stable root
+structure until exactly one validates; do not pick the first key or delete a
+valid route to silence the error.
+
+The other integrity reasons have narrower responses:
+
+- `optional-section-parse`: refresh the fixture and inspect the named
+  best-effort section. Required fields and roots must still fail loudly.
+- `pagination-token-cycle`: preserve the captured request sequence, confirm the
+  repeated token, and inspect the pagination response before changing token
+  extraction. Tokens must never be written to logs or event messages.
 
 ## Pagination tripwires
 

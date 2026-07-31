@@ -5,7 +5,7 @@ import { createList, list, type ListOptions } from './list.js';
 import { listItemSchema, type ListItem } from './schema.js';
 import { buildListBody, CLUSTER_NAMES, LIST_RPC_ID } from './specs.js';
 import type { App } from '../app/schema.js';
-import { SpecError, ValidationError } from '../../core/errors.js';
+import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
 
 const topFreeGame = readFileSync(
   fileURLToPath(new URL('../../../test/fixtures/list/topfree-game.txt', import.meta.url)),
@@ -51,12 +51,29 @@ const listPayload = (ids: string[]): unknown => {
 };
 
 describe('list degraded payloads', () => {
-  it('returns an empty list when the payload carries no apps', async () => {
+  it('returns an empty list when the payload carries an empty apps collection', async () => {
     const items = (await list({
-      requestOptions: { fetchImpl: fetchReturning(listBatch([])) },
+      requestOptions: { fetchImpl: fetchReturning(listBatch(listPayload([]))) },
     })) as ListItem[];
 
     expect(items).toEqual([]);
+  });
+
+  it('returns an empty list when google reports a collection with no entries', async () => {
+    const items = (await list({
+      collection: 'TOP_PAID',
+      requestOptions: {
+        fetchImpl: fetchReturning(listBatch([[null, null, null, [], false, ['token']]])),
+      },
+    })) as ListItem[];
+
+    expect(items).toEqual([]);
+  });
+
+  it('rejects a payload with no apps path', async () => {
+    await expect(
+      list({ requestOptions: { fetchImpl: fetchReturning(listBatch([])) } }),
+    ).rejects.toBeInstanceOf(ParseError);
   });
 
   it('throws a SpecError naming url when the link cell is missing', async () => {

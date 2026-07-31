@@ -1,5 +1,7 @@
 import { BATCH_URL } from '../../core/batchexecute.js';
 import type { Path } from '../../core/path.js';
+import { rawArrayPathSchema } from '../../core/raw.js';
+import * as z from 'zod/mini';
 
 export const SUGGEST_RPC_ID = 'IJ4APc';
 
@@ -26,5 +28,9 @@ export function buildSuggestPayload(term: string): unknown[] {
   return [[null, [term], [SUGGEST_LIMIT], [SUGGEST_DATASET], SUGGEST_MODE]];
 }
 
-export const SUGGESTIONS_PATH: Path = [0, 0];
+export const SUGGESTIONS_PATH: readonly number[] = [0, 0];
 export const SUGGESTION_TEXT_PATH: Path = [0];
+export const suggestResponseSchema = z.union([
+  z.literal(null),
+  rawArrayPathSchema(SUGGESTIONS_PATH, z.nullable(z.array(z.unknown()))),
+]);
