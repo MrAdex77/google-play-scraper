@@ -116,9 +116,23 @@ describe('response mutation helpers', () => {
 });
 
 describe('app field mutations', () => {
-  it('rejects missing price and free sources without plausible defaults', async () => {
+  it('rejects a missing genre source without a plausible default', async () => {
+    const details = deletePath(appDetails(), appSpecs.genre.paths[0] ?? []);
+    await expectAppSpecFailure(replaceScriptBlockData(appHtml, 'ds:5', details), ['genre']);
+  });
+
+  it('treats a missing offer source as an unpriced listing rather than a failure', async () => {
     const details = deletePath(appDetails(), appSpecs.price.paths[0] ?? []);
-    await expectAppSpecFailure(replaceScriptBlockData(appHtml, 'ds:5', details), ['price', 'free']);
+    const events: IntegrityEvent[] = [];
+
+    const result = await appWithHtml(replaceScriptBlockData(appHtml, 'ds:5', details), (event) =>
+      events.push(event),
+    );
+
+    expect(result.price).toBe(0);
+    expect(result.free).toBe(false);
+    expect(result.priceText).toBe('Free');
+    expect(events).toEqual([]);
   });
 
   it('treats a missing availability source as unavailable rather than a failure', async () => {
