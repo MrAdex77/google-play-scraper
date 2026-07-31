@@ -22,6 +22,8 @@ const REQUIRED = required();
 const OPTIONAL = optional();
 const DEFAULT_FALSE = defaulted(() => false);
 const DEFAULT_VARY = defaulted(() => 'VARY');
+const DEFAULT_PRICE = defaulted(() => 0);
+const DEFAULT_PRICE_TEXT = defaulted(() => 'Free');
 
 export const APP_DETAILS_RPC_ID = 'Ws7gDc';
 
@@ -107,7 +109,7 @@ export const appSpecs = {
   },
   price: {
     paths: [[1, 2, 57, 0, 0, 0, 0, 1, 0, 0]],
-    missing: REQUIRED,
+    missing: DEFAULT_PRICE,
     schema: shape.price,
     transform: microsToUnits,
   },
@@ -126,7 +128,7 @@ export const appSpecs = {
   },
   free: {
     paths: [[1, 2, 57, 0, 0, 0, 0, 1, 0, 0]],
-    missing: REQUIRED,
+    missing: DEFAULT_FALSE,
     schema: shape.free,
     transform: (value) => value === 0,
   },
@@ -137,7 +139,7 @@ export const appSpecs = {
   },
   priceText: {
     paths: [[1, 2, 57, 0, 0, 0, 0, 1, 0, 2]],
-    missing: REQUIRED,
+    missing: DEFAULT_PRICE_TEXT,
     schema: shape.priceText,
     transform: priceText,
   },

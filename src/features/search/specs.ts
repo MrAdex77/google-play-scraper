@@ -10,6 +10,8 @@ import * as z from 'zod/mini';
 const shape = searchResultSchema.shape;
 const REQUIRED = required();
 const OPTIONAL = optional();
+const DEFAULT_PRICE = defaulted(() => 0);
+const DEFAULT_NOT_FREE = defaulted(() => false);
 
 export type PriceFilter = 'all' | 'free' | 'paid';
 export const SEARCH_RPC_ID = 'lGYRle';
@@ -51,13 +53,13 @@ export const searchItemSpecs = {
   currency: { paths: [[0, 8, 1, 0, 1]], missing: OPTIONAL, schema: shape.currency },
   price: {
     paths: [[0, 8, 1, 0, 0]],
-    missing: REQUIRED,
+    missing: DEFAULT_PRICE,
     schema: shape.price,
     transform: microsToUnits,
   },
   free: {
     paths: [[0, 8, 1, 0, 0]],
-    missing: REQUIRED,
+    missing: DEFAULT_NOT_FREE,
     schema: shape.free,
     transform: isFreeMicros,
   },
@@ -75,11 +77,16 @@ export const searchPageItemSpecs = {
   currency: { paths: [[8, 1, 0, 1]], missing: OPTIONAL, schema: shape.currency },
   price: {
     paths: [[8, 1, 0, 0]],
-    missing: REQUIRED,
+    missing: DEFAULT_PRICE,
     schema: shape.price,
     transform: microsToUnits,
   },
-  free: { paths: [[8, 1, 0, 0]], missing: REQUIRED, schema: shape.free, transform: isFreeMicros },
+  free: {
+    paths: [[8, 1, 0, 0]],
+    missing: DEFAULT_NOT_FREE,
+    schema: shape.free,
+    transform: isFreeMicros,
+  },
   summary: { paths: [[13, 1]], missing: OPTIONAL, schema: shape.summary },
   scoreText: { paths: [[4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[4, 1]], missing: OPTIONAL, schema: shape.score },
@@ -105,13 +112,13 @@ export const exactMatchSpecs = {
   currency: { paths: [[17, 0, 2, 0, 1, 0, 1]], missing: OPTIONAL, schema: shape.currency },
   price: {
     paths: [[17, 0, 2, 0, 1, 0, 0]],
-    missing: defaulted(() => 0),
+    missing: DEFAULT_PRICE,
     schema: shape.price,
     transform: microsToUnits,
   },
   free: {
     paths: [[17, 0, 2, 0, 1, 0, 0]],
-    missing: defaulted(() => false),
+    missing: DEFAULT_NOT_FREE,
     schema: shape.free,
     transform: isFreeMicros,
   },
