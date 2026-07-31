@@ -330,7 +330,7 @@ async function showSharedClient(client: Client): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  console.log(`Google Play client — example run for ${TEST_APP_ID}`);
+  console.log(`@mradex77/google-play-scraper — example run for ${TEST_APP_ID}`);
 
   const client = createClient({ country: 'us', throttle: 1 });
 

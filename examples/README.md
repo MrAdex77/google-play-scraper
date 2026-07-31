@@ -1,6 +1,6 @@
 # Examples
 
-Runnable demonstrations of every public method in `google-play-client`.
+Runnable demonstrations of every public method in `@mradex77/google-play-scraper`.
 
 ## all-methods.ts
 
@@ -43,7 +43,7 @@ others still run.
 Every method is also available on the aggregate default export:
 
 ```ts
-import gplay from 'google-play-client';
+import gplay from '@mradex77/google-play-scraper';
 
 const details = await gplay.app({ appId: 'com.adex77.WhereAmI' });
 ```
