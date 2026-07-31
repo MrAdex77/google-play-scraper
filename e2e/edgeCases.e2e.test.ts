@@ -16,6 +16,16 @@ const ZERO_DECIMAL_PAID = 'com.mojang.minecraftpe';
 const RTL_STOREFRONT = 'com.whatsapp';
 const IN_APP_PURCHASES = 'com.roblox.client';
 
+const PREREGISTRATION_CANDIDATES = [
+  'com.ironhidegames.android.kingdomrush6.genesis',
+  'com.devolver.reignsbeyond',
+  'com.com2usholdings.agwiv.android.google.global.normal',
+  'com.Pocketpair.NeverGrave',
+  'com.wanda.jojo.gp.global',
+  'com.bytro.warhammer40ksupremacy',
+  'com.dreamloft.grumpykingdom',
+];
+
 const EMPTY_HISTOGRAM = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 const YEAR_2000_MS = 946684800000;
 const YEAR_2100_MS = 4102444800000;
@@ -231,6 +241,93 @@ liveDescribe('commercial model edges live contract', () => {
     expect(result.price).toBeGreaterThan(0);
     expect(Number.isInteger(result.price)).toBe(true);
     expect(result.priceText.length).toBeGreaterThan(0);
+  });
+});
+
+liveDescribe('preregistration listings live contract', () => {
+  it('resolves every preregistration candidate without a spec failure', async () => {
+    const events: IntegrityEvent[] = [];
+    const results = await Promise.all(
+      PREREGISTRATION_CANDIDATES.map((appId) =>
+        liveClient.app({ appId, onIntegrityEvent: (event) => events.push(event) }),
+      ),
+    );
+
+    for (const result of results) {
+      expect(result.title.length).toBeGreaterThan(0);
+      expect(result.description.length).toBeGreaterThan(0);
+      expect(result.screenshots.length).toBeGreaterThan(0);
+      expect(typeof result.preregister).toBe('boolean');
+      expect(typeof result.earlyAccessEnabled).toBe('boolean');
+    }
+    for (const event of events) {
+      expect(event.reason).toBe('optional-section-parse');
+      expect(event.context).toBe('app comments');
+    }
+  });
+
+  it('reports an offerless listing for the candidates still in preregistration', async () => {
+    const results = await Promise.all(
+      PREREGISTRATION_CANDIDATES.map((appId) => liveClient.app({ appId })),
+    );
+    const preregistering = results.filter((result) => result.preregister);
+
+    expect(preregistering.length).toBeGreaterThan(0);
+
+    for (const result of preregistering) {
+      expect(result.price).toBe(0);
+      expect(result.free).toBe(false);
+      expect(result.priceText).toBe('Free');
+      expect(result.currency).toBeUndefined();
+      expect(result.originalPrice).toBeUndefined();
+      expect(result.installs).toBeUndefined();
+      expect(result.minInstalls).toBeUndefined();
+      expect(result.score).toBeUndefined();
+      expect(result.ratings).toBeUndefined();
+      expect(result.histogram).toEqual(EMPTY_HISTOGRAM);
+      expect(result.released).toBeUndefined();
+    }
+  });
+
+  it('covers early access among the preregistration candidates', async () => {
+    const results = await Promise.all(
+      PREREGISTRATION_CANDIDATES.map((appId) => liveClient.app({ appId })),
+    );
+    const earlyAccess = results.filter((result) => result.earlyAccessEnabled);
+
+    expect(earlyAccess.length).toBeGreaterThan(0);
+
+    for (const result of earlyAccess) {
+      expect(result.preregister).toBe(true);
+      expect(result.title.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('serves reports and neighbours for a preregistration listing', async () => {
+    const appId = PREREGISTRATION_CANDIDATES[0] ?? '';
+    const [permissions, safety, similar, reviews] = await Promise.all([
+      liveClient.permissions({ appId }),
+      liveClient.dataSafety({ appId }),
+      liveClient.similar({ appId }),
+      liveClient.reviews({ appId, num: 5 }),
+    ]);
+
+    expect(permissions.length).toBeGreaterThan(0);
+    expect(safety.privacyPolicyUrl?.length).toBeGreaterThan(0);
+    expect(similar.length).toBeGreaterThan(0);
+    expect(reviews.data).toEqual([]);
+    expect(reviews.nextPaginationToken).toBeNull();
+  });
+
+  it('keeps a preregistration match in a search page instead of failing it', async () => {
+    const results = await liveClient.search({ term: 'Reigns Beyond', num: 20 });
+
+    expect(results.length).toBeGreaterThan(0);
+    for (const item of results) {
+      expect(typeof item.free).toBe('boolean');
+      expect(Number.isFinite(item.price)).toBe(true);
+    }
+    expect(results.some((item) => item.appId === 'com.devolver.reignsbeyond')).toBe(true);
   });
 });
 
