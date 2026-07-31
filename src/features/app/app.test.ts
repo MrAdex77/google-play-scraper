@@ -258,6 +258,48 @@ describe('app', () => {
     expect(enabled.isAvailableInPlayPass).toBe(true);
   });
 
+  it('parses a preregistration listing that carries no offer node', async () => {
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    details[57] = null;
+    details[18] = [1];
+    const preregisterHtml = buildScriptData('ds:5', ds5);
+
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(preregisterHtml) },
+    });
+
+    expect(result.preregister).toBe(true);
+    expect(result.earlyAccessEnabled).toBe(false);
+    expect(result.price).toBe(0);
+    expect(result.free).toBe(false);
+    expect(result.priceText).toBe('Free');
+    expect(result.currency).toBeUndefined();
+    expect(result.originalPrice).toBeUndefined();
+    expect(result.discountEndDate).toBeUndefined();
+  });
+
+  it('reports early access alongside preregistration when the offer node is absent', async () => {
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    details[57] = null;
+    details[18] = [1, null, 'early-access'];
+    const earlyAccessHtml = buildScriptData('ds:5', ds5);
+
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(earlyAccessHtml) },
+    });
+
+    expect(result.preregister).toBe(true);
+    expect(result.earlyAccessEnabled).toBe(true);
+    expect(result.free).toBe(false);
+    expect(result.priceText).toBe('Free');
+  });
+
   it('exposes the original price when a discount is active', async () => {
     const data = parseScriptData(minecraftHtml);
     const ds5 = data.blocks['ds:5'] as unknown[];

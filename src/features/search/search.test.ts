@@ -365,6 +365,12 @@ const paidCoreData = (id: string): unknown[] => {
   return core;
 };
 
+const preregisterCoreData = (id: string): unknown[] => {
+  const core = coreData(id);
+  core[8] = null;
+  return core;
+};
+
 const mixedPageHtml = (freeIds: string[], paidIds: string[]): string => {
   const apps = [...freeIds.map((id) => [coreData(id)]), ...paidIds.map((id) => [paidCoreData(id)])];
   const section: unknown[] = [];
@@ -409,6 +415,39 @@ describe('search price filtering', () => {
     })) as SearchResult[];
 
     expect(results.map((item) => item.appId).sort()).toEqual(['free1', 'paid1']);
+  });
+
+  it('keeps a preregistration row without an offer node instead of failing the page', async () => {
+    const apps = [[coreData('free1')], [preregisterCoreData('prereg1')], [paidCoreData('paid1')]];
+    const section: unknown[] = [];
+    section[22] = [apps];
+    const html = buildScriptData('ds:4', [[null, [section]]]);
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['free1', 'prereg1', 'paid1']);
+    const preregister = results.find((item) => item.appId === 'prereg1');
+    expect(preregister?.price).toBe(0);
+    expect(preregister?.free).toBe(false);
+    expect(preregister?.currency).toBeUndefined();
+  });
+
+  it('excludes an offerless preregistration row from a free price filter', async () => {
+    const apps = [[coreData('free1')], [preregisterCoreData('prereg1')]];
+    const section: unknown[] = [];
+    section[22] = [apps];
+    const html = buildScriptData('ds:4', [[null, [section]]]);
+
+    const results = (await search({
+      term: 'panda',
+      price: 'free',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['free1']);
   });
 });
 
