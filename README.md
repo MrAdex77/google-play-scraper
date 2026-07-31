@@ -252,6 +252,22 @@ Returns an `App` with 55 fields. Trimmed:
 }
 ```
 
+A listing that has not been released yet carries no offer at all. For those apps
+`preregister` is `true`, and `price`, `free` and `priceText` fall back to `0`, `false` and
+`'Free'` rather than describing a real offer. Rating, install and release fields are
+absent too. Read `preregister` before trusting any price field:
+
+```ts
+const details = await app({ appId: 'com.ironhidegames.android.kingdomrush6.genesis' });
+
+if (details.preregister) {
+  console.log(`${details.title} has no price yet`);
+}
+```
+
+The same applies to a `search()` row for an unreleased app: it is returned with
+`price: 0` and `free: false`, so a `price: 'free'` filter will not match it.
+
 ### Batch details
 
 Fetches the full detail of many apps in one call, with a concurrency limit and per-id
