@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.1.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.0.0...v1.1.0) (2026-07-31)
+
+
+### Features
+
+* **core:** add raw parse seam and batchexecute envelope schema ([568b05d](https://github.com/MrAdex77/google-play-scraper/commit/568b05dea3bb50db9f069791f2786380aee7af4c))
+* **core:** expand degradation event coverage ([d285782](https://github.com/MrAdex77/google-play-scraper/commit/d285782ec9f75c9c781e236d6c54a81788739ba0))
+* **core:** select script roots by structural validation ([bce5e02](https://github.com/MrAdex77/google-play-scraper/commit/bce5e0221eef823dd77b2a44d39ea3dd3fba0f57))
+* **features:** validate batchexecute response roots ([89ce63f](https://github.com/MrAdex77/google-play-scraper/commit/89ce63feed69cd46ea3ebf5f18ab06a03d24805f))
+
+
+### Bug Fixes
+
+* **app:** anchor details and comments parsing by rpc id ([5e4deb6](https://github.com/MrAdex77/google-play-scraper/commit/5e4deb629b0057dc11754e58926f64b449bb9461))
+* **app:** read the discount end date from its timestamp node ([69732f9](https://github.com/MrAdex77/google-play-scraper/commit/69732f90e451a8d7f315ec3b5c3e6a83c52a2123))
+* **app:** restore absence contracts for unrated and restricted listings ([953977c](https://github.com/MrAdex77/google-play-scraper/commit/953977c8b22195b6beb61261de691e76e55f6bea))
+* **core:** default the offer fields when a listing has no offer ([8494cfb](https://github.com/MrAdex77/google-play-scraper/commit/8494cfbbafee80feebc9d51789417a54cabddb73))
+* **core:** harden scraper integrity and rpc anchoring ([6f1237e](https://github.com/MrAdex77/google-play-scraper/commit/6f1237e1f7a9fc20cb9f148903610269542b11e7))
+* **core:** parse preregistration listings that carry no offer node ([73da7a4](https://github.com/MrAdex77/google-play-scraper/commit/73da7a4fb88682abe55b4426c20f3d6d13a09a7b))
+* **core:** reject non finite price micros ([005c3a7](https://github.com/MrAdex77/google-play-scraper/commit/005c3a713b5c277ff585ec1663bfd8f9353ef722))
+* **core:** reject non numeric price micros ([323c0f7](https://github.com/MrAdex77/google-play-scraper/commit/323c0f77f7eee282b7f4271907d1df13e14a46ab))
+* **datasafety:** anchor report parsing by rpc id ([386bfdd](https://github.com/MrAdex77/google-play-scraper/commit/386bfdd204bddf9c4da6777894b0f9103d4f56e1))
+* **list:** accept collections google reports as empty ([5b27ab0](https://github.com/MrAdex77/google-play-scraper/commit/5b27ab086ab11c950ba501d93de3eda3d95a988a))
+* **permissions:** accept listings without a permission section ([f869cee](https://github.com/MrAdex77/google-play-scraper/commit/f869ceecb8439724c4418eb415e634c63d5a471a))
+* **search:** anchor result parsing by rpc id ([6b4a9f5](https://github.com/MrAdex77/google-play-scraper/commit/6b4a9f57fb4fea975d0f5586906081886af7dfc8))
+* **similar:** accept a null cluster collection ([5e0f029](https://github.com/MrAdex77/google-play-scraper/commit/5e0f029fcd74b9297a880a278590aa3e3b0280bf))
+
+
+### Performance Improvements
+
+* **core:** parse only selected script blocks ([5fbffa1](https://github.com/MrAdex77/google-play-scraper/commit/5fbffa142af34d10b94936c5907ac805baca1fe8))
+
 ## [1.0.0](https://github.com/MrAdex77/google-play-scraper/compare/v0.4.1...v1.0.0) (2026-07-17)
 
 
