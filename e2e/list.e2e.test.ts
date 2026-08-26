@@ -4,7 +4,7 @@ import { expectAppItemsContract } from './contracts.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const LIST_CEILING_PROBE = 500;
-const LIST_CEILING_FLOOR = 150;
+const LIST_MAX_ITEMS = 200;
 
 liveDescribe('list live contract', () => {
   it('returns exactly ten free games for the top free game collection', async () => {
@@ -107,8 +107,7 @@ liveDescribe('list live contract', () => {
       num: LIST_CEILING_PROBE,
     })) as ListItem[];
 
-    expect(items.length).toBeGreaterThanOrEqual(LIST_CEILING_FLOOR);
-    expect(items.length).toBeLessThanOrEqual(LIST_CEILING_PROBE);
+    expect(items).toHaveLength(LIST_MAX_ITEMS);
     expectAppItemsContract(items, 'list ceiling');
   });
 });
