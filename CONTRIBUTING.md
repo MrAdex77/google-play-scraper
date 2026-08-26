@@ -45,6 +45,7 @@ Benchmarks report performance rather than gate it. Never narrow a declared selec
 - TypeScript strict mode, no `any`, no non null assertions, no type assertions in `src/`.
 - External data enters as `unknown` and leaves through a zod schema.
 - Every feature change ships with unit tests against recorded fixtures and live e2e tests in `e2e/`.
+- Live e2e assertions must stay true whatever Google serves today. Assert shape, cross field consistency, and self anchoring counts, never third party catalogue state such as how many similar apps a listing has or whether an app still has no reviews. The rules and the shared invariant helpers are described in [docs/RUNBOOK.md](docs/RUNBOOK.md#live-contract-assertion-rules).
 - Versioning, changelog, and npm publishing are automated with Release Please. Do not bump versions or edit the changelog by hand.
 
 ## Fixing a broken field
