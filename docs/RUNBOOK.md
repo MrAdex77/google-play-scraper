@@ -154,9 +154,20 @@ pool assertion instead, since it is the only live gate on that branch.
 
 `PREREGISTRATION_CANDIDATES` deliberately carries no such gate. Preregistration
 listings launch, so the suite asserts the state conditional invariants on each
-candidate and annotates how many are still unlaunched. Refresh the list when the
-annotation reports zero, and note that both branches of the parser are covered
-offline in `src/features/app/app.test.ts`.
+candidate and annotates how many are still unlaunched. Both branches of the
+parser are covered offline in `src/features/app/app.test.ts`, so a fully
+launched pool costs live coverage but never fails the run.
+
+Refresh that list from Google's own preregistration shelf, which search does not
+surface:
+
+```
+https://play.google.com/store/apps/collection/promotion_3000000d51_pre_registration_games?hl=en&gl=us
+```
+
+Scrape the `id=` parameters out of that page, confirm `preregister` on a handful
+with `app()`, and commit the replacements as
+`test(e2e): refresh the preregistration candidates`.
 
 ## Pagination tripwires
 
