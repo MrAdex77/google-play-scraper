@@ -1,22 +1,27 @@
 import { expect, it } from 'vitest';
+import { SIMILAR_MAX_APPS } from '../src/features/similar/specs.js';
 import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.js';
+import { expectAppItemsContract } from './contracts.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
+const SIMILAR_CLUSTER_PAGE_SIZE = 50;
+
 liveDescribe('similar live contract', () => {
-  it('returns similar games for the Where Am I geography game', async () => {
+  it('returns a well formed cluster for the Where Am I geography game', async ({ annotate }) => {
     const sourceAppId = 'com.adex77.WhereAmI';
     const items = (await liveClient.similar({ appId: sourceAppId })) as SimilarApp[];
 
-    expect(items.length).toBeGreaterThan(0);
+    expectAppItemsContract(items, 'geography game similar cluster');
     expect(items.some((item) => item.appId === sourceAppId)).toBe(false);
-    for (const item of items) {
-      expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.title.length).toBeGreaterThan(0);
-      expect(new URL(item.url).origin).toBe('https://play.google.com');
-    }
+    expect(items.length).toBeLessThanOrEqual(SIMILAR_MAX_APPS);
+
+    await annotate(
+      `${sourceAppId} is recommended alongside ${items.length.toString()} apps`,
+      'notice',
+    );
   });
 
-  it('returns related apps that exclude the source app', async () => {
+  it('follows the cluster continuation for a flagship source app', async () => {
     const sourceAppId = 'com.google.android.apps.translate';
     const events: DegradationEvent[] = [];
     const items = (await liveClient.similar({
@@ -24,16 +29,10 @@ liveDescribe('similar live contract', () => {
       onDegradation: (event) => events.push(event),
     })) as SimilarApp[];
 
-    expect(items.length).toBeGreaterThanOrEqual(60);
+    expect(items.length).toBeGreaterThan(SIMILAR_CLUSTER_PAGE_SIZE);
+    expect(items.length).toBeLessThanOrEqual(SIMILAR_MAX_APPS);
     expect(items.some((item) => item.appId === sourceAppId)).toBe(false);
-    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
-
-    for (const item of items) {
-      expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.title.length).toBeGreaterThan(0);
-      expect(new URL(item.url).origin).toBe('https://play.google.com');
-      expect(typeof item.free).toBe('boolean');
-    }
+    expectAppItemsContract(items, 'flagship similar cluster');
 
     expectFieldCoverage('similar', items, {
       score: 0.8,

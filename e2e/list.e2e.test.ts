@@ -1,18 +1,10 @@
 import { expect, it } from 'vitest';
 import { type ListItem } from '../src/index.js';
+import { expectAppItemsContract } from './contracts.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
-const assertValidItem = (item: ListItem): void => {
-  expect(item.appId.length).toBeGreaterThan(0);
-  expect(item.title.length).toBeGreaterThan(0);
-  expect(new URL(item.url).origin).toBe('https://play.google.com');
-  expect(typeof item.price).toBe('number');
-  expect(typeof item.free).toBe('boolean');
-  if (item.score !== undefined) {
-    expect(item.score).toBeGreaterThanOrEqual(0);
-    expect(item.score).toBeLessThanOrEqual(5);
-  }
-};
+const LIST_CEILING_PROBE = 500;
+const LIST_CEILING_FLOOR = 150;
 
 liveDescribe('list live contract', () => {
   it('returns exactly ten free games for the top free game collection', async () => {
@@ -23,8 +15,8 @@ liveDescribe('list live contract', () => {
     })) as ListItem[];
 
     expect(items).toHaveLength(10);
+    expectAppItemsContract(items, 'top free games');
     for (const item of items) {
-      assertValidItem(item);
       expect(item.free).toBe(true);
       expect(item.price).toBe(0);
     }
@@ -52,8 +44,8 @@ liveDescribe('list live contract', () => {
     })) as ListItem[];
 
     expect(items.length).toBeGreaterThan(0);
+    expectAppItemsContract(items, 'top paid applications');
     for (const item of items) {
-      assertValidItem(item);
       expect(item.price).toBeGreaterThan(0);
       expect(item.free).toBe(false);
     }
@@ -67,8 +59,8 @@ liveDescribe('list live contract', () => {
     })) as ListItem[];
 
     expect(items).toHaveLength(5);
+    expectAppItemsContract(items, 'top paid games');
     for (const item of items) {
-      assertValidItem(item);
       expect(item.free).toBe(false);
       expect(item.price).toBeGreaterThan(0);
     }
@@ -78,9 +70,7 @@ liveDescribe('list live contract', () => {
     const items = (await liveClient.list({ collection: 'GROSSING', num: 5 })) as ListItem[];
 
     expect(items).toHaveLength(5);
-    for (const item of items) {
-      assertValidItem(item);
-    }
+    expectAppItemsContract(items, 'grossing collection');
   });
 
   it('returns valid apps across social, productivity, and trivia game categories', async () => {
@@ -94,9 +84,7 @@ liveDescribe('list live contract', () => {
       })) as ListItem[];
 
       expect(items.length).toBeGreaterThan(0);
-      for (const item of items) {
-        assertValidItem(item);
-      }
+      expectAppItemsContract(items, `${category} top free`);
     }
   });
 
@@ -109,20 +97,18 @@ liveDescribe('list live contract', () => {
     })) as ListItem[];
 
     expect(items).toHaveLength(10);
-    for (const item of items) {
-      assertValidItem(item);
-    }
+    expectAppItemsContract(items, 'family age filtered');
   });
 
   it('caps at the google ceiling when num exceeds it', async () => {
     const items = (await liveClient.list({
       collection: 'TOP_FREE',
       category: 'APPLICATION',
-      num: 500,
+      num: LIST_CEILING_PROBE,
     })) as ListItem[];
 
-    expect(items.length).toBeGreaterThanOrEqual(150);
-    expect(items.length).toBeLessThanOrEqual(500);
-    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
+    expect(items.length).toBeGreaterThanOrEqual(LIST_CEILING_FLOOR);
+    expect(items.length).toBeLessThanOrEqual(LIST_CEILING_PROBE);
+    expectAppItemsContract(items, 'list ceiling');
   });
 });
