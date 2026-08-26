@@ -104,21 +104,15 @@ liveDescribe('app live contract', () => {
     expect(result.screenshots.length).toBeGreaterThanOrEqual(5);
   });
 
-  it('fills every optional media field on the maintained listing', async () => {
-    const result = await liveClient.app({ appId: GEO_GAME });
-
-    expectListingContract(result, 'maintained media listing');
-    expectFieldFilledSomewhere('app optional media', [asRecord(result)], OPTIONAL_MEDIA_FIELDS);
-  });
-
-  it('resolves rich third party listings without a spec failure', async () => {
+  it('fills every optional media field somewhere across the maintained basket', async () => {
     const listings = await Promise.all(
-      RICH_MEDIA_LISTINGS.map((appId) => liveClient.app({ appId })),
+      [GEO_GAME, ...RICH_MEDIA_LISTINGS].map((appId) => liveClient.app({ appId })),
     );
 
     for (const listing of listings) {
       expectListingContract(listing, 'rich media listing');
     }
+    expectFieldFilledSomewhere('app optional media', listings.map(asRecord), OPTIONAL_MEDIA_FIELDS);
   });
 
   it('reports the free with ads and purchases commercial model', async () => {
