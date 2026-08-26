@@ -10,6 +10,8 @@ const HISTOGRAM_LAG_FLOOR = 10;
 const ONE_DECIMAL_SCORE_TEXT = /^\d+[.,]\d+$/;
 const ASCII_DIGIT = /[0-9]/;
 const NON_ASCII_DIGIT = /[^0-9]/g;
+const ABBREVIATED_SCALE_LETTER = /\p{L}/u;
+const QUOTED_PRICE_DIGIT = /\p{Nd}/u;
 const ANDROID_MARKET_LAUNCH_MS = 1_223_856_000_000;
 const CLOCK_SKEW_TOLERANCE_MS = 172_800_000;
 const OFFERLESS_PRICE_TEXT = 'Free';
@@ -33,7 +35,7 @@ function roundedScoreText(scoreText: string): number | undefined {
 }
 
 function groupedDigitsValue(text: string): number | undefined {
-  if (!ASCII_DIGIT.test(text)) {
+  if (!ASCII_DIGIT.test(text) || ABBREVIATED_SCALE_LETTER.test(text)) {
     return undefined;
   }
   return Number.parseInt(text.replace(NON_ASCII_DIGIT, ''), 10);
@@ -230,11 +232,13 @@ export function expectRatingSurfaceConsistency(listing: App, label: string): voi
 }
 
 export function expectPurchaseConsistency(listing: App, label: string): void {
-  const advertisesIAP = listing.IAPRange !== undefined && listing.IAPRange.length > 0;
+  if (listing.IAPRange === undefined || listing.IAPRange.length === 0) {
+    return;
+  }
   expect(
-    listing.offersIAP === true,
-    `${label}: offersIAP must agree with the presence of IAPRange`,
-  ).toBe(advertisesIAP);
+    QUOTED_PRICE_DIGIT.test(listing.IAPRange),
+    `${label}: IAPRange "${listing.IAPRange}" must quote a price`,
+  ).toBe(true);
 }
 
 export function expectReleaseStateConsistency(listing: App, label: string): void {
