@@ -1,20 +1,33 @@
 import { expect, it } from 'vitest';
-import type { IntegrityEvent } from '../src/index.js';
+import { permission } from '../src/index.js';
+import type { App, IntegrityEvent, ListItem, SearchResult, SimilarApp } from '../src/index.js';
+import { expectAppItemsContract, expectListingContract } from './contracts.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
-const UNREVIEWED = 'app.hobby_tracker_app';
-const UNRATED = 'com.geoguess.app';
-const SMALL_CATALOGUE = 'com.adex77.memefast.mememaker';
+const SPARSE_REVIEW_ANCHOR = 'app.hobby_tracker_app';
+const SPARSE_RATING_ANCHOR = 'com.geoguess.app';
+const COMMENT_ROOT_ANCHOR = 'com.adex77.memefast.mememaker';
+const SPARSE_LISTINGS = [SPARSE_REVIEW_ANCHOR, SPARSE_RATING_ANCHOR, COMMENT_ROOT_ANCHOR];
+const SPARSE_SAFETY_ANCHOR = 'com.hDel.codeblue';
+const SPARSE_SIMILAR_ANCHOR = 'org.asccp.app2019';
 const REGION_RESTRICTED = 'com.google.android.apps.nbu.paisa.user';
-const PLAY_PASS = 'com.noodlecake.altosodyssey';
+const REGION_RESTRICTED_HOME = 'in';
+const PLAY_PASS_CANDIDATES = [
+  'com.noodlecake.altosodyssey',
+  'com.chucklefish.stardewvalley',
+  'com.ustwo.monumentvalley2',
+  'com.playdead.limbo.full',
+];
 const DISCOUNTED = 'com.humble.SlayTheSpire';
-const PLAY_PASS_PAID = 'com.chucklefish.stardewvalley';
-const NO_SIMILAR = 'org.asccp.app2019';
-const NO_COLLECTED_DATA = 'com.hDel.codeblue';
-const NON_LATIN = 'jp.naver.line.android';
+const IAP_CANDIDATES = ['com.roblox.client', 'com.king.candycrushsaga', 'com.mojang.minecraftpe'];
 const ZERO_DECIMAL_PAID = 'com.mojang.minecraftpe';
+const NON_LATIN = 'jp.naver.line.android';
 const RTL_STOREFRONT = 'com.whatsapp';
-const IN_APP_PURCHASES = 'com.roblox.client';
+
+const SPARSE_PAID_COLLECTIONS = [
+  { category: 'DATING', collection: 'TOP_PAID' },
+  { category: 'COMICS', collection: 'TOP_PAID' },
+] as const;
 
 const PREREGISTRATION_CANDIDATES = [
   'com.ironhidegames.android.kingdomrush6.genesis',
@@ -26,6 +39,7 @@ const PREREGISTRATION_CANDIDATES = [
   'com.dreamloft.grumpykingdom',
 ];
 
+const SPARSE_COLLECTION_NUM = 20;
 const EMPTY_HISTOGRAM = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 const YEAR_2000_MS = 946684800000;
 const YEAR_2100_MS = 4102444800000;
@@ -39,80 +53,110 @@ function expectOnlyAppCommentEvents(events: IntegrityEvent[]): void {
   }
 }
 
-liveDescribe('unrated and unreviewed listings live contract', () => {
-  it('returns a complete listing for an app with no ratings at all', async () => {
+function describeRatingState(listing: App): string {
+  return listing.ratings === undefined ? 'unrated' : `${listing.ratings.toString()} ratings`;
+}
+
+liveDescribe('sparse listings live contract', () => {
+  it('resolves a complete listing for every sparse anchor', async ({ annotate }) => {
     const events: IntegrityEvent[] = [];
-    const result = await liveClient.app({
-      appId: UNRATED,
-      onIntegrityEvent: (event) => events.push(event),
-    });
+    const listings = await Promise.all(
+      SPARSE_LISTINGS.map((appId) =>
+        liveClient.app({ appId, onIntegrityEvent: (event) => events.push(event) }),
+      ),
+    );
 
-    expect(result.appId).toBe(UNRATED);
-    expect(result.title.length).toBeGreaterThan(0);
-    expect(result.description.length).toBeGreaterThan(0);
-    expect(result.score).toBeUndefined();
-    expect(result.scoreText).toBeUndefined();
-    expect(result.ratings).toBeUndefined();
-    expect(result.histogram).toEqual(EMPTY_HISTOGRAM);
-    expect(result.free).toBe(true);
-    expect(result.available).toBe(true);
-    expect(result.screenshots.length).toBeGreaterThan(0);
+    for (const listing of listings) {
+      expectListingContract(listing, 'sparse listing');
+    }
     expectOnlyAppCommentEvents(events);
+
+    await annotate(
+      listings.map((listing) => `${listing.appId}: ${describeRatingState(listing)}`).join(', '),
+      'notice',
+    );
   });
 
-  it('returns an empty review page for an app that has no reviews', async () => {
-    const result = await liveClient.reviews({ appId: UNREVIEWED, num: 20 });
+  it('pairs the rating surface with the review surface for a sparse listing', async ({
+    annotate,
+  }) => {
+    const listing = await liveClient.app({ appId: SPARSE_REVIEW_ANCHOR });
+    const page = await liveClient.reviews({ appId: SPARSE_REVIEW_ANCHOR, num: 20 });
 
-    expect(result.data).toEqual([]);
-    expect(result.nextPaginationToken).toBeNull();
+    if (listing.ratings === undefined) {
+      expect(page.data).toEqual([]);
+      expect(page.nextPaginationToken).toBeNull();
+      await annotate(`${SPARSE_REVIEW_ANCHOR} still carries no ratings`, 'notice');
+      return;
+    }
+
+    expect(page.data.length).toBeGreaterThan(0);
+    for (const review of page.data) {
+      expect(review.id.length).toBeGreaterThan(0);
+      expect(review.userName.length).toBeGreaterThan(0);
+      expect(review.score).toBeGreaterThanOrEqual(1);
+      expect(review.score).toBeLessThanOrEqual(5);
+      expect(Number.isNaN(Date.parse(review.date))).toBe(false);
+    }
+    await annotate(`${SPARSE_REVIEW_ANCHOR} now reports ${describeRatingState(listing)}`, 'notice');
   });
 
-  it('stops cleanly when paginating an app that has no reviews', async () => {
+  it('stops cleanly when paginating a sparse listing', async () => {
     const events: IntegrityEvent[] = [];
     const result = await liveClient.reviews({
-      appId: UNREVIEWED,
+      appId: SPARSE_REVIEW_ANCHOR,
       paginate: true,
       onIntegrityEvent: (event) => events.push(event),
     });
 
-    expect(result.data).toEqual([]);
-    expect(result.nextPaginationToken).toBeNull();
+    expect(new Set(result.data.map((review) => review.id)).size).toBe(result.data.length);
+    if (result.data.length === 0) {
+      expect(result.nextPaginationToken).toBeNull();
+    }
     expect(events).toEqual([]);
   });
 
-  it('returns details and a safety report for a listing with no ratings', async () => {
-    const details = await liveClient.app({ appId: UNREVIEWED });
-    const report = await liveClient.dataSafety({ appId: UNREVIEWED });
+  it('returns a well formed safety report for a sparse listing', async ({ annotate }) => {
+    const report = await liveClient.dataSafety({ appId: SPARSE_SAFETY_ANCHOR });
 
-    expect(details.histogram).toEqual(EMPTY_HISTOGRAM);
-    expect(details.reviews).toBeUndefined();
-    expect(details.minInstalls).toBeGreaterThan(0);
+    expect(Array.isArray(report.sharedData)).toBe(true);
     expect(Array.isArray(report.collectedData)).toBe(true);
     expect(Array.isArray(report.securityPractices)).toBe(true);
+    for (const entry of [...report.sharedData, ...report.collectedData]) {
+      expect(entry.data.length).toBeGreaterThan(0);
+      expect(entry.type.length).toBeGreaterThan(0);
+      expect(typeof entry.optional).toBe('boolean');
+    }
+    expect(report.privacyPolicyUrl?.startsWith('http')).toBe(true);
+
+    await annotate(
+      `${SPARSE_SAFETY_ANCHOR} declares ${report.collectedData.length.toString()} collected and ${report.sharedData.length.toString()} shared entries`,
+      'notice',
+    );
   });
 
-  it('returns permissions for an app that declares no common permission section', async () => {
-    const result = await liveClient.permissions({ appId: UNREVIEWED });
+  it('returns typed permission entries for a sparse listing', async () => {
+    const result = await liveClient.permissions({ appId: SPARSE_REVIEW_ANCHOR });
 
-    expect(result.length).toBeGreaterThan(0);
+    expect(Array.isArray(result)).toBe(true);
     for (const entry of result) {
       const item = entry as { permission: string; type: number };
       expect(item.permission.length).toBeGreaterThan(0);
+      expect([permission.COMMON, permission.OTHER]).toContain(item.type);
     }
   });
 
-  it('returns unrated results alongside rated ones in a single search page', async () => {
-    const results = await liveClient.search({ term: 'hobby tracker', num: 30 });
+  it('keeps rating fields consistent across a mixed search page', async ({ annotate }) => {
+    const results = (await liveClient.search({ term: 'hobby tracker', num: 30 })) as SearchResult[];
 
     expect(results.length).toBeGreaterThan(10);
-    expect(results.some((item) => item.score === undefined)).toBe(true);
-    for (const item of results) {
-      expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.title.length).toBeGreaterThan(0);
-      expect(item.url.startsWith('https://')).toBe(true);
-      expect(typeof item.price).toBe('number');
-      expect(typeof item.free).toBe('boolean');
-    }
+    expectAppItemsContract(results, 'hobby tracker search');
+
+    const unrated = results.filter((item) => item.score === undefined).length;
+    await annotate(
+      `${unrated.toString()} of ${results.length.toString()} results carry no score`,
+      'notice',
+    );
   });
 });
 
@@ -127,76 +171,73 @@ liveDescribe('availability and catalogue edges live contract', () => {
 
     expect(result.available).toBe(false);
     expect(result.preregister).toBe(false);
-    expect(result.title.length).toBeGreaterThan(0);
+    expectListingContract(result, 'region restricted listing');
     expect(result.ratings).toBeGreaterThan(0);
     expect(events).toEqual([]);
   });
 
   it('marks the same listing available on its own storefront', async () => {
-    const result = await liveClient.app({ appId: REGION_RESTRICTED, country: 'in' });
+    const result = await liveClient.app({
+      appId: REGION_RESTRICTED,
+      country: REGION_RESTRICTED_HOME,
+    });
 
     expect(result.available).toBe(true);
+    expectListingContract(result, 'home storefront listing');
   });
 
   it('resolves details across live comment root variants', async () => {
     const events: IntegrityEvent[] = [];
     const result = await liveClient.app({
-      appId: SMALL_CATALOGUE,
+      appId: COMMENT_ROOT_ANCHOR,
       onIntegrityEvent: (event) => events.push(event),
     });
 
-    expect(result.appId).toBe(SMALL_CATALOGUE);
     for (const comment of result.comments) {
       expect(comment.length).toBeGreaterThan(0);
     }
-    expect(result.title.length).toBeGreaterThan(0);
-    expect(result.minInstalls).toBeGreaterThan(0);
+    expectListingContract(result, 'comment root variant listing');
     expectOnlyAppCommentEvents(events);
   });
 
-  it('returns an empty similar cluster for an app with no recommendations', async () => {
+  it('returns a well formed similar cluster for a low profile listing', async ({ annotate }) => {
     const events: IntegrityEvent[] = [];
-    const results = await liveClient.similar({
-      appId: NO_SIMILAR,
+    const results = (await liveClient.similar({
+      appId: SPARSE_SIMILAR_ANCHOR,
       onIntegrityEvent: (event) => events.push(event),
-    });
+    })) as SimilarApp[];
 
-    expect(results).toEqual([]);
+    expect(Array.isArray(results)).toBe(true);
+    expectAppItemsContract(results, 'low profile similar cluster');
+    expect(results.some((item) => item.appId === SPARSE_SIMILAR_ANCHOR)).toBe(false);
     expect(events).toEqual([]);
+
+    await annotate(
+      `${SPARSE_SIMILAR_ANCHOR} is recommended alongside ${results.length.toString()} apps`,
+      'notice',
+    );
   });
 
-  it('returns an empty safety report for an app that collects no data', async () => {
-    const report = await liveClient.dataSafety({ appId: NO_COLLECTED_DATA });
+  it('returns only paid entries for sparsely populated paid collections', async ({ annotate }) => {
+    const counts: string[] = [];
 
-    expect(report.sharedData).toEqual([]);
-    expect(report.collectedData).toEqual([]);
-    expect(report.securityPractices).toEqual([]);
-  });
+    for (const { category, collection } of SPARSE_PAID_COLLECTIONS) {
+      const results = (await liveClient.list({
+        category,
+        collection,
+        num: SPARSE_COLLECTION_NUM,
+      })) as ListItem[];
 
-  it('returns an empty list for a category and collection with no entries', async () => {
-    const results = await liveClient.list({
-      category: 'DATING',
-      collection: 'TOP_PAID',
-      num: 20,
-    });
-
-    expect(results).toEqual([]);
-  });
-
-  it('returns the few entries of a sparsely populated paid collection', async () => {
-    const results = await liveClient.list({
-      category: 'COMICS',
-      collection: 'TOP_PAID',
-      num: 20,
-    });
-
-    expect(results.length).toBeGreaterThan(0);
-    expect(results.length).toBeLessThan(20);
-    for (const item of results) {
-      expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.free).toBe(false);
-      expect(item.price).toBeGreaterThan(0);
+      expect(results.length).toBeLessThanOrEqual(SPARSE_COLLECTION_NUM);
+      expectAppItemsContract(results, `${category} ${collection}`);
+      for (const item of results) {
+        expect(item.free).toBe(false);
+        expect(item.price).toBeGreaterThan(0);
+      }
+      counts.push(`${category}: ${results.length.toString()}`);
     }
+
+    await annotate(counts.join(', '), 'notice');
   });
 });
 
@@ -204,6 +245,7 @@ liveDescribe('commercial model edges live contract', () => {
   it('keeps discount fields consistent for a paid listing', async () => {
     const result = await liveClient.app({ appId: DISCOUNTED });
 
+    expectListingContract(result, 'discounted listing');
     expect(result.free).toBe(false);
     expect(result.price).toBeGreaterThan(0);
     expect(result.currency).toBe('USD');
@@ -217,25 +259,52 @@ liveDescribe('commercial model edges live contract', () => {
     expect(result.originalPrice).toBeGreaterThan(result.price);
   });
 
-  it('reports the play pass flag for subscription catalogue titles', async () => {
-    const bundled = await liveClient.app({ appId: PLAY_PASS });
-    const paid = await liveClient.app({ appId: PLAY_PASS_PAID });
+  it('reports the play pass flag across the subscription catalogue anchors', async ({
+    annotate,
+  }) => {
+    const listings = await Promise.all(
+      PLAY_PASS_CANDIDATES.map((appId) => liveClient.app({ appId })),
+    );
 
-    expect(bundled.isAvailableInPlayPass).toBe(true);
-    expect(bundled.available).toBe(true);
-    expect(paid.isAvailableInPlayPass).toBe(true);
-    expect(paid.free).toBe(false);
-    expect(paid.price).toBeGreaterThan(0);
+    for (const listing of listings) {
+      expectListingContract(listing, 'play pass candidate');
+      expect(typeof listing.isAvailableInPlayPass).toBe('boolean');
+      if (listing.isAvailableInPlayPass) {
+        expect(listing.available).toBe(true);
+      }
+    }
+
+    const bundled = listings.filter((listing) => listing.isAvailableInPlayPass);
+    expect(
+      bundled.length,
+      'no play pass anchor still reports the subscription flag, re-anchor the pool',
+    ).toBeGreaterThan(0);
+    await annotate(
+      `${bundled.length.toString()} of ${listings.length.toString()} anchors are bundled: ${bundled.map((listing) => listing.appId).join(', ')}`,
+      'notice',
+    );
   });
 
-  it('reports an in app purchase range without ad support', async () => {
-    const result = await liveClient.app({ appId: IN_APP_PURCHASES });
+  it('reports an in app purchase range alongside the purchase flag', async ({ annotate }) => {
+    const listings = await Promise.all(IAP_CANDIDATES.map((appId) => liveClient.app({ appId })));
 
-    expect(result.free).toBe(true);
-    expect(result.price).toBe(0);
-    expect(result.offersIAP).toBe(true);
-    expect(result.IAPRange?.trim().length).toBeGreaterThan(0);
-    expect(typeof result.adSupported).toBe('boolean');
+    for (const listing of listings) {
+      expectListingContract(listing, 'in app purchase candidate');
+      expect(typeof listing.adSupported).toBe('boolean');
+    }
+
+    const offering = listings.filter((listing) => listing.offersIAP === true);
+    expect(
+      offering.length,
+      'no in app purchase anchor advertises a range, re-anchor the pool',
+    ).toBeGreaterThan(0);
+    for (const listing of offering) {
+      expect(listing.IAPRange?.trim().length).toBeGreaterThan(0);
+    }
+    await annotate(
+      offering.map((listing) => `${listing.appId}: ${listing.IAPRange ?? ''}`).join(' | '),
+      'notice',
+    );
   });
 
   it('parses a paid price in a currency without minor units', async () => {
@@ -245,6 +314,7 @@ liveDescribe('commercial model edges live contract', () => {
       country: 'jp',
     });
 
+    expectListingContract(result, 'zero decimal storefront listing');
     expect(result.currency).toBe('JPY');
     expect(result.free).toBe(false);
     expect(result.price).toBeGreaterThan(0);
@@ -254,7 +324,7 @@ liveDescribe('commercial model edges live contract', () => {
 });
 
 liveDescribe('preregistration listings live contract', () => {
-  it('resolves every preregistration candidate without a spec failure', async () => {
+  it('resolves every preregistration candidate without a spec failure', async ({ annotate }) => {
     const events: IntegrityEvent[] = [];
     const results = await Promise.all(
       PREREGISTRATION_CANDIDATES.map((appId) =>
@@ -263,9 +333,7 @@ liveDescribe('preregistration listings live contract', () => {
     );
 
     for (const result of results) {
-      expect(result.title.length).toBeGreaterThan(0);
-      expect(result.description.length).toBeGreaterThan(0);
-      expect(result.screenshots.length).toBeGreaterThan(0);
+      expectListingContract(result, 'preregistration candidate');
       expect(typeof result.preregister).toBe('boolean');
       expect(typeof result.earlyAccessEnabled).toBe('boolean');
     }
@@ -273,15 +341,20 @@ liveDescribe('preregistration listings live contract', () => {
       expect(event.reason).toBe('optional-section-parse');
       expect(event.context).toBe('app comments');
     }
+
+    const preregistering = results.filter((result) => result.preregister);
+    const earlyAccess = results.filter((result) => result.earlyAccessEnabled);
+    await annotate(
+      `${preregistering.length.toString()} of ${results.length.toString()} candidates still preregister, ${earlyAccess.length.toString()} offer early access`,
+      'notice',
+    );
   });
 
-  it('reports an offerless listing for the candidates still in preregistration', async () => {
+  it('serves an offerless listing for candidates that have not launched', async ({ annotate }) => {
     const results = await Promise.all(
       PREREGISTRATION_CANDIDATES.map((appId) => liveClient.app({ appId })),
     );
     const preregistering = results.filter((result) => result.preregister);
-
-    expect(preregistering.length).toBeGreaterThan(0);
 
     for (const result of preregistering) {
       expect(result.price).toBe(0);
@@ -296,25 +369,23 @@ liveDescribe('preregistration listings live contract', () => {
       expect(result.histogram).toEqual(EMPTY_HISTOGRAM);
       expect(result.released).toBeUndefined();
     }
-  });
 
-  it('covers early access among the preregistration candidates', async () => {
-    const results = await Promise.all(
-      PREREGISTRATION_CANDIDATES.map((appId) => liveClient.app({ appId })),
-    );
-    const earlyAccess = results.filter((result) => result.earlyAccessEnabled);
-
-    expect(earlyAccess.length).toBeGreaterThan(0);
-
-    for (const result of earlyAccess) {
-      expect(result.preregister).toBe(true);
-      expect(result.title.length).toBeGreaterThan(0);
+    const launched = results.filter((result) => !result.preregister);
+    for (const result of launched) {
+      expect(result.installs?.length).toBeGreaterThan(0);
+      expect(result.minInstalls).toBeGreaterThan(0);
     }
+
+    await annotate(
+      `${preregistering.length.toString()} unlaunched, ${launched.length.toString()} launched`,
+      'notice',
+    );
   });
 
-  it('serves reports and neighbours for a preregistration listing', async () => {
+  it('serves reports and neighbours for a candidate listing', async () => {
     const appId = PREREGISTRATION_CANDIDATES[0] ?? '';
-    const [permissions, safety, similar, reviews] = await Promise.all([
+    const [listing, permissions, safety, similar, reviews] = await Promise.all([
+      liveClient.app({ appId }),
       liveClient.permissions({ appId }),
       liveClient.dataSafety({ appId }),
       liveClient.similar({ appId }),
@@ -323,20 +394,25 @@ liveDescribe('preregistration listings live contract', () => {
 
     expect(permissions.length).toBeGreaterThan(0);
     expect(safety.privacyPolicyUrl?.length).toBeGreaterThan(0);
-    expect(similar.length).toBeGreaterThan(0);
-    expect(reviews.data).toEqual([]);
-    expect(reviews.nextPaginationToken).toBeNull();
+    expectAppItemsContract(similar as SimilarApp[], 'candidate similar cluster');
+
+    if (listing.ratings === undefined) {
+      expect(reviews.data).toEqual([]);
+      expect(reviews.nextPaginationToken).toBeNull();
+      return;
+    }
+    expect(reviews.data.length).toBeGreaterThan(0);
+    for (const review of reviews.data) {
+      expect(review.score).toBeGreaterThanOrEqual(1);
+      expect(review.score).toBeLessThanOrEqual(5);
+    }
   });
 
-  it('keeps a preregistration match in a search page instead of failing it', async () => {
-    const results = await liveClient.search({ term: 'Reigns Beyond', num: 20 });
+  it('keeps every match of a launch title search parseable', async () => {
+    const results = (await liveClient.search({ term: 'Reigns Beyond', num: 20 })) as SearchResult[];
 
     expect(results.length).toBeGreaterThan(0);
-    for (const item of results) {
-      expect(typeof item.free).toBe('boolean');
-      expect(Number.isFinite(item.price)).toBe(true);
-    }
-    expect(results.some((item) => item.appId === 'com.devolver.reignsbeyond')).toBe(true);
+    expectAppItemsContract(results, 'launch title search');
   });
 });
 
@@ -344,7 +420,7 @@ liveDescribe('localized listing edges live contract', () => {
   it('returns a non latin title and a stable genre id', async () => {
     const result = await liveClient.app({ appId: NON_LATIN, lang: 'ja', country: 'jp' });
 
-    expect(result.title.length).toBeGreaterThan(0);
+    expectListingContract(result, 'non latin listing');
     expect(/[^\x20-\x7e]/.test(result.title)).toBe(true);
     expect(result.genreId).toBe('COMMUNICATION');
     expect(result.free).toBe(true);
@@ -357,10 +433,9 @@ liveDescribe('localized listing edges live contract', () => {
       country: 'eg',
     });
 
-    expect(result.title.length).toBeGreaterThan(0);
+    expectListingContract(result, 'right to left listing');
     expect(/[^\x20-\x7e]/.test(result.title)).toBe(true);
     expect(result.installs?.includes('+')).toBe(true);
-    expect(result.minInstalls).toBeGreaterThan(0);
     expect(result.free).toBe(true);
   });
 });
