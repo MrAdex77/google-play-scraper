@@ -71,14 +71,14 @@ The other integrity reasons have narrower responses:
 ## Live contract assertion rules
 
 The scheduled suite exists to catch scraper breakage, not catalogue movement. An
-assertion that fails because Google reshuffled its catalogue files a false
+assertion that fails because Google reshuffled its catalogue creates a false
 `contract-breakage` issue and trains everyone to ignore the signal. By default
 an assertion under `e2e/` must therefore stay true no matter what Google serves
 today, which leaves four ordinary kinds:
 
 1. **Shape.** A field exists with the right type, a url resolves to the store
    origin, an icon is served over https.
-2. **Cross field consistency.** Two fields that come from _different_ page
+2. **Cross-field consistency.** Two fields that come from _different_ page
    nodes have to agree: `free` against `price` and `currency`, `score` against
    `scoreText`, `installs` against `minInstalls`, the histogram against the
    rating count. These are the sharpest breakage detectors in the suite because
@@ -86,7 +86,7 @@ today, which leaves four ordinary kinds:
    never does. Two fields parsed from the same node are not an invariant, they
    are a tautology: `offersIAP` and `IAPRange` both read `[1, 2, 19, 0]`, so
    only the shape of `IAPRange` is worth asserting.
-3. **Self anchoring.** The assertion derives its expectation from the same
+3. **Self-anchoring.** The assertion derives its expectation from the same
    response, for example `list({ num })` returning exactly `num` items or the
    search result set matching the first page it was built from.
 4. **Immutable fact.** A release date already in the past, an app id that
@@ -105,7 +105,7 @@ each one has to be registered in this runbook before it is written:
    anchor pools". These fail on purpose when Google changes, and their failure
    messages have to name the maintenance task rather than read as a parse break.
 
-Outside those two registered exceptions, never assert third party catalogue
+Outside those two registered exceptions, never assert third-party catalogue
 state. Concretely, do not pin how many apps Google recommends for a listing,
 whether a specific app currently has zero reviews or zero ratings, whether a
 category is currently empty, whether a game is still in preregistration, or
@@ -129,7 +129,7 @@ that coverage moved, without the run failing over it.
 ### Shared invariants
 
 `e2e/contracts.ts` holds the invariant helpers. Reach for them before writing a
-bespoke loop of assertions, and add to them when a new cross field agreement
+bespoke loop of assertions, and add to them when a new cross-field agreement
 turns up:
 
 - `expectAppItemContract` and `expectAppItemsContract` for search, list, similar
@@ -165,7 +165,7 @@ A state that needs a live true branch belongs on a controlled anchor whenever an
 owned listing can reach it. `com.adex77.WhereAmI` carries `adSupported`,
 `offersIAP`, and every optional media field (`video`, `videoImage`, `IAPRange`,
 `released`, `contentRatingDescription`, `recentChanges`), so those gates sit on
-it directly rather than on a pool of third party apps.
+it directly rather than on a pool of third-party apps.
 
 One state has no owned anchor, because Play Pass membership is granted by Google
 and cannot be arranged for a maintainer's own app:
