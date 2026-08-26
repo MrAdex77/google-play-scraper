@@ -8,6 +8,7 @@ import {
   type IntegrityEvent,
   type SearchResult,
 } from '../src/index.js';
+import { expectAppItemsContract } from './contracts.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const FIRST_PAGE_CEILING = 40;
@@ -40,19 +41,7 @@ liveDescribe('search live contract', () => {
     })) as SearchResult[];
 
     expect(results.length).toBeGreaterThan(10);
-    expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
-
-    for (const item of results) {
-      expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.title.length).toBeGreaterThan(0);
-      expect(new URL(item.url).origin).toBe('https://play.google.com');
-      expect(typeof item.price).toBe('number');
-      expect(typeof item.free).toBe('boolean');
-      if (item.score !== undefined) {
-        expect(item.score).toBeGreaterThanOrEqual(0);
-        expect(item.score).toBeLessThanOrEqual(5);
-      }
-    }
+    expectAppItemsContract(results, 'broad term search');
     expect(events).toEqual([]);
   });
 
@@ -74,6 +63,7 @@ liveDescribe('search live contract', () => {
     })) as SearchResult[];
 
     expect(results.length).toBeGreaterThan(0);
+    expectAppItemsContract(results, 'free filtered search');
     for (const item of results) {
       expect(item.free).toBe(true);
       expect(item.price).toBe(0);
@@ -94,6 +84,7 @@ liveDescribe('search live contract', () => {
     })) as SearchResult[];
 
     expect(results.length).toBeGreaterThan(0);
+    expectAppItemsContract(results, 'paid filtered search');
     for (const item of results) {
       expect(item.free).toBe(false);
       expect(item.price).toBeGreaterThan(0);
@@ -104,10 +95,7 @@ liveDescribe('search live contract', () => {
     const results = (await liveClient.search({ term: 'ポケモン', num: 10 })) as SearchResult[];
 
     expect(results.length).toBeGreaterThanOrEqual(5);
-    for (const item of results) {
-      expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.title.length).toBeGreaterThan(0);
-    }
+    expectAppItemsContract(results, 'non latin search');
   });
 
   it('returns localized results for a german term with diacritics', async () => {
@@ -120,10 +108,7 @@ liveDescribe('search live contract', () => {
 
     expect(results.length).toBeGreaterThanOrEqual(10);
     expect(results.some((item) => item.title.toLowerCase().includes('übersetzer'))).toBe(true);
-    for (const item of results) {
-      expect(item.appId.length).toBeGreaterThan(0);
-      expect(item.title.length).toBeGreaterThan(0);
-    }
+    expectAppItemsContract(results, 'german search');
   });
 
   it('serves the full first page without truncation when num exceeds the google cap', async () => {
@@ -150,7 +135,7 @@ liveDescribe('search live contract', () => {
     const resultIds = results.map((item) => item.appId);
 
     expect(resultIds).toEqual(firstPageIds);
-    expect(new Set(resultIds).size).toBe(resultIds.length);
+    expectAppItemsContract(results, 'first page search');
     expectFieldCoverage('search', results, {
       score: 0.8,
       scoreText: 0.8,
