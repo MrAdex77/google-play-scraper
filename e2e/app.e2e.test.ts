@@ -24,9 +24,9 @@ const TRANSLATE_STABLE_FIELDS = [
   'contentRating',
 ] as const;
 
-const RICH_MEDIA_BASKET = [MINECRAFT, 'com.king.candycrushsaga', 'com.roblox.client'];
+const RICH_MEDIA_LISTINGS = [MINECRAFT, 'com.king.candycrushsaga', 'com.roblox.client'];
 
-const RICH_MEDIA_FIELDS = [
+const OPTIONAL_MEDIA_FIELDS = [
   'video',
   'videoImage',
   'IAPRange',
@@ -34,8 +34,6 @@ const RICH_MEDIA_FIELDS = [
   'contentRatingDescription',
   'recentChanges',
 ] as const;
-
-const COMMERCIAL_MODEL_BASKET = ['com.king.candycrushsaga', GEO_GAME, 'com.google.android.youtube'];
 
 function asRecord(listing: App): Record<string, unknown> {
   return listing;
@@ -106,36 +104,34 @@ liveDescribe('app live contract', () => {
     expect(result.screenshots.length).toBeGreaterThanOrEqual(5);
   });
 
-  it('fills media and purchase fields across rich listings', async () => {
-    const listings = await Promise.all(RICH_MEDIA_BASKET.map((appId) => liveClient.app({ appId })));
+  it('fills every optional media field on the maintained listing', async () => {
+    const result = await liveClient.app({ appId: GEO_GAME });
+
+    expectListingContract(result, 'maintained media listing');
+    expectFieldFilledSomewhere('app optional media', [asRecord(result)], OPTIONAL_MEDIA_FIELDS);
+  });
+
+  it('resolves rich third party listings without a spec failure', async () => {
+    const listings = await Promise.all(
+      RICH_MEDIA_LISTINGS.map((appId) => liveClient.app({ appId })),
+    );
 
     for (const listing of listings) {
       expectListingContract(listing, 'rich media listing');
     }
-    expectFieldFilledSomewhere('app rich media', listings.map(asRecord), RICH_MEDIA_FIELDS);
   });
 
   it('reports the free with ads and purchases commercial model', async () => {
-    const listings = await Promise.all(
-      COMMERCIAL_MODEL_BASKET.map((appId) => liveClient.app({ appId })),
-    );
+    const result = await liveClient.app({ appId: GEO_GAME });
 
-    for (const listing of listings) {
-      expectListingContract(listing, 'commercial model listing');
-      expect(listing.free).toBe(true);
-      expect(listing.price).toBe(0);
-      expect(listing.preregister).toBe(false);
-      expect(listing.available).toBe(true);
-    }
-
-    expect(
-      listings.some((listing) => listing.adSupported),
-      'no commercial model anchor reports ad support, re-anchor the basket',
-    ).toBe(true);
-    expect(
-      listings.some((listing) => listing.offersIAP === true),
-      'no commercial model anchor reports in app purchases, re-anchor the basket',
-    ).toBe(true);
+    expectListingContract(result, 'commercial model listing');
+    expect(result.free).toBe(true);
+    expect(result.price).toBe(0);
+    expect(result.preregister).toBe(false);
+    expect(result.available).toBe(true);
+    expect(result.adSupported).toBe(true);
+    expect(result.offersIAP).toBe(true);
+    expect(result.IAPRange?.trim().length).toBeGreaterThan(0);
   });
 
   it('localizes the paid price into the storefront currency', async () => {
