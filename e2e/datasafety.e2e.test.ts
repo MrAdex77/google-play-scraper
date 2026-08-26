@@ -3,6 +3,7 @@ import type { IntegrityEvent } from '../src/index.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
+const DATA_RICH_COLLECTED_FLOOR = 10;
 
 liveDescribe('datasafety live contract', () => {
   it('returns collected data, security practices, and a privacy policy url', async () => {
@@ -46,11 +47,14 @@ liveDescribe('datasafety live contract', () => {
     const result = await liveClient.dataSafety({ appId: 'com.instagram.android' });
 
     expect(result.sharedData.length).toBeGreaterThan(0);
-    expect(result.collectedData.length).toBeGreaterThan(10);
-    for (const entry of result.sharedData) {
+    expect(result.collectedData.length).toBeGreaterThan(DATA_RICH_COLLECTED_FLOOR);
+    for (const entry of [...result.sharedData, ...result.collectedData]) {
       expect(entry.data.length).toBeGreaterThan(0);
       expect(entry.type.length).toBeGreaterThan(0);
       expect(typeof entry.optional).toBe('boolean');
+      if (entry.purpose !== undefined) {
+        expect(entry.purpose.length).toBeGreaterThan(0);
+      }
     }
     expect(result.sharedData.some((entry) => entry.purpose !== undefined)).toBe(true);
   });

@@ -2,22 +2,25 @@ import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.js';
 import { fetchDeveloperFirstPage } from '../src/features/developer/developer.js';
 import { NotFoundError, type DegradationEvent, type DeveloperApp } from '../src/index.js';
+import { expectAppItemsContract } from './contracts.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
+const FIRST_PAGE_NUM = 40;
+const MULTI_PAGE_NUM = 100;
+const SLICE_NUM = 60;
 
 liveDescribe('developer live contract', () => {
   it('returns Google apps for the numeric developer id', async () => {
     const items = (await liveClient.developer({
       devId: GOOGLE_DEV_ID,
-      num: 40,
+      num: FIRST_PAGE_NUM,
     })) as DeveloperApp[];
 
-    expect(items.length).toBeGreaterThanOrEqual(30);
-    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
+    expect(items).toHaveLength(FIRST_PAGE_NUM);
+    expectAppItemsContract(items, 'google developer page');
     for (const item of items) {
       expect(item.developer).toContain('Google');
-      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
   });
 
@@ -25,15 +28,14 @@ liveDescribe('developer live contract', () => {
     const events: DegradationEvent[] = [];
     const items = (await liveClient.developer({
       devId: GOOGLE_DEV_ID,
-      num: 100,
+      num: MULTI_PAGE_NUM,
       onDegradation: (event) => events.push(event),
     })) as DeveloperApp[];
 
-    expect(items.length).toBeGreaterThanOrEqual(80);
-    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
+    expect(items).toHaveLength(MULTI_PAGE_NUM);
+    expectAppItemsContract(items, 'google developer continuation');
     for (const item of items) {
       expect(item.developer).toContain('Google');
-      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
 
     expectFieldCoverage('developer', items, {
@@ -47,10 +49,10 @@ liveDescribe('developer live contract', () => {
   it('slices to exactly num when more apps are available', async () => {
     const items = (await liveClient.developer({
       devId: GOOGLE_DEV_ID,
-      num: 60,
+      num: SLICE_NUM,
     })) as DeveloperApp[];
 
-    expect(items).toHaveLength(60);
+    expect(items).toHaveLength(SLICE_NUM);
   });
 
   it('confirms the numeric first page still requires a continuation', async () => {
@@ -60,7 +62,7 @@ liveDescribe('developer live contract', () => {
     );
 
     expect(apps.length).toBeGreaterThan(0);
-    expect(apps.length).toBeLessThan(40);
+    expect(apps.length).toBeLessThan(FIRST_PAGE_NUM);
     expect(token).toBeDefined();
   });
 
@@ -73,22 +75,20 @@ liveDescribe('developer live contract', () => {
   it('includes the Where Am I game when resolving the Adex77 name id', async () => {
     const items = (await liveClient.developer({ devId: 'Adex77' })) as DeveloperApp[];
 
-    expect(items.length).toBeGreaterThan(0);
     expect(items.map((item) => item.appId)).toContain('com.adex77.WhereAmI');
+    expectAppItemsContract(items, 'adex77 developer page');
     for (const item of items) {
       expect(item.developer).toBe('Adex77');
-      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
   });
 
   it('resolves a developer name containing a comma and space', async () => {
     const items = (await liveClient.developer({ devId: 'Netflix, Inc.' })) as DeveloperApp[];
 
-    expect(items.length).toBeGreaterThan(0);
     expect(items.map((item) => item.appId)).toContain('com.netflix.mediaclient');
+    expectAppItemsContract(items, 'comma developer page');
     for (const item of items) {
       expect(item.developer).toBe('Netflix, Inc.');
-      expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
   });
 
@@ -108,7 +108,7 @@ liveDescribe('developer live contract', () => {
     const items = (await liveClient.developer({ devId: 'Adex77', num: 500 })) as DeveloperApp[];
 
     expect(items.length).toBeGreaterThanOrEqual(1);
-    expect(items.length).toBeLessThan(100);
-    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
+    expect(items.length).toBeLessThan(500);
+    expectAppItemsContract(items, 'exhausted developer catalog');
   });
 });

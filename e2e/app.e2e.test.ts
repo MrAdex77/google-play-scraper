@@ -1,6 +1,11 @@
 import { expect, it } from 'vitest';
-import { NotFoundError, type IntegrityEvent } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { NotFoundError, type App, type IntegrityEvent } from '../src/index.js';
+import { expectListingContract } from './contracts.js';
+import { expectFieldFilledSomewhere, liveClient, liveDescribe } from './helpers.js';
+
+const TRANSLATE = 'com.google.android.apps.translate';
+const GEO_GAME = 'com.adex77.WhereAmI';
+const MINECRAFT = 'com.mojang.minecraftpe';
 
 const TRANSLATE_STABLE_FIELDS = [
   'summary',
@@ -17,87 +22,81 @@ const TRANSLATE_STABLE_FIELDS = [
   'privacyPolicy',
   'headerImage',
   'contentRating',
-  'recentChanges',
 ] as const;
 
-const MINECRAFT_RICH_FIELDS = [
+const RICH_MEDIA_LISTINGS = [MINECRAFT, 'com.king.candycrushsaga', 'com.roblox.client'];
+
+const OPTIONAL_MEDIA_FIELDS = [
   'video',
   'videoImage',
   'IAPRange',
   'released',
   'contentRatingDescription',
+  'recentChanges',
 ] as const;
+
+function asRecord(listing: App): Record<string, unknown> {
+  return listing;
+}
 
 liveDescribe('app live contract', () => {
   it('returns details for a popular free app', async () => {
-    const appId = 'com.google.android.apps.translate';
     const events: IntegrityEvent[] = [];
     const result = await liveClient.app({
-      appId,
+      appId: TRANSLATE,
       onIntegrityEvent: (event) => events.push(event),
     });
 
-    expect(result.title.length).toBeGreaterThan(0);
-    expect(result.appId).toBe(appId);
+    expectListingContract(result, 'flagship listing');
+    expect(result.appId).toBe(TRANSLATE);
     expect(typeof result.score).toBe('number');
-    expect(result.score).toBeGreaterThanOrEqual(0);
-    expect(result.score).toBeLessThanOrEqual(5);
     expect(result.ratings).toBeGreaterThan(100000);
     expect(result.free).toBe(true);
     expect(events).toEqual([]);
   });
 
   it('returns details for a mobile geography game', async () => {
-    const appId = 'com.adex77.WhereAmI';
-    const result = await liveClient.app({ appId });
+    const result = await liveClient.app({ appId: GEO_GAME });
 
+    expectListingContract(result, 'geography game listing');
     expect(result.title).toBe('Where Am I? - GeoGuess Game');
-    expect(result.appId).toBe(appId);
+    expect(result.appId).toBe(GEO_GAME);
     expect(result.released).toBe('Jan 2, 2021');
-    expect(typeof result.score).toBe('number');
-    expect(result.score).toBeGreaterThanOrEqual(0);
-    expect(result.score).toBeLessThanOrEqual(5);
-    expect(result.maxInstalls).toBeGreaterThan(10000);
+    expect(result.developer).toBe('Adex77');
     expect(result.free).toBe(true);
   });
 
   it('returns details for a paid app', async () => {
-    const result = await liveClient.app({ appId: 'com.mojang.minecraftpe' });
+    const result = await liveClient.app({ appId: MINECRAFT });
 
-    expect(result.title.length).toBeGreaterThan(0);
-    expect(typeof result.score).toBe('number');
-    expect(result.score).toBeGreaterThanOrEqual(0);
-    expect(result.score).toBeLessThanOrEqual(5);
+    expectListingContract(result, 'paid listing');
     expect(result.free).toBe(false);
     expect(result.price).toBeGreaterThan(0);
+    expect(result.currency).toBe('USD');
   });
 
   it('returns categorized details for a social app', async () => {
     const result = await liveClient.app({ appId: 'com.instagram.android' });
 
+    expectListingContract(result, 'social listing');
     expect(result.title).toContain('Instagram');
     expect(result.genreId).toBe('SOCIAL');
     expect(result.categories.some((category) => category.id === 'SOCIAL')).toBe(true);
-    expect(typeof result.adSupported).toBe('boolean');
     expect(result.installs?.endsWith('+')).toBe(true);
   });
 
   it('localizes the geography game details for another language and country', async () => {
-    const result = await liveClient.app({
-      appId: 'com.adex77.WhereAmI',
-      lang: 'pl',
-      country: 'pl',
-    });
+    const result = await liveClient.app({ appId: GEO_GAME, lang: 'pl', country: 'pl' });
 
-    expect(result.appId).toBe('com.adex77.WhereAmI');
-    expect(result.title.length).toBeGreaterThan(0);
-    expect(result.description.length).toBeGreaterThan(0);
+    expectListingContract(result, 'localized geography game listing');
+    expect(result.appId).toBe(GEO_GAME);
+    expect(result.currency).toBe('PLN');
     expect(result.free).toBe(true);
   });
 
   it('fills every stable optional field for a flagship listing', async () => {
-    const result = await liveClient.app({ appId: 'com.google.android.apps.translate' });
-    const record = result as unknown as Record<string, unknown>;
+    const result = await liveClient.app({ appId: TRANSLATE });
+    const record = asRecord(result);
 
     for (const field of TRANSLATE_STABLE_FIELDS) {
       expect(record[field], field).toBeDefined();
@@ -105,34 +104,34 @@ liveDescribe('app live contract', () => {
     expect(result.screenshots.length).toBeGreaterThanOrEqual(5);
   });
 
-  it('fills media and purchase fields for a rich paid listing', async () => {
-    const result = await liveClient.app({ appId: 'com.mojang.minecraftpe' });
-    const record = result as unknown as Record<string, unknown>;
+  it('fills every optional media field somewhere across the maintained basket', async () => {
+    const listings = await Promise.all(
+      [GEO_GAME, ...RICH_MEDIA_LISTINGS].map((appId) => liveClient.app({ appId })),
+    );
 
-    for (const field of MINECRAFT_RICH_FIELDS) {
-      expect(record[field], field).toBeDefined();
+    for (const listing of listings) {
+      expectListingContract(listing, 'rich media listing');
     }
+    expectFieldFilledSomewhere('app optional media', listings.map(asRecord), OPTIONAL_MEDIA_FIELDS);
   });
 
   it('reports the free with ads and purchases commercial model', async () => {
-    const result = await liveClient.app({ appId: 'com.king.candycrushsaga' });
+    const result = await liveClient.app({ appId: GEO_GAME });
 
+    expectListingContract(result, 'commercial model listing');
     expect(result.free).toBe(true);
     expect(result.price).toBe(0);
-    expect(result.offersIAP).toBe(true);
-    expect(result.IAPRange?.trim().length).toBeGreaterThan(0);
-    expect(result.adSupported).toBe(true);
     expect(result.preregister).toBe(false);
     expect(result.available).toBe(true);
+    expect(result.adSupported).toBe(true);
+    expect(result.offersIAP).toBe(true);
+    expect(result.IAPRange?.trim().length).toBeGreaterThan(0);
   });
 
   it('localizes the paid price into the storefront currency', async () => {
-    const result = await liveClient.app({
-      appId: 'com.mojang.minecraftpe',
-      lang: 'de',
-      country: 'de',
-    });
+    const result = await liveClient.app({ appId: MINECRAFT, lang: 'de', country: 'de' });
 
+    expectListingContract(result, 'german storefront listing');
     expect(result.free).toBe(false);
     expect(result.price).toBeGreaterThan(0);
     expect(result.currency).toBe('EUR');
@@ -140,11 +139,7 @@ liveDescribe('app live contract', () => {
   });
 
   it('exposes the trader legal fields on an eu storefront', async () => {
-    const result = await liveClient.app({
-      appId: 'com.google.android.apps.translate',
-      lang: 'de',
-      country: 'de',
-    });
+    const result = await liveClient.app({ appId: TRANSLATE, lang: 'de', country: 'de' });
 
     expect(result.developerLegalName?.trim().length).toBeGreaterThan(0);
     expect(result.developerLegalEmail?.trim().length).toBeGreaterThan(0);
@@ -163,10 +158,7 @@ liveDescribe('app live contract', () => {
     controller.abort();
 
     await expect(
-      liveClient.app({
-        appId: 'com.google.android.apps.translate',
-        requestOptions: { signal: controller.signal },
-      }),
+      liveClient.app({ appId: TRANSLATE, requestOptions: { signal: controller.signal } }),
     ).rejects.toMatchObject({ name: 'AbortError' });
   });
 });

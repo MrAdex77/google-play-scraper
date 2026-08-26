@@ -68,6 +68,135 @@ The other integrity reasons have narrower responses:
   repeated token, and inspect the pagination response before changing token
   extraction. Tokens must never be written to logs or event messages.
 
+## Live contract assertion rules
+
+The scheduled suite exists to catch scraper breakage, not catalogue movement. An
+assertion that fails because Google reshuffled its catalogue creates a false
+`contract-breakage` issue and trains everyone to ignore the signal. By default
+an assertion under `e2e/` must therefore stay true no matter what Google serves
+today, which leaves four ordinary kinds:
+
+1. **Shape.** A field exists with the right type, a url resolves to the store
+   origin, an icon is served over https.
+2. **Cross-field consistency.** Two fields that come from _different_ page
+   nodes have to agree: `free` against `price` and `currency`, `score` against
+   `scoreText`, `installs` against `minInstalls`, the histogram against the
+   rating count. These are the sharpest breakage detectors in the suite because
+   a drifted path breaks the agreement immediately while catalogue movement
+   never does. Two fields parsed from the same node are not an invariant, they
+   are a tautology: `offersIAP` and `IAPRange` both read `[1, 2, 19, 0]`, so
+   only the shape of `IAPRange` is worth asserting.
+3. **Self-anchoring.** The assertion derives its expectation from the same
+   response, for example `list({ num })` returning exactly `num` items or the
+   search result set matching the first page it was built from.
+4. **Immutable fact.** A release date already in the past, an app id that
+   resolves forever, a category id that is part of the taxonomy constant.
+
+Two further kinds are deliberate exceptions that do detect external change, so
+each one has to be registered in this runbook before it is written:
+
+5. **Controlled anchor.** A listing this repository's maintainer owns, such as
+   `com.adex77.WhereAmI` or the `Adex77` developer id. A change there is a
+   deliberate change by the person reading the failure, not a surprise. Prefer
+   this over any pool whenever an owned listing can carry the state.
+6. **Regime tripwire and maintained anchor pool.** A documented probe of
+   Google's serving behaviour, listed under "Pagination tripwires", or a pool
+   that guards a state no owned listing can reach, listed under "Maintained
+   anchor pools". These fail on purpose when Google changes, and their failure
+   messages have to name the maintenance task rather than read as a parse break.
+
+Outside those two registered exceptions, never assert third-party catalogue
+state. Concretely, do not pin how many apps Google recommends for a listing,
+whether a specific app currently has zero reviews or zero ratings, whether a
+category is currently empty, whether a game is still in preregistration, or
+where an app ranks for a search term. Assert the invariant that holds in either
+state and let the test follow the catalogue.
+
+When a state still deserves live coverage, branch on what the page actually
+reports instead of assuming a state:
+
+```ts
+if (listing.ratings === undefined) {
+  expect(page.data).toEqual([]);
+  return;
+}
+expect(page.data.length).toBeGreaterThan(0);
+```
+
+Report which branch ran with vitest's `annotate` so a reader of the run can see
+that coverage moved, without the run failing over it.
+
+### Shared invariants
+
+`e2e/contracts.ts` holds the invariant helpers. Reach for them before writing a
+bespoke loop of assertions, and add to them when a new cross-field agreement
+turns up:
+
+- `expectAppItemContract` and `expectAppItemsContract` for search, list, similar
+  and developer items.
+- `expectListingContract` for a full `app()` result, which composes the offer,
+  rating, histogram, installs, purchase and release state invariants.
+- `expectReviewContract` and `expectReviewsContract` for review pages.
+
+Three thresholds in the suite are measured, not guessed, all on 2026-08-26:
+
+- The histogram tracks the rating count to within `max(10, 1% of ratings)`,
+  measured across listings from 31 to 242 million ratings.
+- `scoreText` is the score rounded to one decimal, so it agrees to within 0.051
+  once the locale decimal comma is normalized.
+- `DATA_RICH_COLLECTED_FLOOR` in `e2e/datasafety.e2e.test.ts` is 10 against 37
+  entries measured on `com.instagram.android`, so a partial parse of the
+  collected data section fails while an ordinary policy edit does not.
+
+Two localized formats decide whether a check runs at all. The install count
+comparison only runs when the string is plain grouped ASCII digits, so a
+storefront that abbreviates the tier (`10万+`) or uses Arabic-Indic digits skips
+the equality instead of comparing a value it cannot read. The `IAPRange` shape
+check accepts any Unicode decimal digit, because the Arabic storefront serves
+`‏١٢٫٩٩ ج.م.‏ - ‏١٢٬٢٤٩٫٩٩ ج.م.‏ لكل عنصر` and the Japanese one serves
+`￥50～￥57,800/アイテム`.
+
+Re-measure with `pnpm coverage:live` and a scratch probe before moving any of
+them.
+
+### Maintained anchor pools
+
+A state that needs a live true branch belongs on a controlled anchor whenever an
+owned listing can reach it. `com.adex77.WhereAmI` carries `adSupported`,
+`offersIAP`, and every optional media field (`video`, `videoImage`, `IAPRange`,
+`released`, `contentRatingDescription`, `recentChanges`), so those gates sit on
+it directly rather than on a pool of third-party apps.
+
+One state has no owned anchor, because Play Pass membership is granted by Google
+and cannot be arranged for a maintainer's own app:
+
+- `PLAY_PASS_CANDIDATES` in `e2e/edgeCases.e2e.test.ts` must keep one title in
+  Play Pass. It runs against four titles and fails only when all four have left,
+  which is the only live gate on the `[1, 2, 62]` path.
+
+Its failure message says "re-anchor the pool". That is a maintenance task, not a
+scraper break: replace the drifted ids with listings that are in the wanted
+state and commit as `test(e2e): re-anchor the play pass pool`. Never delete the
+pool assertion instead, since dropping it leaves `isAvailableInPlayPass` with no
+live coverage of its true branch.
+
+`PREREGISTRATION_CANDIDATES` deliberately carries no such gate. Preregistration
+listings launch, so the suite asserts the state conditional invariants on each
+candidate and annotates how many are still unlaunched. Both branches of the
+parser are covered offline in `src/features/app/app.test.ts`, so a fully
+launched pool costs live coverage but never fails the run.
+
+Refresh that list from Google's own preregistration shelf, which search does not
+surface:
+
+```
+https://play.google.com/store/apps/collection/promotion_3000000d51_pre_registration_games?hl=en&gl=us
+```
+
+Scrape the `id=` parameters out of that page, confirm `preregister` on a handful
+with `app()`, and commit the replacements as
+`test(e2e): refresh the preregistration candidates`.
+
 ## Pagination tripwires
 
 Two e2e tests pin the current Google Play serving regime instead of the code:
@@ -76,6 +205,16 @@ Two e2e tests pin the current Google Play serving regime instead of the code:
   `e2e/search.e2e.test.ts`
 - `confirms the numeric first page still requires a continuation` in
   `e2e/developer.e2e.test.ts`
+
+Three measured serving limits back the count assertions that surround them:
+`FIRST_PAGE_SIZE` (150 reviews) in `e2e/iterators.e2e.test.ts`,
+`SIMILAR_CLUSTER_PAGE_SIZE` (50 apps) in `e2e/similar.e2e.test.ts`, and
+`LIST_MAX_ITEMS` (200 apps) in `e2e/list.e2e.test.ts`. The first two exist so
+that a count assertion proves a continuation was followed rather than pinning
+how large a catalogue is. `LIST_MAX_ITEMS` is the hard ceiling `list` returns
+however large `num` gets, measured identical at `num` 200, 250 and 500 on
+2026-08-26, so the assertion is exact and moves only when Google moves the cap.
+Re-measure the page directly before changing one.
 
 A tripwire failure means Google changed the serving regime, not that the code
 broke. The count assertions in the surrounding suites rely on the premises these

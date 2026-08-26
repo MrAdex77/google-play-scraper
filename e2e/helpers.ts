@@ -10,6 +10,18 @@ export const liveDescribe = describe.skipIf(LIVE_TESTS_DISABLED);
 
 export const liveClient = createClient({ throttle: REQUESTS_PER_SECOND });
 
+export function expectFieldFilledSomewhere(
+  context: string,
+  items: readonly Record<string, unknown>[],
+  fields: readonly string[],
+): void {
+  for (const field of fields) {
+    const { filled, total } = fieldCoverage(items, field);
+    const message = `${context}: field "${field}" is empty across all ${total.toString()} anchors`;
+    expect(filled, message).toBeGreaterThan(0);
+  }
+}
+
 export function expectFieldCoverage(
   context: string,
   items: readonly Record<string, unknown>[],

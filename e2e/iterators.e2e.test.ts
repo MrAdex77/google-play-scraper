@@ -1,9 +1,16 @@
 import { expect, it } from 'vitest';
-import { type DegradationEvent, type IntegrityEvent } from '../src/index.js';
+import { type DegradationEvent, type IntegrityEvent, type Review } from '../src/index.js';
+import { expectAppItemContract, expectReviewContract, expectReviewsContract } from './contracts.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
 const WHATSAPP = 'com.whatsapp';
+const GEO_GAME = 'com.adex77.WhereAmI';
 const FIRST_PAGE_SIZE = 150;
+const STREAM_LIMIT = 200;
+const SEARCH_STREAM_LIMIT = 30;
+const DEVELOPER_STREAM_LIMIT = 40;
+const REVIEWS_ALL_LIMIT = 50;
+const REVIEWS_ALL_CEILING = 5000;
 
 liveDescribe('iterators live contract', () => {
   it('streams reviews across the first page boundary', async () => {
@@ -13,37 +20,31 @@ liveDescribe('iterators live contract', () => {
       appId: WHATSAPP,
       onIntegrityEvent: (event) => events.push(event),
     })) {
-      expect(review.id.length).toBeGreaterThan(0);
-      expect(review.userName.length).toBeGreaterThan(0);
-      expect(review.score).toBeGreaterThanOrEqual(1);
-      expect(review.score).toBeLessThanOrEqual(5);
-      expect(Number.isNaN(Date.parse(review.date))).toBe(false);
+      expectReviewContract(review, 'streamed review');
       collected.push(review.id);
-      if (collected.length === 200) {
+      if (collected.length === STREAM_LIMIT) {
         break;
       }
     }
 
-    expect(collected).toHaveLength(200);
+    expect(collected).toHaveLength(STREAM_LIMIT);
     expect(collected.length).toBeGreaterThan(FIRST_PAGE_SIZE);
-    expect(new Set(collected).size).toBe(200);
+    expect(new Set(collected).size).toBe(STREAM_LIMIT);
     expect(events).toEqual([]);
   });
 
   it('streams thirty search results for a broad term and stops', async () => {
     const collected: string[] = [];
     for await (const result of liveClient.searchIterator({ term: 'geography quiz' })) {
-      expect(result.appId.length).toBeGreaterThan(0);
-      expect(result.title.length).toBeGreaterThan(0);
-      expect(new URL(result.url).origin).toBe('https://play.google.com');
+      expectAppItemContract(result, 'streamed search result');
       collected.push(result.appId);
-      if (collected.length === 30) {
+      if (collected.length === SEARCH_STREAM_LIMIT) {
         break;
       }
     }
 
-    expect(collected).toHaveLength(30);
-    expect(new Set(collected).size).toBe(30);
+    expect(collected).toHaveLength(SEARCH_STREAM_LIMIT);
+    expect(new Set(collected).size).toBe(SEARCH_STREAM_LIMIT);
   });
 
   it('streams developer apps across the first page boundary', async () => {
@@ -53,16 +54,15 @@ liveDescribe('iterators live contract', () => {
       devId: '5700313618786177705',
       onDegradation: (event) => events.push(event),
     })) {
-      expect(item.appId.length).toBeGreaterThan(0);
-      expect(new URL(item.url).origin).toBe('https://play.google.com');
+      expectAppItemContract(item, 'streamed developer app');
       collected.push(item.appId);
-      if (collected.length === 40) {
+      if (collected.length === DEVELOPER_STREAM_LIMIT) {
         break;
       }
     }
 
-    expect(collected).toHaveLength(40);
-    expect(new Set(collected).size).toBe(40);
+    expect(collected).toHaveLength(DEVELOPER_STREAM_LIMIT);
+    expect(new Set(collected).size).toBe(DEVELOPER_STREAM_LIMIT);
     expect(events).toEqual([]);
   });
 
@@ -89,21 +89,20 @@ liveDescribe('iterators live contract', () => {
   });
 
   it('collects exactly maxReviews reviews through reviewsAll', async () => {
-    const reviews = await liveClient.reviewsAll({ appId: WHATSAPP, maxReviews: 50 });
+    const reviews: Review[] = await liveClient.reviewsAll({
+      appId: WHATSAPP,
+      maxReviews: REVIEWS_ALL_LIMIT,
+    });
 
-    expect(reviews).toHaveLength(50);
-    for (const review of reviews) {
-      expect(review.score).toBeGreaterThanOrEqual(1);
-      expect(review.score).toBeLessThanOrEqual(5);
-      expect(Number.isNaN(Date.parse(review.date))).toBe(false);
-    }
+    expect(reviews).toHaveLength(REVIEWS_ALL_LIMIT);
+    expectReviewsContract(reviews, 'reviewsAll page');
   });
 
   it('drains reviewsAll without maxReviews on a small catalog app', async () => {
-    const reviews = await liveClient.reviewsAll({ appId: 'com.adex77.WhereAmI' });
+    const reviews: Review[] = await liveClient.reviewsAll({ appId: GEO_GAME });
 
-    expect(reviews.length).toBeGreaterThanOrEqual(40);
-    expect(reviews.length).toBeLessThan(5000);
-    expect(new Set(reviews.map((review) => review.id)).size).toBe(reviews.length);
+    expect(reviews.length).toBeGreaterThan(0);
+    expect(reviews.length).toBeLessThan(REVIEWS_ALL_CEILING);
+    expectReviewsContract(reviews, 'drained reviewsAll');
   });
 });
