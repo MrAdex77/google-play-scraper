@@ -281,6 +281,28 @@ describe('app', () => {
     expect(result.discountEndDate).toBeUndefined();
   });
 
+  it('parses a preregistration listing that still carries a free offer node', async () => {
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const offer = getPath(details, [57, 0, 0, 0, 0]) as unknown[];
+    offer[1] = [[0, 'USD', '']];
+    details[18] = [1];
+    const preregisterHtml = buildScriptData('ds:5', ds5);
+
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(preregisterHtml) },
+    });
+
+    expect(result.preregister).toBe(true);
+    expect(result.price).toBe(0);
+    expect(result.free).toBe(true);
+    expect(result.priceText).toBe('Free');
+    expect(result.currency).toBe('USD');
+    expect(result.originalPrice).toBeUndefined();
+  });
+
   it('reports early access alongside preregistration when the offer node is absent', async () => {
     const data = parseScriptData(translateHtml);
     const ds5 = data.blocks['ds:5'] as unknown[];
