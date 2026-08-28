@@ -12,6 +12,7 @@ const ASCII_DIGIT = /[0-9]/;
 const NON_ASCII_DIGIT = /[^0-9]/g;
 const ABBREVIATED_SCALE_LETTER = /\p{L}/u;
 const QUOTED_PRICE_DIGIT = /\p{Nd}/u;
+const ISO_4217_CURRENCY = /^[A-Z]{3}$/;
 const ANDROID_MARKET_LAUNCH_MS = 1_223_856_000_000;
 const CLOCK_SKEW_TOLERANCE_MS = 172_800_000;
 const OFFERLESS_PRICE_TEXT = 'Free';
@@ -244,9 +245,9 @@ export function expectPurchaseConsistency(listing: App, label: string): void {
 export function expectOfferNodeConsistency(listing: App, label: string): void {
   if (listing.currency !== undefined) {
     expect(
-      listing.priceText.length,
-      `${label}: a listing carrying an offer node must quote a price text`,
-    ).toBeGreaterThan(0);
+      ISO_4217_CURRENCY.test(listing.currency),
+      `${label}: currency "${listing.currency}" must be an ISO 4217 code`,
+    ).toBe(true);
     return;
   }
 
