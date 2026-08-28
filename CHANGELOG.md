@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/MrAdex77/google-play-scraper/compare/v1.1.0...v1.1.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **e2e:** key the offer contract on currency instead of preregistration ([abacd7a](https://github.com/MrAdex77/google-play-scraper/commit/abacd7afe954e2feaecbcc3c8467ad6d0bb0c76d))
+* **e2e:** stop pinning catalogue state in live contract tests ([cb872a4](https://github.com/MrAdex77/google-play-scraper/commit/cb872a4c11bdaaf457c07f0ca16a556da45a13ea))
+
 ## [1.1.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.0.0...v1.1.0) (2026-07-31)
 
 
