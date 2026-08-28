@@ -135,8 +135,23 @@ turns up:
 - `expectAppItemContract` and `expectAppItemsContract` for search, list, similar
   and developer items.
 - `expectListingContract` for a full `app()` result, which composes the offer,
-  rating, histogram, installs, purchase and release state invariants.
+  offer node, rating, histogram, installs, purchase and release state
+  invariants.
 - `expectReviewContract` and `expectReviewsContract` for review pages.
+
+The offer fields deserve their own note, because they are the one place where
+absence carries meaning. `price`, `currency` and `priceText` are three sibling
+indices of a single offer node, and `originalPrice` and `discountEndDate` hang
+off the same parent. When Google serves no offer node the parser falls back to
+`price` 0, `free` false and `priceText` "Free", so an undefined `currency` is
+the signal that the whole node was missing. `expectOfferNodeConsistency` asserts
+that implication on every listing: it fires the moment one of those indices
+drifts while its siblings still resolve, and never fires when a listing changes
+what it costs.
+
+A consequence worth stating plainly: `free` false is not the claim "this app
+costs money", because an offerless listing also reads as `free` false with
+`price` 0. Read `currency` first when deciding which state a listing is in.
 
 Three thresholds in the suite are measured, not guessed, all on 2026-08-26:
 
@@ -185,6 +200,13 @@ listings launch, so the suite asserts the state conditional invariants on each
 candidate and annotates how many are still unlaunched. Both branches of the
 parser are covered offline in `src/features/app/app.test.ts`, so a fully
 launched pool costs live coverage but never fails the run.
+
+Preregistration and the offer node are independent, and conflating them broke
+the scheduled run once already. Measured on 2026-08-28,
+`com.ironhidegames.android.kingdomrush6.genesis` preregistered while serving a
+full `[0, "USD", ""]` offer tuple, while three other candidates preregistered
+with no offer node at all. Carrying an offer node is the publisher's choice, not
+a property of the release state, so never assert one from the other.
 
 Refresh that list from Google's own preregistration shelf, which search does not
 surface:

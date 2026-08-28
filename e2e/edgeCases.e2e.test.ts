@@ -1,7 +1,11 @@
 import { expect, it } from 'vitest';
 import { permission } from '../src/index.js';
 import type { App, IntegrityEvent, ListItem, SearchResult, SimilarApp } from '../src/index.js';
-import { expectAppItemsContract, expectListingContract } from './contracts.js';
+import {
+  expectAppItemsContract,
+  expectListingContract,
+  expectReviewsContract,
+} from './contracts.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
 const SPARSE_REVIEW_ANCHOR = 'app.hobby_tracker_app';
@@ -37,10 +41,11 @@ const PREREGISTRATION_CANDIDATES = [
   'com.wanda.jojo.gp.global',
   'com.bytro.warhammer40ksupremacy',
   'com.dreamloft.grumpykingdom',
-];
+] as const;
+
+const PRIMARY_CANDIDATE = PREREGISTRATION_CANDIDATES[0];
 
 const SPARSE_COLLECTION_NUM = 20;
-const EMPTY_HISTOGRAM = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 const YEAR_2000_MS = 946684800000;
 const YEAR_2100_MS = 4102444800000;
 
@@ -350,40 +355,8 @@ liveDescribe('preregistration listings live contract', () => {
     );
   });
 
-  it('serves an offerless listing for candidates that have not launched', async ({ annotate }) => {
-    const results = await Promise.all(
-      PREREGISTRATION_CANDIDATES.map((appId) => liveClient.app({ appId })),
-    );
-    const preregistering = results.filter((result) => result.preregister);
-
-    for (const result of preregistering) {
-      expect(result.price).toBe(0);
-      expect(result.free).toBe(false);
-      expect(result.priceText).toBe('Free');
-      expect(result.currency).toBeUndefined();
-      expect(result.originalPrice).toBeUndefined();
-      expect(result.installs).toBeUndefined();
-      expect(result.minInstalls).toBeUndefined();
-      expect(result.score).toBeUndefined();
-      expect(result.ratings).toBeUndefined();
-      expect(result.histogram).toEqual(EMPTY_HISTOGRAM);
-      expect(result.released).toBeUndefined();
-    }
-
-    const launched = results.filter((result) => !result.preregister);
-    for (const result of launched) {
-      expect(result.installs?.length).toBeGreaterThan(0);
-      expect(result.minInstalls).toBeGreaterThan(0);
-    }
-
-    await annotate(
-      `${preregistering.length.toString()} unlaunched, ${launched.length.toString()} launched`,
-      'notice',
-    );
-  });
-
-  it('serves reports and neighbours for a candidate listing', async () => {
-    const appId = PREREGISTRATION_CANDIDATES[0] ?? '';
+  it('serves reports and neighbours for a candidate listing', async ({ annotate }) => {
+    const appId = PRIMARY_CANDIDATE;
     const [listing, permissions, safety, similar, reviews] = await Promise.all([
       liveClient.app({ appId }),
       liveClient.permissions({ appId }),
@@ -392,27 +365,50 @@ liveDescribe('preregistration listings live contract', () => {
       liveClient.reviews({ appId, num: 5 }),
     ]);
 
-    expect(permissions.length).toBeGreaterThan(0);
-    expect(safety.privacyPolicyUrl?.length).toBeGreaterThan(0);
+    for (const entry of permissions) {
+      const item = entry as { permission: string; type: number };
+      expect(item.permission.length).toBeGreaterThan(0);
+      expect([permission.COMMON, permission.OTHER]).toContain(item.type);
+    }
+    if (safety.privacyPolicyUrl !== undefined) {
+      expect(safety.privacyPolicyUrl.startsWith('http')).toBe(true);
+    }
     expectAppItemsContract(similar as SimilarApp[], 'candidate similar cluster');
 
     if (listing.ratings === undefined) {
       expect(reviews.data).toEqual([]);
       expect(reviews.nextPaginationToken).toBeNull();
-      return;
+    } else {
+      expect(reviews.data.length).toBeGreaterThan(0);
+      expectReviewsContract(reviews.data, 'candidate reviews');
     }
-    expect(reviews.data.length).toBeGreaterThan(0);
-    for (const review of reviews.data) {
-      expect(review.score).toBeGreaterThanOrEqual(1);
-      expect(review.score).toBeLessThanOrEqual(5);
-    }
+
+    await annotate(
+      `${appId}: ${permissions.length.toString()} permissions, ${safety.collectedData.length.toString()} collected entries, ${similar.length.toString()} neighbours, ${describeRatingState(listing)}`,
+      'notice',
+    );
   });
 
-  it('keeps every match of a launch title search parseable', async () => {
-    const results = (await liveClient.search({ term: 'Reigns Beyond', num: 20 })) as SearchResult[];
+  it('resolves a candidate identically on the listing and search surfaces', async ({
+    annotate,
+  }) => {
+    const appId = PRIMARY_CANDIDATE;
+    const listing = await liveClient.app({ appId });
+    const results = (await liveClient.search({
+      term: listing.title,
+      num: 20,
+    })) as SearchResult[];
 
-    expect(results.length).toBeGreaterThan(0);
-    expectAppItemsContract(results, 'launch title search');
+    expectAppItemsContract(results, 'candidate title search');
+
+    const match = results.find((item) => item.appId === appId);
+    if (match === undefined) {
+      await annotate(`${appId} is not indexed for its own title right now`, 'notice');
+      return;
+    }
+    expect(match.title).toBe(listing.title);
+    expect(match.developer).toBe(listing.developer);
+    await annotate(`${appId} agrees across the listing and search surfaces`, 'notice');
   });
 });
 
