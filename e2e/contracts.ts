@@ -241,6 +241,33 @@ export function expectPurchaseConsistency(listing: App, label: string): void {
   ).toBe(true);
 }
 
+export function expectOfferNodeConsistency(listing: App, label: string): void {
+  if (listing.currency !== undefined) {
+    expect(
+      listing.priceText.length,
+      `${label}: a listing carrying an offer node must quote a price text`,
+    ).toBeGreaterThan(0);
+    return;
+  }
+
+  expect(listing.price, `${label}: a listing without an offer node must cost zero`).toBe(0);
+  expect(listing.free, `${label}: a free offer cannot be read without the currency beside it`).toBe(
+    false,
+  );
+  expect(
+    listing.priceText,
+    `${label}: a listing without an offer node falls back to "${OFFERLESS_PRICE_TEXT}"`,
+  ).toBe(OFFERLESS_PRICE_TEXT);
+  expect(
+    listing.originalPrice,
+    `${label}: a listing without an offer node carries no original price`,
+  ).toBeUndefined();
+  expect(
+    listing.discountEndDate,
+    `${label}: a listing without an offer node carries no discount deadline`,
+  ).toBeUndefined();
+}
+
 export function expectReleaseStateConsistency(listing: App, label: string): void {
   if (!listing.preregister) {
     return;
@@ -264,13 +291,6 @@ export function expectReleaseStateConsistency(listing: App, label: string): void
     histogramTotal(listing.histogram),
     `${label}: a preregistration listing has an empty histogram`,
   ).toBe(0);
-
-  if (listing.currency === undefined) {
-    expect(
-      listing.priceText,
-      `${label}: an offerless preregistration listing falls back to a free price text`,
-    ).toBe(OFFERLESS_PRICE_TEXT);
-  }
 }
 
 export function expectListingContract(listing: App, label: string): void {
@@ -318,6 +338,7 @@ export function expectListingContract(listing: App, label: string): void {
   );
 
   expectOfferConsistency(listing, scoped);
+  expectOfferNodeConsistency(listing, scoped);
   expectRatingConsistency(listing, scoped);
   expectRatingSurfaceConsistency(listing, scoped);
   expectInstallsConsistency(listing, scoped);
