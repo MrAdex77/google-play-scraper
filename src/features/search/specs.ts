@@ -1,5 +1,5 @@
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
-import type { Path } from '../../core/path.js';
+import { getPath, type Path } from '../../core/path.js';
 import { rawArrayPathSchema } from '../../core/raw.js';
 import type { ScriptRootSpec } from '../../core/scriptRoot.js';
 import { deriveScriptDataSelection } from '../../core/scriptData.js';
@@ -21,9 +21,17 @@ function developerIdFromLink(value: unknown): string | undefined {
 }
 
 export const INITIAL_MAPPINGS = {
-  app: [0, 1, 0, 23],
   sections: [0, 1],
 } satisfies Record<string, Path>;
+
+export const EXACT_MATCH_MAPPINGS = {
+  card: [23],
+  appId: [16, 3, '12', 0, 0],
+} satisfies Record<string, Path>;
+
+export function isExactMatchCard(value: unknown): boolean {
+  return typeof getPath(value, EXACT_MATCH_MAPPINGS.appId) === 'string';
+}
 
 export const searchRootSpec = {
   rpcId: SEARCH_RPC_ID,
@@ -94,7 +102,7 @@ export const searchPageItemSpecs = {
 
 export const exactMatchSpecs = {
   title: { paths: [[16, 2, 0, 0]], missing: REQUIRED, schema: shape.title },
-  appId: { paths: [[16, 3, '12', 0, 0]], missing: REQUIRED, schema: shape.appId },
+  appId: { paths: [EXACT_MATCH_MAPPINGS.appId], missing: REQUIRED, schema: shape.appId },
   url: {
     paths: [[17, 0, 0, 4, 2]],
     missing: REQUIRED,

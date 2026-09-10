@@ -15,9 +15,11 @@ import type { App } from '../app/schema.js';
 import { searchResultSchema, type SearchResult } from './schema.js';
 import {
   CLUSTER_MAPPINGS,
+  EXACT_MATCH_MAPPINGS,
   exactMatchSpecs,
   filterByPrice,
   INITIAL_MAPPINGS,
+  isExactMatchCard,
   priceGoogleValue,
   searchItemSpecs,
   searchPageItemSpecs,
@@ -76,12 +78,58 @@ export async function fetchSearchFirstPage(
   return { client, page: firstPage(root.root, query.onIntegrityEvent) };
 }
 
+interface ScannedCard {
+  card: unknown;
+  index: number;
+  section: number;
+}
+
+function scanForExactMatchCard(sections: readonly unknown[]): ScannedCard | undefined {
+  for (const [section, node] of sections.entries()) {
+    if (!Array.isArray(node)) {
+      continue;
+    }
+    for (const [index, entry] of node.entries()) {
+      if (isExactMatchCard(entry)) {
+        return { card: entry, index, section };
+      }
+    }
+  }
+  return undefined;
+}
+
+function findExactMatchCard(
+  sections: readonly unknown[],
+  onIntegrityEvent?: OnIntegrityEvent,
+): unknown {
+  let anchored: unknown;
+  for (const section of sections) {
+    const candidate = getPath(section, EXACT_MATCH_MAPPINGS.card);
+    if (isExactMatchCard(candidate)) {
+      return candidate;
+    }
+    if (anchored === undefined && candidate !== undefined && candidate !== null) {
+      anchored = candidate;
+    }
+  }
+
+  const scanned = scanForExactMatchCard(sections);
+  if (scanned === undefined) {
+    return anchored;
+  }
+  const error = new ParseError(
+    `${SEARCH_CONTEXT}: exact match card resolved at sections.${scanned.section.toString()}.${scanned.index.toString()} instead of its anchor`,
+  );
+  onIntegrityEvent?.({ context: SEARCH_CONTEXT, reason: 'section-anchor-fallback', error });
+  return scanned.card;
+}
+
 function prependExactMatch(
-  root: unknown,
+  sections: readonly unknown[],
   apps: SearchItem[],
   onIntegrityEvent?: OnIntegrityEvent,
 ): SearchItem[] {
-  const exactMatchData = getPath(root, INITIAL_MAPPINGS.app);
+  const exactMatchData = findExactMatchCard(sections, onIntegrityEvent);
   if (exactMatchData === undefined || exactMatchData === null) {
     return apps;
   }
@@ -110,7 +158,7 @@ function firstPage(root: unknown, onIntegrityEvent?: OnIntegrityEvent): FirstPag
       const extracted = apps.map((item) => extract(item, searchItemSpecs, SEARCH_CONTEXT));
       const token = getPath(section, SECTIONS_MAPPING.token);
       return {
-        apps: prependExactMatch(root, extracted, onIntegrityEvent),
+        apps: prependExactMatch(sections, extracted, onIntegrityEvent),
         token: typeof token === 'string' ? token : undefined,
       };
     }

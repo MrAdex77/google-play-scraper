@@ -197,7 +197,7 @@ describe('search pagination', () => {
   });
 });
 
-const exactMatchNode = (id: string): unknown[] => {
+const exactMatchDetail = (id: string): unknown[] => {
   const detail: unknown[] = [];
   detail[0] = [`App ${id}`];
   detail[68] = [
@@ -206,20 +206,47 @@ const exactMatchNode = (id: string): unknown[] => {
   ];
   detail[73] = [[null, `Summary of ${id}`]];
   detail[95] = [[null, null, null, [null, null, `https://icon.example/${id}`]]];
+  return detail;
+};
+
+const offerContainer = (id: string): unknown[] => [
+  [null, null, null, null, [null, null, `/store/apps/details?id=${id}`]],
+];
+
+const primaryOfferNode = (id: string): unknown[] => [offerContainer(id)];
+
+const exactMatchCard = (id: string, detail: unknown[], offer?: unknown): unknown[] => {
   const node16: unknown[] = [];
   node16[2] = detail;
   node16[3] = { '12': [[id]] };
-  const node17: unknown[] = [
-    [[null, null, null, null, [null, null, `/store/apps/details?id=${id}`]]],
-  ];
-  const root: unknown[] = [];
-  root[16] = node16;
-  root[17] = node17;
-  return root;
+  const card: unknown[] = [];
+  card[16] = node16;
+  if (offer !== undefined) {
+    card[17] = offer;
+  }
+  return card;
 };
 
-const searchPageWithSection = (section: unknown[]): string =>
-  `${buildScriptData('ds:4', [[null, [section]]])}${buildServiceTable({ 'ds:4': SEARCH_RPC_ID })}`;
+const exactMatchNode = (id: string): unknown[] =>
+  exactMatchCard(id, exactMatchDetail(id), primaryOfferNode(id));
+
+const searchPageWithSections = (sections: readonly unknown[]): string =>
+  `${buildScriptData('ds:4', [[null, sections]])}${buildServiceTable({ 'ds:4': SEARCH_RPC_ID })}`;
+
+const searchPageWithSection = (section: unknown[]): string => searchPageWithSections([section]);
+
+const cardSection = (card: unknown, index = 23): unknown[] => {
+  const section: unknown[] = [];
+  section[index] = card;
+  return section;
+};
+
+const searchOn = async (html: string, events: IntegrityEvent[] = []): Promise<SearchResult[]> =>
+  search({
+    term: 'panda',
+    onIntegrityEvent: (event) => events.push(event),
+    requestOptions: { fetchImpl: fetchReturning(html) },
+  });
 
 const sectionWithApps = (ids: string[]): unknown[] => {
   const section: unknown[] = [];
@@ -523,5 +550,166 @@ describe('search fullDetail', () => {
     expect(requested).toEqual(plain.map((item) => item.appId));
     expect(detailed).toHaveLength(3);
     expect(detailed.every((item) => item.description.startsWith('detail '))).toBe(true);
+  });
+});
+
+describe('search exact match resolution', () => {
+  it('prepends a card anchored in the first section', async () => {
+    const html = searchPageWithSections([cardSection(exactMatchNode('x')), sectionWithApps(['a'])]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(events).toEqual([]);
+  });
+
+  it('prepends a card anchored in a later section', async () => {
+    const html = searchPageWithSections([
+      [],
+      cardSection(exactMatchNode('x')),
+      sectionWithApps(['a']),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(events).toEqual([]);
+  });
+
+  it('prepends a card anchored in the same section as the results', async () => {
+    const section = sectionWithApps(['a']);
+    section[23] = exactMatchNode('x');
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(searchPageWithSection(section), events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(events).toEqual([]);
+  });
+
+  it('resolves a card that moved off its anchor index and reports the fallback', async () => {
+    const html = searchPageWithSections([
+      cardSection(exactMatchNode('x'), 24),
+      sectionWithApps(['a']),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('section-anchor-fallback');
+    expect(events[0]?.context).toBe('search');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+    expect(events[0]?.error.message).toContain('sections.0.24');
+  });
+
+  it('prefers an anchored card over a card reachable only by scanning', async () => {
+    const html = searchPageWithSections([
+      cardSection(exactMatchNode('x')),
+      cardSection(exactMatchNode('y'), 24),
+      sectionWithApps(['a']),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(events).toEqual([]);
+  });
+
+  it('prefers a later anchored card over an earlier unusable anchor', async () => {
+    const html = searchPageWithSections([
+      cardSection(['garbage']),
+      cardSection(exactMatchNode('x')),
+      sectionWithApps(['a']),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(events).toEqual([]);
+  });
+
+  it('scans past an unusable anchor when the card moved off its index', async () => {
+    const html = searchPageWithSections([
+      cardSection(['garbage']),
+      cardSection(exactMatchNode('x'), 24),
+      sectionWithApps(['a']),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('section-anchor-fallback');
+    expect(events[0]?.error.message).toContain('sections.1.24');
+  });
+
+  it('reports the unusable anchor when no card can be resolved anywhere', async () => {
+    const html = searchPageWithSections([cardSection(['garbage']), sectionWithApps(['a', 'b'])]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('optional-section-parse');
+  });
+
+  it('skips a non array section while scanning', async () => {
+    const html = searchPageWithSections([
+      'not-a-section',
+      cardSection(exactMatchNode('x'), 24),
+      sectionWithApps(['a']),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('section-anchor-fallback');
+  });
+
+  it('never mistakes an ordinary result row for a card', async () => {
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(searchPageWithSection(sectionWithApps(['a', 'b'])), events);
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+    expect(events).toEqual([]);
+  });
+
+  it('does not duplicate a scanned card already present in the results', async () => {
+    const html = searchPageWithSections([
+      cardSection(exactMatchNode('a'), 24),
+      sectionWithApps(['a', 'b']),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('section-anchor-fallback');
+  });
+
+  it('resolves a moved card when no integrity observer is configured', async () => {
+    const html = searchPageWithSections([
+      cardSection(exactMatchNode('x'), 24),
+      sectionWithApps(['a']),
+    ]);
+
+    const results = (await search({
+      term: 'panda',
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
   });
 });
