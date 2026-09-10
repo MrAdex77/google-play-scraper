@@ -67,6 +67,12 @@ The other integrity reasons have narrower responses:
 - `pagination-token-cycle`: preserve the captured request sequence, confirm the
   repeated token, and inspect the pagination response before changing token
   extraction. Tokens must never be written to logs or event messages.
+- `section-anchor-fallback`: the exact match card resolved outside its declared
+  anchor. The event message names the section and index where it was found.
+  Refresh the search fixture, move `EXACT_MATCH_MAPPINGS.card` to the reported
+  index, and confirm the event stops. The public result is already correct, so
+  this is a scheduled repair rather than an outage, but leaving it unrepaired
+  means the next drift has no anchor left to fall back from.
 
 ## Live contract assertion rules
 
@@ -100,7 +106,7 @@ each one has to be registered in this runbook before it is written:
    deliberate change by the person reading the failure, not a surprise. Prefer
    this over any pool whenever an owned listing can carry the state.
 6. **Regime tripwire and maintained anchor pool.** A documented probe of
-   Google's serving behaviour, listed under "Pagination tripwires", or a pool
+   Google's serving behaviour, listed under "Serving regime tripwires", or a pool
    that guards a state no owned listing can reach, listed under "Maintained
    anchor pools". These fail on purpose when Google changes, and their failure
    messages have to name the maintenance task rather than read as a parse break.
@@ -219,14 +225,27 @@ Scrape the `id=` parameters out of that page, confirm `preregister` on a handful
 with `app()`, and commit the replacements as
 `test(e2e): refresh the preregistration candidates`.
 
-## Pagination tripwires
+## Serving regime tripwires
 
-Two e2e tests pin the current Google Play serving regime instead of the code:
+Three e2e tests pin the current Google Play serving regime instead of the code:
 
 - `confirms google still serves no search continuation token` in
   `e2e/search.e2e.test.ts`
 - `confirms the numeric first page still requires a continuation` in
   `e2e/developer.e2e.test.ts`
+- `confirms google still serves an exact match card for a package id search` in
+  `e2e/search.e2e.test.ts`
+
+The exact match tripwire is the only live gate on the card path. The card is
+parsed by `exactMatchSpecs`, which shares no path with the ordinary result
+specs, and four of its fields have a single source each in the page, so a drift
+there deletes the top result silently. `com.adex77.WhereAmI` is a controlled
+anchor and a package id search forces Google to serve a card for it, so the test
+asserts the card is the first result. If Google ever stops serving a card for
+package id searches the test fails on purpose: re-register the tripwire against
+whatever query still produces a card and commit as
+`test(e2e): re-anchor the exact match tripwire`. Never delete the assertion
+instead, since dropping it leaves the card path with no live coverage at all.
 
 Three measured serving limits back the count assertions that surround them:
 `FIRST_PAGE_SIZE` (150 reviews) in `e2e/iterators.e2e.test.ts`,
