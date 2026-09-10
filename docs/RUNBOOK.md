@@ -261,7 +261,12 @@ A tripwire failure means Google changed the serving regime, not that the code
 broke. The count assertions in the surrounding suites rely on the premises these
 tests pin, so re-port the affected contract before touching any threshold.
 
-When the search tripwire fires because a continuation token returned:
+Two of the three tripwires live in `e2e/search.e2e.test.ts` and fail for
+unrelated reasons. The continuation token one is answered by the procedure
+below. The exact match card one is answered by re-anchoring the tripwire as
+described above it.
+
+When the search continuation token tripwire fires because a token returned:
 
 1. Open `play.google.com/store/search?q=game&c=apps` in a browser with the
    network panel filtered to `batchexecute` and scroll to the bottom of the
