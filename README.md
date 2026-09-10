@@ -978,12 +978,13 @@ const details = await app({
 });
 ```
 
-| Callback           | Reason                   | Meaning                                                                |
-| ------------------ | ------------------------ | ---------------------------------------------------------------------- |
-| `onDegradation`    | `cluster-page-parse`     | A cluster continuation failed to parse and collected results returned. |
-| `onIntegrityEvent` | `rpc-anchor-fallback`    | An RPC anchor used its validated absolute fallback.                    |
-| `onIntegrityEvent` | `optional-section-parse` | A present best-effort section failed to parse and was skipped.         |
-| `onIntegrityEvent` | `pagination-token-cycle` | A repeated token stopped pagination before a duplicate request.        |
+| Callback           | Reason                    | Meaning                                                                |
+| ------------------ | ------------------------- | ---------------------------------------------------------------------- |
+| `onDegradation`    | `cluster-page-parse`      | A cluster continuation failed to parse and collected results returned. |
+| `onIntegrityEvent` | `rpc-anchor-fallback`     | An RPC anchor used its validated absolute fallback.                    |
+| `onIntegrityEvent` | `optional-section-parse`  | A present best-effort section failed to parse and was skipped.         |
+| `onIntegrityEvent` | `pagination-token-cycle`  | A repeated token stopped pagination before a duplicate request.        |
+| `onIntegrityEvent` | `section-anchor-fallback` | A best-effort section resolved outside its declared anchor.            |
 
 Two boundaries to know:
 
@@ -997,7 +998,7 @@ With `memoized()`, `onDegradation`, `onIntegrityEvent`, and the lifecycle hooks 
 
 This package follows [Semantic Versioning](https://semver.org). For a scraper the contract needs one clarification: semver covers the code surface this library controls, not the data Google serves.
 
-Integrity diagnostics use the additive API choice (Option B): the existing `DegradationEvent.reason` remains exactly `'cluster-page-parse'`, and the three new reasons live on the opt-in `onIntegrityEvent` callback. This preserves exhaustive switches and narrowly typed `onDegradation` handlers while adding observability without a major release.
+Integrity diagnostics use the additive API choice (Option B): the existing `DegradationEvent.reason` remains exactly `'cluster-page-parse'`, and the four new reasons live on the opt-in `onIntegrityEvent` callback. This preserves exhaustive switches and narrowly typed `onDegradation` handlers while adding observability without a major release.
 
 | Change                                                            | Release |
 | ----------------------------------------------------------------- | ------- |

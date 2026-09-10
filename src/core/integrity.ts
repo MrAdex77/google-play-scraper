@@ -1,7 +1,10 @@
 import { ParseError } from './errors.js';
 
 export type IntegrityReason =
-  'rpc-anchor-fallback' | 'optional-section-parse' | 'pagination-token-cycle';
+  | 'rpc-anchor-fallback'
+  | 'optional-section-parse'
+  | 'pagination-token-cycle'
+  | 'section-anchor-fallback';
 
 export interface IntegrityEvent {
   context: string;
