@@ -215,6 +215,12 @@ const offerContainer = (id: string): unknown[] => [
 
 const primaryOfferNode = (id: string): unknown[] => [offerContainer(id)];
 
+const primaryOfferNodeWithPrice = (id: string, micros: number, currency: string): unknown[] => {
+  const container = offerContainer(id);
+  container[2] = [[null, [[micros, currency, '']]]];
+  return [container];
+};
+
 const exactMatchCard = (id: string, detail: unknown[], offer?: unknown): unknown[] => {
   const node16: unknown[] = [];
   node16[2] = detail;
@@ -239,6 +245,19 @@ const cardSection = (card: unknown, index = 23): unknown[] => {
   const section: unknown[] = [];
   section[index] = card;
   return section;
+};
+
+const detailOfferNode = (micros: number, currency: string): unknown => [
+  [[[[null, [[micros, currency, '']]]]]],
+];
+
+const detailUrlNode = (id: string): unknown => [[null, null, `/store/apps/details?id=${id}`]];
+
+const detailWithOffer = (id: string, micros: number, currency: string): unknown[] => {
+  const detail = exactMatchDetail(id);
+  detail[41] = detailUrlNode(id);
+  detail[57] = detailOfferNode(micros, currency);
+  return detail;
 };
 
 const searchOn = async (html: string, events: IntegrityEvent[] = []): Promise<SearchResult[]> =>
@@ -711,5 +730,63 @@ describe('search exact match resolution', () => {
     })) as SearchResult[];
 
     expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
+  });
+});
+
+describe('search exact match offer fallbacks', () => {
+  it('reads url, price and currency from the detail offer node', async () => {
+    const html = searchPageWithSections([
+      cardSection(exactMatchCard('x', detailWithOffer('x', 0, 'EUR'))),
+      sectionWithApps(['a']),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results[0]?.appId).toBe('x');
+    expect(results[0]?.url).toBe('https://play.google.com/store/apps/details?id=x');
+    expect(results[0]?.currency).toBe('EUR');
+    expect(results[0]?.price).toBe(0);
+    expect(results[0]?.free).toBe(true);
+    expect(events).toEqual([]);
+  });
+
+  it('derives a paid card from the detail offer node', async () => {
+    const html = searchPageWithSections([
+      cardSection(exactMatchCard('x', detailWithOffer('x', 4_990_000, 'PLN'))),
+      sectionWithApps(['a']),
+    ]);
+
+    const results = await searchOn(html);
+
+    expect(results[0]?.price).toBe(4.99);
+    expect(results[0]?.free).toBe(false);
+    expect(results[0]?.currency).toBe('PLN');
+  });
+
+  it('prefers the primary offer node over the detail offer node', async () => {
+    const detail = detailWithOffer('detail', 9_990_000, 'EUR');
+    const card = exactMatchCard('x', detail, primaryOfferNodeWithPrice('x', 0, 'USD'));
+    const html = searchPageWithSections([cardSection(card), sectionWithApps(['a'])]);
+
+    const results = await searchOn(html);
+
+    expect(results[0]?.url).toBe('https://play.google.com/store/apps/details?id=x');
+    expect(results[0]?.currency).toBe('USD');
+    expect(results[0]?.price).toBe(0);
+    expect(results[0]?.free).toBe(true);
+  });
+
+  it('drops the card and reports it when no url node resolves', async () => {
+    const card = exactMatchCard('x', exactMatchDetail('x'));
+    const html = searchPageWithSections([cardSection(card), sectionWithApps(['a'])]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['a']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('optional-section-parse');
+    expect(events[0]?.error.message).toContain('url');
   });
 });
