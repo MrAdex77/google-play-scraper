@@ -12,6 +12,8 @@ import { expectAppItemsContract } from './contracts.js';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
 
 const FIRST_PAGE_CEILING = 40;
+const OWNED_APP_ID = 'com.adex77.WhereAmI';
+const OWNED_DEVELOPER = 'Adex77';
 
 function memoizingResolveClient(): ResolveClient {
   const underlying = clientFromOptions({ throttle: 1 });
@@ -143,6 +145,30 @@ liveDescribe('search live contract', () => {
       currency: 0.8,
     });
     expect(events).toEqual([]);
+  });
+
+  it('confirms google still serves an exact match card for a package id search', async () => {
+    const events: IntegrityEvent[] = [];
+
+    const results = (await liveClient.search({
+      term: OWNED_APP_ID,
+      num: 5,
+      onIntegrityEvent: (event) => events.push(event),
+    })) as SearchResult[];
+
+    expect(
+      results[0]?.appId,
+      'exact match card missing: repair the card anchor in src/features/search/specs.ts, or re-register this tripwire if google stopped serving a card for package id searches',
+    ).toBe(OWNED_APP_ID);
+    expect(results[0]?.developer).toBe(OWNED_DEVELOPER);
+    expect(events).toEqual([]);
+    expectAppItemsContract(results, 'exact match search');
+    expect
+      .soft(
+        results[0]?.developerId,
+        'developerId is the only exact match card field with no list equivalent; undefined means the card developer link drifted',
+      )
+      .toBeDefined();
   });
 
   it('confirms google still serves no search continuation token', async () => {
