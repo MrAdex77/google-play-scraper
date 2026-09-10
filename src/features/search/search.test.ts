@@ -718,6 +718,29 @@ describe('search exact match resolution', () => {
     expect(events[0]?.reason).toBe('section-anchor-fallback');
   });
 
+  it('returns the card alone when the page carries no result list', async () => {
+    const emptySection: unknown[] = [];
+    emptySection[22] = [[]];
+    const html = searchPageWithSections([cardSection(exactMatchNode('x')), emptySection]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x']);
+    expect(events).toEqual([]);
+  });
+
+  it('returns the card alone when it moved off its anchor and no list exists', async () => {
+    const html = searchPageWithSections([cardSection(exactMatchNode('x'), 24)]);
+    const events: IntegrityEvent[] = [];
+
+    const results = await searchOn(html, events);
+
+    expect(results.map((item) => item.appId)).toEqual(['x']);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('section-anchor-fallback');
+  });
+
   it('resolves a moved card when no integrity observer is configured', async () => {
     const html = searchPageWithSections([
       cardSection(exactMatchNode('x'), 24),

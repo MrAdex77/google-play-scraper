@@ -163,7 +163,7 @@ function firstPage(root: unknown, onIntegrityEvent?: OnIntegrityEvent): FirstPag
       };
     }
   }
-  return { apps: [], token: undefined };
+  return { apps: prependExactMatch(sections, [], onIntegrityEvent), token: undefined };
 }
 
 export function createSearch(
