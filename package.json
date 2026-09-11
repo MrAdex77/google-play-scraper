@@ -106,7 +106,7 @@
     "@commitlint/config-conventional": "^21.2.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.2",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^5.0.0",
     "cheerio": "1.2.0",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
@@ -114,11 +114,11 @@
     "lint-staged": "^17.3.0",
     "prettier": "^3.9.6",
     "publint": "^0.3.22",
-    "tsdown": "^0.22.14",
+    "tsdown": "^0.23.0",
     "tsx": "^4.23.5",
     "typedoc": "^0.28.20",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.65.0",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.0"
   }
 }
