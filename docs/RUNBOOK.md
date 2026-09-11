@@ -229,12 +229,12 @@ with `app()`, and commit the replacements as
 
 Three e2e tests pin the current Google Play serving regime instead of the code:
 
+- `confirms google still serves an exact match card for a package id search` in
+  `e2e/search.e2e.test.ts`
 - `confirms google still serves no search continuation token` in
   `e2e/search.e2e.test.ts`
 - `confirms the numeric first page still requires a continuation` in
   `e2e/developer.e2e.test.ts`
-- `confirms google still serves an exact match card for a package id search` in
-  `e2e/search.e2e.test.ts`
 
 The exact match tripwire is the only live gate on the card path. The card is
 parsed by `exactMatchSpecs`, which shares no path with the ordinary result
