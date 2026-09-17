@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.1](https://github.com/MrAdex77/google-play-scraper/compare/v1.2.0...v1.2.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **e2e:** anchor review counts to the live first page ([2868f0e](https://github.com/MrAdex77/google-play-scraper/commit/2868f0eaff75fd275e8f71f9378b8982b41f3068))
+* **e2e:** derive the last pinned counts from live pages and constants ([76808da](https://github.com/MrAdex77/google-play-scraper/commit/76808da2f3b21070ae8e644a58e7dd127f3c2a75))
+* **e2e:** drop catalogue count floors from report surfaces ([d2beed6](https://github.com/MrAdex77/google-play-scraper/commit/d2beed610e1f602c7288651c925371d80628a26f))
+* **e2e:** stop live contracts failing on catalogue count drift ([59ed3b8](https://github.com/MrAdex77/google-play-scraper/commit/59ed3b8b30f947d4f9ae61bccc470cb56ffca1c1))
+* **e2e:** stop pinning search result counts ([cdab21b](https://github.com/MrAdex77/google-play-scraper/commit/cdab21b6bf617a2d72b69f0bc7b23cf71a90d5dd))
+* **e2e:** stop pinning top chart sizes in the list suite ([b6b10d4](https://github.com/MrAdex77/google-play-scraper/commit/b6b10d43fbd029a25dfaea018ffe3789596e9a45))
+* **e2e:** widen the histogram lag tolerance to measured drift ([988bc46](https://github.com/MrAdex77/google-play-scraper/commit/988bc46af5602dd83f5f9081c54f2aa2f6f10f4c))
+
 ## [1.2.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.1.0...v1.2.0) (2026-09-11)
 
 
