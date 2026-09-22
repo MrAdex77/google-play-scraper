@@ -403,7 +403,7 @@ Two symptoms in this area look like breakage and are not.
 **A `RateLimitError` with no retries.** The client honors a `Retry-After` header
 only up to `MAX_RETRY_AFTER_MS`, 60 seconds, in `src/core/http.ts`. A longer
 value ends the call immediately with the mapped status error rather than parking
-it past the caller's `timeoutMs` budget. One fetch, no retry, and a `429` in the
+it for minutes; the ceiling is fixed and independent of `timeoutMs`. One fetch, no retry, and a `429` in the
 error's `status` is the expected shape, not a bug. If Google starts routinely
 serving values above the cap, that is a serving regime change: record the
 measured values in a pull request before touching the constant, and never raise

@@ -839,7 +839,7 @@ const details = await app({
 
 Retries use exponential backoff with jitter. A `Retry-After` response header overrides the backoff when it is well formed, in either form RFC 9110 allows: a count of seconds, or an HTTP date, which is resolved against the response `Date` header when the server sends one and against the local clock otherwise.
 
-A `Retry-After` longer than 60 seconds is not waited on. The call ends immediately with the mapped status error, `RateLimitError` for a `429`, so a server cannot park a request past the budget the caller set with `timeoutMs`. A malformed, past or negative value is ignored and normal jittered backoff applies.
+A `Retry-After` longer than 60 seconds is not waited on. The call ends immediately with the mapped status error, `RateLimitError` for a `429`, so a server cannot park a request for minutes. The ceiling is fixed and independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored and normal jittered backoff applies.
 
 ### Request lifecycle hooks
 
