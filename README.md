@@ -655,16 +655,16 @@ Returns `string[]`:
 
 Returns a [shared client](#shared-client) whose promise-returning methods share an LRU cache held in memory, so equivalent calls made within the TTL resolve from cache instead of hitting Google Play again. It accepts every `createClient` option plus the two cache bounds:
 
-| Option             | Type       | Default  | Description                                                                                                    |
-| ------------------ | ---------- | -------- | -------------------------------------------------------------------------------------------------------------- |
-| `lang`             | `string`   | `'en'`   | Language default applied to every call that does not set its own.                                              |
-| `country`          | `string`   | `'us'`   | Country default applied to every call that does not set its own.                                               |
-| `throttle`         | `number`   | none     | One shared limiter for every request the client makes, cache misses included.                                  |
-| `requestOptions`   | `object`   | none     | Client-level HTTP overrides, merged under per-call ones. See [requestOptions](#throttling-and-requestoptions). |
-| `onDegradation`    | `function` | none     | Client-level degradation callback. See [Monitoring drift](#monitoring-drift).                                  |
-| `onIntegrityEvent` | `function` | none     | Client-level integrity callback. See [Monitoring drift](#monitoring-drift).                                    |
-| `maxAgeMs`         | `number`   | `300000` | Time to live per cache entry, in milliseconds. A positive integer up to `2147483647`.                          |
-| `max`              | `number`   | `1000`   | Maximum number of cached entries. A positive integer up to `1000000`.                                          |
+| Option             | Type       | Default  | Description                                                                                                                   |
+| ------------------ | ---------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `lang`             | `string`   | `'en'`   | Language default applied to every call that does not set its own.                                                             |
+| `country`          | `string`   | `'us'`   | Country default applied to every call that does not set its own.                                                              |
+| `throttle`         | `number`   | none     | One shared limiter for every request the client makes, cache misses included.                                                 |
+| `requestOptions`   | `object`   | none     | Client-level HTTP overrides, merged under per-call ones. See [requestOptions](#throttling-and-requestoptions).                |
+| `onDegradation`    | `function` | none     | Client-level degradation callback. See [Monitoring drift](#monitoring-drift).                                                 |
+| `onIntegrityEvent` | `function` | none     | Client-level integrity callback. See [Monitoring drift](#monitoring-drift).                                                   |
+| `maxAgeMs`         | `number`   | `300000` | Time to live per cache entry, in milliseconds, counted from the request that fills it. A positive integer up to `2147483647`. |
+| `max`              | `number`   | `1000`   | Maximum number of cached entries. A positive integer up to `1000000`.                                                         |
 
 ```typescript
 import { memoized } from '@mradex77/google-play-scraper';
@@ -677,11 +677,11 @@ await client.app({ appId: 'com.google.android.apps.translate' });
 
 Invalid options throw `ValidationError` before any cache or HTTP state exists.
 
-**What counts as the same call.** Entries are keyed by the options _after_ validation and defaulting, so these all share one entry: `{}` and `{ lang: 'en', country: 'us' }`, `country: 'US'` and `country: 'us'`, and the same options in any property order. Anything that changes the response or how it is obtained separates entries: `lang`, `country`, every feature option, and the `headers`, `timeoutMs`, `retries`, `fetchImpl` and `signal` fields of `requestOptions` (the last two by object identity, so two callers sharing a signal share an entry and one caller's abort never rejects an unrelated caller). Pacing and telemetry never fragment the cache: `throttle`, `concurrency`, `onDegradation`, `onIntegrityEvent`, `onRequest`, `onResponse` and `onRetry` are ignored by the key, so inline callbacks are fine.
+**What counts as the same call.** Entries are keyed by the options _after_ validation and defaulting, so these all share one entry: `{}` and `{ lang: 'en', country: 'us' }`, `country: 'US'` and `country: 'us'`, and the same options in any property order. Anything that changes the response or how it is obtained separates entries: `lang`, `country`, every feature option, and the `headers`, `timeoutMs`, `retries`, `fetchImpl` and `signal` fields of `requestOptions` (the last two by object identity, so two callers sharing a signal share an entry and one caller's abort never rejects an unrelated caller; a fresh signal on every call therefore never hits, so prefer `timeoutMs` for per-call deadlines). Pacing and telemetry never fragment the cache: `throttle`, `concurrency`, `onDegradation`, `onIntegrityEvent`, `onRequest`, `onResponse` and `onRetry` are ignored by the key, so inline callbacks are fine.
 
 **What is cached.** `app`, `availability`, `search`, `suggest`, `list`, `categories`, `developer`, `similar`, `reviews`, `permissions` and `dataSafety`. Concurrent equivalent calls share one in-flight request. A rejected call is never cached, so the next call retries. `apps` and the `fullDetail` lookups of `search`, `list`, `developer` and `similar` are served from the `app` entries they warm. `reviewsIterator`, `searchIterator`, `developerIterator`, `reviewsAll` and `apps` are not cached themselves; they share the client's defaults, limiter and request options and pass through to Google Play.
 
-**Cache hits replay their events.** Degradation and integrity events recorded while an entry was fetched are delivered again, in their original order, to the callbacks of every later call that hits the entry. A hit performs no request, so `onRequest`, `onResponse` and `onRetry` are not replayed. A replayed callback that throws rejects only the call it was passed to; the entry stays valid for other callers.
+**Cache hits replay their events.** Degradation and integrity events recorded while an entry was fetched are delivered again, in their original order, to the callbacks of every later call that hits the entry. A hit performs no request, so `onRequest`, `onResponse` and `onRetry` are not replayed. A replayed callback that throws rejects only the call it was passed to; the entry stays valid for other callers. Events recorded before a call fails are still delivered to every caller that shared the failed request.
 
 **Cache controls.** The client exposes explicit control without global state:
 
@@ -691,7 +691,7 @@ client.cache.invalidate('app', { appId: 'com.google.android.apps.translate' });
 client.cache.clear();
 ```
 
-`invalidate` takes the method name and the same options you would pass to that method, applies the client defaults and validation to them, and drops the matching entry, returning whether one existed. The next equivalent call requests again while unrelated entries survive. `size` counts live entries and falls as entries expire or are evicted.
+`invalidate` takes the method name and the same options you would pass to that method, applies the client defaults and validation to them (throwing `ValidationError` for options the method itself would reject), and drops the matching entry, returning whether one existed. The next equivalent call requests again while unrelated entries survive. `size` counts live entries and falls as entries expire or are evicted.
 
 ## Streaming and bulk reads
 
