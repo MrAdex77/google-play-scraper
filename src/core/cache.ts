@@ -70,6 +70,14 @@ function normalizeCountries(value: readonly unknown[]): unknown[] {
   return value.map((entry) => (typeof entry === 'string' ? normalizeCountry(entry) : entry));
 }
 
+function payloadRequestOptions(requestOptions: unknown): unknown {
+  if (!isPlainRecord(requestOptions)) {
+    return requestOptions;
+  }
+  const payload = withoutProperties(requestOptions, PAYLOAD_NEUTRAL_REQUEST_OPTIONS);
+  return Object.keys(payload).length > 0 ? payload : undefined;
+}
+
 function payloadOptions(parsedOptions: unknown): unknown {
   if (!isPlainRecord(parsedOptions)) {
     return parsedOptions;
@@ -79,9 +87,7 @@ function payloadOptions(parsedOptions: unknown): unknown {
     ...withoutProperties(parsedOptions, PAYLOAD_NEUTRAL_OPTIONS),
     country: typeof country === 'string' ? normalizeCountry(country) : country,
     countries: Array.isArray(countries) ? normalizeCountries(countries) : countries,
-    requestOptions: isPlainRecord(requestOptions)
-      ? withoutProperties(requestOptions, PAYLOAD_NEUTRAL_REQUEST_OPTIONS)
-      : requestOptions,
+    requestOptions: payloadRequestOptions(requestOptions),
   };
 }
 

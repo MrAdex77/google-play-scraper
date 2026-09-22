@@ -55,7 +55,8 @@ describe('createKeyBuilder', () => {
       },
     });
 
-    expect(noisy).toBe(plain.replace('}', ',"requestOptions":{}}'));
+    expect(noisy).toBe(plain);
+    expect(keyFor('app', { id: 'a', lang: 'en', country: 'us', requestOptions: {} })).toBe(plain);
   });
 
   it('sorts properties at every depth', () => {
