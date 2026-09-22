@@ -402,7 +402,7 @@ describe('memoized', () => {
     expect(fetch.state.calls).toBe(3);
 
     await client.categories();
-    expect(client.cache.invalidate('categories', undefined)).toBe(true);
+    expect(client.cache.invalidate('categories')).toBe(true);
     expect(client.cache.invalidate('categories', {})).toBe(false);
 
     client.cache.clear();

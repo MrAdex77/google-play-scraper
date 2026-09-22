@@ -28,7 +28,7 @@ export interface ClientCache {
   clear(): void;
   invalidate<Name extends CachedMethodName>(
     name: Name,
-    options: Parameters<GooglePlayClient[Name]>[0],
+    ...options: Parameters<GooglePlayClient[Name]>
   ): boolean;
 }
 
@@ -51,7 +51,8 @@ export function memoized(options?: MemoizedOptions): MemoizedClient {
       clear: () => {
         cache.clear();
       },
-      invalidate: (name, callOptions) => cache.invalidate(name, applyDefaults(callOptions ?? {})),
+      invalidate: (name, ...[callOptions]) =>
+        cache.invalidate(name, applyDefaults(callOptions ?? {})),
     },
   };
 }
