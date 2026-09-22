@@ -395,3 +395,32 @@ naming the starved field. When a coverage gate fails, first run
 Never delete a gate to green a run (hard rule 11): a gate that no longer holds
 is recalibrated from the report data or its contract is re-ported, never
 removed.
+
+## Rate limit and cancellation semantics
+
+Two symptoms in this area look like breakage and are not.
+
+**A `RateLimitError` with no retries.** The client honors a `Retry-After` header
+only up to `MAX_RETRY_AFTER_MS`, 60 seconds, in `src/core/http.ts`. A longer
+value ends the call immediately with the mapped status error rather than parking
+it past the caller's `timeoutMs` budget. One fetch, no retry, and a `429` in the
+error's `status` is the expected shape, not a bug. If Google starts routinely
+serving values above the cap, that is a serving regime change: record the
+measured values in a pull request before touching the constant, and never raise
+it to green a run.
+
+**A wait that ignores the header.** `Retry-After` is parsed to RFC 9110's
+grammar, `1*DIGIT` or an HTTP date beginning with a day name. Anything else,
+including an empty header, `1e3`, `0x10`, `1.5` and a past or present date, falls
+back to jittered exponential backoff. A server sending a non-conforming value
+will therefore appear to be ignored, which is correct.
+
+Cancellation is terminal and immediate at every stage: before the call, during
+the request or body read, during backoff or a `Retry-After` wait, and while
+queued behind a throttle slot. An aborted call performs no fetch, emits no
+lifecycle hook event past the point of abort, consumes no rate slot, and leaves
+no listener on the caller's signal. `e2e/client.e2e.test.ts` gates the queued
+case live: with a throttle of one request per second, four calls sharing one
+signal must all settle inside the first throttle window. Before the fix that run
+took 3002 ms; after it, 205 ms. A regression there means the signal stopped
+reaching the limiter, not that Google changed anything.
