@@ -5,6 +5,8 @@ import { createDeveloper, developer, type DeveloperOptions } from './developer.j
 import { developerAppSchema, type DeveloperApp } from './schema.js';
 import { developerUrl } from './specs.js';
 import type { App } from '../app/schema.js';
+import type { OnIntegrityEvent } from '../../core/integrity.js';
+import type { OnDegradation } from '../../core/degradation.js';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
 
 const readFixture = (name: string): string =>
@@ -236,6 +238,29 @@ describe('developer options', () => {
 });
 
 describe('developer fullDetail', () => {
+  it('forwards per-call observability callbacks to each detail lookup', async () => {
+    const onDegradation: OnDegradation = () => undefined;
+    const onIntegrityEvent: OnIntegrityEvent = () => undefined;
+    const received: [unknown, unknown][] = [];
+    const detailed = createDeveloper((params) => {
+      received.push([params.onDegradation, params.onIntegrityEvent]);
+      return Promise.resolve({ appId: params.appId } as App);
+    });
+
+    await detailed({
+      devId: 'Mojang',
+      requestOptions: { fetchImpl: fetchReturning(mojangHtml) },
+      fullDetail: true,
+      onDegradation,
+      onIntegrityEvent,
+    });
+
+    expect(received.length).toBeGreaterThan(0);
+    for (const pair of received) {
+      expect(pair).toEqual([onDegradation, onIntegrityEvent]);
+    }
+  });
+
   it('resolves each app through the injected getApp exactly once', async () => {
     const plain = (await developer({
       devId: 'Mojang',

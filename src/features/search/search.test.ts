@@ -11,12 +11,17 @@ import {
 } from './specs.js';
 import { getPath } from '../../core/path.js';
 import { parseScriptData } from '../../core/scriptData.js';
-import { deletePath, replaceScriptBlockData } from '../../../test/helpers/responseMutation.js';
+import {
+  changeRoutingTableEntry,
+  deletePath,
+  replaceScriptBlockData,
+} from '../../../test/helpers/responseMutation.js';
+import { memoized } from '../memoized/memoized.js';
 import { searchResultSchema, type SearchResult } from './schema.js';
 import type { App } from '../app/schema.js';
-import type { DegradationEvent } from '../../core/degradation.js';
+import type { DegradationEvent, OnDegradation } from '../../core/degradation.js';
 import { ParseError, ValidationError } from '../../core/errors.js';
-import type { IntegrityEvent } from '../../core/integrity.js';
+import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -556,7 +561,51 @@ describe('search options', () => {
   });
 });
 
+const reroutedAppHtml = changeRoutingTableEntry(
+  readFileSync(
+    fileURLToPath(new URL('../../../test/fixtures/app/translate.html', import.meta.url)),
+    'utf8',
+  ),
+  'ds:5',
+  { rpcId: 'unrelatedRpc' },
+);
+
+const detailRoutingFetch = (): { fetchImpl: typeof fetch; count: () => number } => {
+  let calls = 0;
+  const fetchImpl: typeof fetch = (input) => {
+    calls += 1;
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const body = url.includes('/store/apps/details') ? reroutedAppHtml : pandaHtml;
+    return Promise.resolve(new Response(body, { status: 200 }));
+  };
+  return { fetchImpl, count: () => calls };
+};
+
 describe('search fullDetail', () => {
+  it('forwards per-call observability callbacks to each detail lookup', async () => {
+    const onDegradation: OnDegradation = () => undefined;
+    const onIntegrityEvent: OnIntegrityEvent = () => undefined;
+    const received: [unknown, unknown][] = [];
+    const detailed = createSearch((params) => {
+      received.push([params.onDegradation, params.onIntegrityEvent]);
+      return Promise.resolve({ appId: params.appId } as App);
+    });
+
+    await detailed({
+      term: 'panda',
+      num: 3,
+      requestOptions: { fetchImpl: fetchReturning(pandaHtml) },
+      fullDetail: true,
+      onDegradation,
+      onIntegrityEvent,
+    });
+
+    expect(received.length).toBeGreaterThan(0);
+    for (const pair of received) {
+      expect(pair).toEqual([onDegradation, onIntegrityEvent]);
+    }
+  });
+
   it('resolves each result through the injected getApp exactly once', async () => {
     const plain = (await search({
       term: 'panda',
@@ -581,6 +630,46 @@ describe('search fullDetail', () => {
     expect(requested).toEqual(plain.map((item) => item.appId));
     expect(detailed).toHaveLength(3);
     expect(detailed.every((item) => item.description.startsWith('detail '))).toBe(true);
+  });
+  it('reports app integrity events from detail lookups to the search callback', async () => {
+    const contexts: string[] = [];
+
+    await search({
+      term: 'panda',
+      num: 2,
+      fullDetail: true,
+      onIntegrityEvent: (event) => contexts.push(event.context),
+      requestOptions: { fetchImpl: detailRoutingFetch().fetchImpl },
+    });
+
+    expect(contexts).toEqual(['app details', 'app details']);
+  });
+
+  it('replays detail integrity events on a memoized hit to the per-call callback only', async () => {
+    const clientContexts: string[] = [];
+    const routing = detailRoutingFetch();
+    const client = memoized({
+      onIntegrityEvent: (event) => clientContexts.push(event.context),
+      requestOptions: { fetchImpl: routing.fetchImpl },
+    });
+    const detailedSearch = (contexts: string[]) =>
+      client.search({
+        term: 'panda',
+        num: 2,
+        fullDetail: true,
+        onIntegrityEvent: (event) => contexts.push(event.context),
+      });
+
+    const missContexts: string[] = [];
+    await detailedSearch(missContexts);
+    const fetchesAfterMiss = routing.count();
+    const hitContexts: string[] = [];
+    await detailedSearch(hitContexts);
+
+    expect(routing.count()).toBe(fetchesAfterMiss);
+    expect(missContexts).toEqual(['app details', 'app details']);
+    expect(hitContexts).toEqual(['app details', 'app details']);
+    expect(clientContexts).toEqual([]);
   });
 });
 

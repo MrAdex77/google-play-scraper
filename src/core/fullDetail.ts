@@ -1,6 +1,6 @@
 import type { ObservabilityOptions, RequestOptions } from './options.js';
 
-export interface FullDetailOptions {
+export interface FullDetailOptions extends ObservabilityOptions {
   lang: string;
   country: string;
   throttle?: number;
@@ -42,6 +42,8 @@ export async function resolveFullDetail<Result>(
         country: options.country,
         throttle: options.throttle,
         requestOptions: options.requestOptions,
+        onDegradation: options.onDegradation,
+        onIntegrityEvent: options.onIntegrityEvent,
       });
     }
   };

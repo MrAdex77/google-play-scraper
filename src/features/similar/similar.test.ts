@@ -6,6 +6,8 @@ import { similarAppSchema, type SimilarApp } from './schema.js';
 import { findSimilarClusterPath } from './specs.js';
 import { parseScriptData } from '../../core/scriptData.js';
 import type { App } from '../app/schema.js';
+import type { OnIntegrityEvent } from '../../core/integrity.js';
+import type { OnDegradation } from '../../core/degradation.js';
 import { ParseError, ValidationError } from '../../core/errors.js';
 
 const SOURCE_APP_ID = 'com.google.android.apps.translate';
@@ -197,6 +199,31 @@ describe('similar options', () => {
 });
 
 describe('similar fullDetail', () => {
+  it('forwards per-call observability callbacks to each detail lookup', async () => {
+    const onDegradation: OnDegradation = () => undefined;
+    const onIntegrityEvent: OnIntegrityEvent = () => undefined;
+    const received: [unknown, unknown][] = [];
+    const detailed = createSimilar((params) => {
+      received.push([params.onDegradation, params.onIntegrityEvent]);
+      return Promise.resolve({ appId: params.appId } as App);
+    });
+
+    await detailed({
+      appId: SOURCE_APP_ID,
+      requestOptions: {
+        fetchImpl: sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]).fetchImpl,
+      },
+      fullDetail: true,
+      onDegradation,
+      onIntegrityEvent,
+    });
+
+    expect(received.length).toBeGreaterThan(0);
+    for (const pair of received) {
+      expect(pair).toEqual([onDegradation, onIntegrityEvent]);
+    }
+  });
+
   it('resolves each app through the injected getApp exactly once', async () => {
     const plain = (await similar({
       appId: SOURCE_APP_ID,

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { OnDegradation } from './degradation.js';
 import { resolveFullDetail, type GetAppParams } from './fullDetail.js';
+import type { OnIntegrityEvent } from './integrity.js';
 
 const options = { lang: 'en', country: 'us' };
 
@@ -39,6 +41,27 @@ describe('resolveFullDetail', () => {
       throttle: 5,
       requestOptions: { retries: 1 },
     });
+  });
+
+  it('forwards observability callbacks to getApp', async () => {
+    const onDegradation: OnDegradation = () => undefined;
+    const onIntegrityEvent: OnIntegrityEvent = () => undefined;
+    const captured: GetAppParams[] = [];
+
+    await resolveFullDetail(
+      [{ appId: 'first' }, { appId: 'second' }],
+      { ...options, onDegradation, onIntegrityEvent },
+      (params: GetAppParams) => {
+        captured.push(params);
+        return Promise.resolve(null);
+      },
+    );
+
+    expect(captured).toHaveLength(2);
+    for (const params of captured) {
+      expect(params.onDegradation).toBe(onDegradation);
+      expect(params.onIntegrityEvent).toBe(onIntegrityEvent);
+    }
   });
 
   it('never runs more than the configured concurrency at once', async () => {
