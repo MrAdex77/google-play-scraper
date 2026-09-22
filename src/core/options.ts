@@ -37,8 +37,8 @@ export type SchemaBoundMethod<Schema extends ObservableSchema, Result> = (
   options: z.input<Schema>,
 ) => Promise<Result>;
 
-export type MethodWrapper = <Schema extends ObservableSchema, Result>(
-  name: string,
+export type MethodWrapper<Name extends string = string> = <Schema extends ObservableSchema, Result>(
+  name: Name,
   schema: Schema,
   fn: SchemaBoundMethod<Schema, Result>,
 ) => SchemaBoundMethod<Schema, Result>;

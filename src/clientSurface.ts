@@ -88,7 +88,7 @@ export type Passthrough = <Options extends object, Outcome>(
 
 export interface SurfaceComposition {
   resolveClient: ResolveClient;
-  cached: MethodWrapper;
+  cached: MethodWrapper<CachedMethodName>;
   passthrough: Passthrough;
 }
 
