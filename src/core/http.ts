@@ -14,7 +14,7 @@ export interface HttpRequest {
   headers?: Record<string, string>;
 }
 
-export type Limiter = () => Promise<void>;
+export type Limiter = (signal?: AbortSignal) => Promise<void>;
 
 export interface RequestEvent {
   url: string;
@@ -77,8 +77,40 @@ const DEFAULT_HEADERS: Record<string, string> = {
 
 const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded;charset=UTF-8';
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+function settleAfter(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const settle = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', settle);
+      resolve();
+    };
+    const timer = setTimeout(settle, Math.max(0, ms));
+    signal?.addEventListener('abort', settle, { once: true });
+  });
+}
+
+function settledOrAborted(pending: Promise<void>, signal: AbortSignal | undefined): Promise<void> {
+  if (signal === undefined) {
+    return pending;
+  }
+  return new Promise<void>((resolve) => {
+    const settle = (): void => {
+      signal.removeEventListener('abort', settle);
+      resolve();
+    };
+    signal.addEventListener('abort', settle, { once: true });
+    pending.then(settle, settle);
+  }).then(() => {
+    signal.throwIfAborted();
+    return pending;
+  });
+}
+
+async function wait(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  signal?.throwIfAborted();
+  await settleAfter(ms, signal);
+  signal?.throwIfAborted();
+}
 
 function emit<Event>(hook: ((event: Event) => unknown) | undefined, event: Event): void {
   if (hook === undefined) {
@@ -98,22 +130,23 @@ export function createRateLimiter(rate: number): Limiter {
   let timestamps: number[] = [];
   let tail: Promise<void> = Promise.resolve();
 
-  const reserve = async (): Promise<void> => {
+  const reserve = async (signal: AbortSignal | undefined): Promise<void> => {
+    signal?.throwIfAborted();
     const now = Date.now();
     const windowStart = now - THROTTLE_WINDOW_MS;
     timestamps = timestamps.filter((timestamp) => timestamp > windowStart);
     if (timestamps.length >= rate) {
       const oldest = timestamps[0] ?? now;
-      await sleep(oldest + THROTTLE_WINDOW_MS - now);
-      return reserve();
+      await wait(oldest + THROTTLE_WINDOW_MS - now, signal);
+      return reserve(signal);
     }
     timestamps.push(Date.now());
   };
 
-  return () => {
-    const result = tail.then(reserve);
+  return (signal) => {
+    const result = tail.then(() => reserve(signal));
     tail = result.catch(() => undefined);
-    return result;
+    return settledOrAborted(result, signal);
   };
 }
 
@@ -206,9 +239,11 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
     });
 
     for (let attempt = 0; ; attempt += 1) {
+      callerSignal?.throwIfAborted();
       if (limiter) {
-        await limiter();
+        await limiter(callerSignal);
       }
+      callerSignal?.throwIfAborted();
       emit(config.onRequest, eventFor(attempt));
       const startedAt = performance.now();
       try {
@@ -244,7 +279,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
             reason: 'status',
             status: response.status,
           });
-          await sleep(delayMs);
+          await wait(delayMs, callerSignal);
           continue;
         }
 
@@ -259,7 +294,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
         if (attempt < retries) {
           const delayMs = computeBackoff(attempt, undefined);
           emit(config.onRetry, { ...eventFor(attempt), delayMs, reason: 'network' });
-          await sleep(delayMs);
+          await wait(delayMs, callerSignal);
           continue;
         }
         const httpError = new HttpError(`Network request to ${req.url} failed`, 0, req.url);
