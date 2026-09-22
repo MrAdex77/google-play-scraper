@@ -2,7 +2,6 @@ import * as z from 'zod/mini';
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import {
   clientFromOptions,
-  createHttpClient,
   createRateLimiter,
   type Limiter,
   type ResolveClient,
@@ -64,23 +63,12 @@ export function createClient(options?: ClientOptions): GooglePlayClient & Google
   const limiter: Limiter | undefined =
     parsed.throttle !== undefined ? createRateLimiter(parsed.throttle) : undefined;
 
-  const resolveClient: ResolveClient = (opts) => {
-    const requestOptions = mergeRequestOptions(parsed.requestOptions, opts.requestOptions);
-    if (limiter !== undefined) {
-      return createHttpClient({
-        limiter,
-        fetchImpl: requestOptions?.fetchImpl,
-        retries: requestOptions?.retries,
-        timeoutMs: requestOptions?.timeoutMs,
-        headers: requestOptions?.headers,
-        signal: requestOptions?.signal,
-        onRequest: requestOptions?.onRequest,
-        onResponse: requestOptions?.onResponse,
-        onRetry: requestOptions?.onRetry,
-      });
-    }
-    return clientFromOptions({ throttle: opts.throttle, requestOptions });
-  };
+  const resolveClient: ResolveClient = (opts) =>
+    clientFromOptions({
+      limiter,
+      throttle: opts.throttle,
+      requestOptions: mergeRequestOptions(parsed.requestOptions, opts.requestOptions),
+    });
 
   const mergeDefaults = <Options extends { lang?: string; country?: string }>(
     callOptions: Options,
