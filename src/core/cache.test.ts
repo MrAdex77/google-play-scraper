@@ -266,6 +266,31 @@ describe('createCallCache', () => {
     expect(calls).toHaveLength(2);
   });
 
+  it('keeps an in-flight miss past maxAgeMs and starts its age on fulfillment', async () => {
+    vi.useFakeTimers();
+    const cache = createCallCache(settings);
+    const { pending, fn } = deferredMethod();
+    const method = cache.memoize('app', optionsSchema, fn);
+
+    const first = method({ id: 'a' });
+    await vi.advanceTimersByTimeAsync(settings.maxAgeMs * 3);
+    expect(cache.size).toBe(1);
+
+    const joined = method({ id: 'a' });
+    expect(pending).toHaveLength(1);
+
+    pending[0]?.resolve('slow');
+    await expect(first).resolves.toBe('slow');
+    await expect(joined).resolves.toBe('slow');
+
+    await vi.advanceTimersByTimeAsync(settings.maxAgeMs - 1);
+    await expect(method({ id: 'a' })).resolves.toBe('slow');
+    expect(pending).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(2);
+    expect(cache.size).toBe(0);
+  });
+
   it('evicts the least recently used entry and counts a hit as use', async () => {
     const cache = createCallCache({ maxAgeMs: 1000, max: 2 });
     const { calls, fn } = countingMethod();

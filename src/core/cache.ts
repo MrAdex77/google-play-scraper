@@ -32,6 +32,8 @@ interface CacheEntry<Result> {
   events: RecordedEvent[];
 }
 
+const NEVER_EXPIRES = 0;
+
 const PAYLOAD_NEUTRAL_OPTIONS: ReadonlySet<string> = new Set([
   'throttle',
   'concurrency',
@@ -159,15 +161,24 @@ export function createCallCache(settings: CacheSettings): CallCache {
         },
       };
       const entry: CacheEntry<Result> = { promise: fn({ ...options, ...recorders }), events };
-      store.set(key, entry);
-      lifecycle.set(key, () => {
+      const drop = (): void => {
         store.delete(key);
-      });
-      entry.promise.catch(() => {
-        if (store.get(key) === entry) {
-          lifecycle.delete(key);
-        }
-      });
+      };
+      const isCurrent = (): boolean => store.get(key) === entry;
+      store.set(key, entry);
+      lifecycle.set(key, drop, { ttl: NEVER_EXPIRES });
+      entry.promise.then(
+        () => {
+          if (isCurrent()) {
+            lifecycle.set(key, drop);
+          }
+        },
+        () => {
+          if (isCurrent()) {
+            lifecycle.delete(key);
+          }
+        },
+      );
       return entry;
     };
 
