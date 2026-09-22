@@ -14,7 +14,7 @@ export interface HttpRequest {
   headers?: Record<string, string>;
 }
 
-export type Limiter = () => Promise<void>;
+export type Limiter = (signal?: AbortSignal) => Promise<void>;
 
 export interface RequestEvent {
   url: string;
@@ -54,6 +54,8 @@ export interface HttpClient {
   request(req: HttpRequest): Promise<string>;
 }
 
+type Attempt = { body: string } | { delayMs: number };
+
 export type ResolveClient = (opts: {
   throttle?: number;
   requestOptions?: RequestOptions;
@@ -77,8 +79,53 @@ const DEFAULT_HEADERS: Record<string, string> = {
 
 const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded;charset=UTF-8';
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+const DELTA_SECONDS = /^\d+$/;
+
+const HTTP_DATE_DAY_NAME = /^[A-Za-z]{3}/;
+
+const MAX_RETRY_AFTER_MS = 60000;
+
+function settleAfter(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const settle = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', settle);
+      resolve();
+    };
+    const timer = setTimeout(settle, Math.max(0, ms));
+    signal?.addEventListener('abort', settle, { once: true });
+  });
+}
+
+function onAbort(signal: AbortSignal, listener: () => void): void {
+  signal.addEventListener('abort', listener, { once: true });
+  if (signal.aborted) {
+    listener();
+  }
+}
+
+function settledOrAborted(pending: Promise<void>, signal: AbortSignal | undefined): Promise<void> {
+  if (signal === undefined) {
+    return pending;
+  }
+  return new Promise<void>((resolve) => {
+    const settle = (): void => {
+      signal.removeEventListener('abort', settle);
+      resolve();
+    };
+    onAbort(signal, settle);
+    pending.then(settle, settle);
+  }).then(() => {
+    signal.throwIfAborted();
+    return pending;
+  });
+}
+
+async function wait(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  signal?.throwIfAborted();
+  await settleAfter(ms, signal);
+  signal?.throwIfAborted();
+}
 
 function emit<Event>(hook: ((event: Event) => unknown) | undefined, event: Event): void {
   if (hook === undefined) {
@@ -98,22 +145,23 @@ export function createRateLimiter(rate: number): Limiter {
   let timestamps: number[] = [];
   let tail: Promise<void> = Promise.resolve();
 
-  const reserve = async (): Promise<void> => {
+  const reserve = async (signal: AbortSignal | undefined): Promise<void> => {
+    signal?.throwIfAborted();
     const now = Date.now();
     const windowStart = now - THROTTLE_WINDOW_MS;
     timestamps = timestamps.filter((timestamp) => timestamp > windowStart);
     if (timestamps.length >= rate) {
       const oldest = timestamps[0] ?? now;
-      await sleep(oldest + THROTTLE_WINDOW_MS - now);
-      return reserve();
+      await wait(oldest + THROTTLE_WINDOW_MS - now, signal);
+      return reserve(signal);
     }
     timestamps.push(Date.now());
   };
 
-  return () => {
-    const result = tail.then(reserve);
+  return (signal) => {
+    const result = tail.then(() => reserve(signal));
     tail = result.catch(() => undefined);
-    return result;
+    return settledOrAborted(result, signal);
   };
 }
 
@@ -134,21 +182,27 @@ function isRetryableStatus(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
+function retryAfterDateMs(header: string, response: Response): number | undefined {
+  const until = HTTP_DATE_DAY_NAME.test(header) ? Date.parse(header) : Number.NaN;
+  if (Number.isNaN(until)) {
+    return undefined;
+  }
+  const serverDate = Date.parse(response.headers.get('date') ?? '');
+  const from = Number.isNaN(serverDate) ? Date.now() : serverDate;
+  const waitMs = until - from;
+  return waitMs > 0 ? waitMs : undefined;
+}
+
 function parseRetryAfter(response: Response): number | undefined {
   const header = response.headers.get('retry-after');
   if (header === null) {
     return undefined;
   }
-  const seconds = Number(header);
-  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+  return DELTA_SECONDS.test(header) ? Number(header) * 1000 : retryAfterDateMs(header, response);
 }
 
-function computeBackoff(attempt: number, retryAfterSeconds: number | undefined): number {
-  if (retryAfterSeconds !== undefined) {
-    return retryAfterSeconds * 1000;
-  }
-  const ceiling = BASE_BACKOFF_MS * 2 ** attempt;
-  return Math.random() * ceiling;
+function jitteredBackoff(attempt: number): number {
+  return Math.random() * (BASE_BACKOFF_MS * 2 ** attempt);
 }
 
 function mapStatusToError(status: number, url: string): GooglePlayError {
@@ -161,9 +215,33 @@ function mapStatusToError(status: number, url: string): GooglePlayError {
   return new HttpError(`Request to ${url} failed with status ${status.toString()}`, status, url);
 }
 
-function buildRequestSignal(timeoutMs: number, signal: AbortSignal | undefined): AbortSignal {
-  const timeout = AbortSignal.timeout(timeoutMs);
-  return signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
+interface AttemptSignal {
+  signal: AbortSignal;
+  release: () => void;
+}
+
+function attemptSignalFor(timeoutMs: number, caller: AbortSignal | undefined): AttemptSignal {
+  const controller = new AbortController();
+  const forwardAbort = (): void => {
+    controller.abort(caller?.reason);
+  };
+  const timer = setTimeout(() => {
+    controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+  }, timeoutMs);
+  if (caller !== undefined) {
+    onAbort(caller, forwardAbort);
+  }
+  return {
+    signal: controller.signal,
+    release: () => {
+      clearTimeout(timer);
+      caller?.removeEventListener('abort', forwardAbort);
+    },
+  };
+}
+
+function discardBody(response: Response): void {
+  response.body?.cancel().catch(() => undefined);
 }
 
 function hostIsConsent(finalUrl: string): boolean {
@@ -205,47 +283,41 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
       attempt: attempt + 1,
     });
 
-    for (let attempt = 0; ; attempt += 1) {
-      if (limiter) {
-        await limiter();
-      }
+    const attemptOnce = async (attempt: number): Promise<Attempt> => {
       emit(config.onRequest, eventFor(attempt));
       const startedAt = performance.now();
+      const attemptSignal = attemptSignalFor(timeoutMs, callerSignal);
       try {
         const response = await fetchImpl(req.url, {
           method,
           headers,
           body: req.body,
-          signal: buildRequestSignal(timeoutMs, callerSignal),
+          signal: attemptSignal.signal,
         });
-
-        if (response.ok) {
-          const body = await response.text();
-          emit(config.onResponse, {
-            ...eventFor(attempt),
-            status: response.status,
-            durationMs: performance.now() - startedAt,
-          });
-          assertNotBlocked(response, body);
-          return body;
-        }
-
+        const body = response.ok ? await response.text() : undefined;
         emit(config.onResponse, {
           ...eventFor(attempt),
           status: response.status,
           durationMs: performance.now() - startedAt,
         });
+        if (body !== undefined) {
+          assertNotBlocked(response, body);
+          return { body };
+        }
 
-        if (isRetryableStatus(response.status) && attempt < retries) {
-          const delayMs = computeBackoff(attempt, parseRetryAfter(response));
+        discardBody(response);
+        const retryAfterMs = parseRetryAfter(response);
+        const honored = retryAfterMs === undefined || retryAfterMs <= MAX_RETRY_AFTER_MS;
+        if (isRetryableStatus(response.status) && attempt < retries && honored) {
+          callerSignal?.throwIfAborted();
+          const delayMs = retryAfterMs ?? jitteredBackoff(attempt);
           emit(config.onRetry, {
             ...eventFor(attempt),
             delayMs,
             reason: 'status',
             status: response.status,
           });
-          await sleep(delayMs);
-          continue;
+          return { delayMs };
         }
 
         throw mapStatusToError(response.status, req.url);
@@ -253,19 +325,32 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
         if (error instanceof GooglePlayError) {
           throw error;
         }
-        if (callerSignal?.aborted) {
-          throw error;
-        }
+        callerSignal?.throwIfAborted();
         if (attempt < retries) {
-          const delayMs = computeBackoff(attempt, undefined);
+          const delayMs = jitteredBackoff(attempt);
           emit(config.onRetry, { ...eventFor(attempt), delayMs, reason: 'network' });
-          await sleep(delayMs);
-          continue;
+          return { delayMs };
         }
         const httpError = new HttpError(`Network request to ${req.url} failed`, 0, req.url);
         httpError.cause = error;
         throw httpError;
+      } finally {
+        attemptSignal.release();
       }
+    };
+
+    for (let attempt = 0; ; attempt += 1) {
+      callerSignal?.throwIfAborted();
+      if (limiter) {
+        await limiter(callerSignal);
+      }
+      callerSignal?.throwIfAborted();
+      const outcome = await attemptOnce(attempt);
+      callerSignal?.throwIfAborted();
+      if ('body' in outcome) {
+        return outcome.body;
+      }
+      await wait(outcome.delayMs, callerSignal);
     }
   };
 

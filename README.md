@@ -811,16 +811,16 @@ Typed empties are limited to the documented response shapes above and other sche
 
 Pass `throttle` to cap requests per second, and `requestOptions` to override the HTTP layer:
 
-| requestOptions field | Type                             | Description                                                                                                                                                          |
-| -------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `headers`            | `Record<string, string>`         | Extra headers merged into every request.                                                                                                                             |
-| `fetchImpl`          | `typeof fetch`                   | A custom `fetch` implementation, useful for proxies and tests. Combine with [`createCountryFetch`](#routing-by-country) to route each storefront country separately. |
-| `timeoutMs`          | `number`                         | Timeout per request, up to `120000`. Default `30000`.                                                                                                                |
-| `retries`            | `number`                         | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.                                                                                                            |
-| `signal`             | `AbortSignal`                    | Cancels the call, including in-flight retries and pagination.                                                                                                        |
-| `onRequest`          | `(event: RequestEvent) => void`  | Called before every attempt, including retries. See [Request lifecycle hooks](#request-lifecycle-hooks).                                                             |
-| `onResponse`         | `(event: ResponseEvent) => void` | Called for each settled response — after the body is read on success — with `status` and `durationMs`.                                                               |
-| `onRetry`            | `(event: RetryEvent) => void`    | Called when a retry is scheduled, with `delayMs` and `reason`.                                                                                                       |
+| requestOptions field | Type                             | Description                                                                                                                                                               |
+| -------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `headers`            | `Record<string, string>`         | Extra headers merged into every request.                                                                                                                                  |
+| `fetchImpl`          | `typeof fetch`                   | A custom `fetch` implementation, useful for proxies and tests. Combine with [`createCountryFetch`](#routing-by-country) to route each storefront country separately.      |
+| `timeoutMs`          | `number`                         | Timeout per request, up to `120000`. Default `30000`.                                                                                                                     |
+| `retries`            | `number`                         | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.                                                                                                                 |
+| `signal`             | `AbortSignal`                    | Cancels the call at once, including an in-flight request, a body read, retry backoff, a `Retry-After` wait and a queued throttle slot. See [Cancellation](#cancellation). |
+| `onRequest`          | `(event: RequestEvent) => void`  | Called before every attempt, including retries. See [Request lifecycle hooks](#request-lifecycle-hooks).                                                                  |
+| `onResponse`         | `(event: ResponseEvent) => void` | Called for each settled response — after the body is read on success — with `status` and `durationMs`.                                                                    |
+| `onRetry`            | `(event: RetryEvent) => void`    | Called when a retry is scheduled, with `delayMs` and `reason`.                                                                                                            |
 
 ```typescript
 import { app } from '@mradex77/google-play-scraper';
@@ -837,7 +837,9 @@ const details = await app({
 });
 ```
 
-Retries use exponential backoff and honor a `Retry-After` header when present.
+Retries use exponential backoff with jitter. A `Retry-After` response header overrides the backoff when it is well formed, in either form RFC 9110 allows: a count of seconds, or an HTTP date, which is resolved against the response `Date` header when the server sends one and against the local clock otherwise.
+
+A `Retry-After` longer than 60 seconds is not waited on. The call ends immediately with the mapped status error, `RateLimitError` for a `429`, so a server cannot park a request for minutes. The ceiling is fixed and independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored and normal jittered backoff applies.
 
 ### Request lifecycle hooks
 
@@ -918,6 +920,8 @@ const details = await app({
 
 Routes accept any `typeof fetch`, so the same helper also works for per-country rate limiting, logging or fixtures in tests. Omit `fallback` to send unmatched countries through a direct connection. The only request without a `gl` parameter is the `dataSafety` page fetch, which always uses the fallback route.
 
+### Cancellation
+
 Pass an `AbortSignal` to cancel long running calls, such as a `reviews` fetch that walks many pages. An aborted call rejects with the signal's reason and is never retried:
 
 ```typescript
@@ -932,6 +936,37 @@ const result = await reviews({
   requestOptions: { signal: controller.signal },
 });
 ```
+
+Cancellation is immediate at every point in the request lifecycle, not only while a request is on the wire:
+
+| Where the abort lands                        | What happens                                                                              |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Before the call starts                       | Rejects without contacting Google Play; no `onRequest` event is emitted                   |
+| During the request or the body read          | Rejects with the signal's reason, not a wrapped `HttpError`                               |
+| During retry backoff or a `Retry-After` wait | Rejects before the delay expires; no further attempt is made                              |
+| While queued behind a `throttle` slot        | Rejects at once; the slot is released and the other queued calls keep the configured rate |
+
+The reason you pass to `abort()` is the value that reaches you, by identity, so a sentinel object survives the round trip:
+
+```typescript
+import { search } from '@mradex77/google-play-scraper';
+
+const budgetExceeded = { reason: 'budget-exceeded' };
+const controller = new AbortController();
+setTimeout(() => controller.abort(budgetExceeded), 5000);
+
+try {
+  await search({ term: 'panda', num: 250, requestOptions: { signal: controller.signal } });
+} catch (error) {
+  if (error !== budgetExceeded) {
+    throw error;
+  }
+}
+```
+
+Calling `abort()` with no argument produces the standard `AbortError` `DOMException`. A per-request timeout is separate: `timeoutMs` ends one attempt and may still be retried, while your own abort is terminal.
+
+A custom `fetchImpl` should honor `init.signal` so an aborted request is cut short on the wire. One that ignores it cannot be interrupted mid-request, but the call still rejects with your reason as soon as that request settles, and its body is discarded.
 
 ## Resilience
 

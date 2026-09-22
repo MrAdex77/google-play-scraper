@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clientFromOptions,
   createHttpClient,
@@ -270,7 +270,7 @@ describe('createHttpClient', () => {
     expect(headersOf(fetchImpl)['X-Trace']).toBe('on');
   });
 
-  it('rejects without retrying when the caller signal is already aborted', async () => {
+  it('rejects without fetching when the caller signal is already aborted', async () => {
     const controller = new AbortController();
     controller.abort();
     const fetchImpl = abortAwareFetch();
@@ -279,7 +279,7 @@ describe('createHttpClient', () => {
     const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
 
     expect((error as DOMException).name).toBe('AbortError');
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('stops retrying when the caller aborts mid flight', async () => {
@@ -303,17 +303,89 @@ describe('createHttpClient', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it('sends a combined signal that fires when the caller aborts', async () => {
+  it('forwards a caller abort to the in flight attempt signal', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    let attemptSignal: AbortSignal | undefined;
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          attemptSignal = init?.signal ?? undefined;
+          attemptSignal?.addEventListener('abort', () => {
+            reject(new Error('aborted'));
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    expect(attemptSignal?.aborted).toBe(false);
+    controller.abort(reason);
+
+    expect(attemptSignal?.aborted).toBe(true);
+    expect(attemptSignal?.reason).toBe(reason);
+    await expect(settled).resolves.toBe(reason);
+  });
+
+  it('stops forwarding to an attempt signal once the attempt has settled', async () => {
     const controller = new AbortController();
     const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: 'ok' }));
     const client = createHttpClient({ fetchImpl, signal: controller.signal });
 
-    await client.request({ url: 'https://x' });
+    await expect(client.request({ url: 'https://x' })).resolves.toBe('ok');
 
-    const requestSignal = lastInit(fetchImpl).signal;
-    expect(requestSignal?.aborted).toBe(false);
+    const settledSignal = lastInit(fetchImpl).signal;
     controller.abort();
-    expect(requestSignal?.aborted).toBe(true);
+
+    expect(settledSignal?.aborted).toBe(false);
+  });
+
+  it('rejects with the caller reason even when fetchImpl ignores the signal', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    let deliver: (() => void) | undefined;
+    const fetchImpl = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          deliver = () => {
+            resolve(fakeResponse({ body: 'late body' }));
+          };
+        }),
+    );
+    const { events, hooks } = recordingHooks();
+    const client = createHttpClient({ fetchImpl, signal: controller.signal, ...hooks });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.waitFor(() => {
+      expect(deliver).toBeDefined();
+    });
+    controller.abort(reason);
+    deliver?.();
+
+    await expect(settled).resolves.toBe(reason);
+    expect(events.map((event) => event.kind)).toEqual(['request', 'response']);
+  });
+
+  it('retries a per attempt timeout and reports it as the HttpError cause', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(init.signal?.reason as Error);
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, timeoutMs: 50, retries: 1 });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.runAllTimersAsync();
+    const error = await settled;
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect((error as HttpError).cause).toMatchObject({ name: 'TimeoutError' });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('threads the signal from public request options', async () => {
@@ -327,7 +399,122 @@ describe('createHttpClient', () => {
     const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
 
     expect((error as DOMException).name).toBe('AbortError');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('settles an abort during a network error backoff', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(1);
+    const controller = new AbortController();
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError('network down'));
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.advanceTimersByTimeAsync(1);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+    controller.abort();
+    await vi.runAllTimersAsync();
+
+    const error = await settled;
+    expect((error as DOMException).name).toBe('AbortError');
+    expect(error).not.toBeInstanceOf(HttpError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('settles an abort during retry backoff before the delay expires', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(1);
+    const controller = new AbortController();
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ status: 500 }));
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.advanceTimersByTimeAsync(1);
+    controller.abort();
+
+    const error = await settled;
+    expect((error as DOMException).name).toBe('AbortError');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('settles an abort during a Retry-After wait without restarting it', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(fakeResponse({ status: 429, headers: { 'Retry-After': '30' } }));
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    controller.abort();
+    await vi.runAllTimersAsync();
+
+    const error = await settled;
+    expect((error as DOMException).name).toBe('AbortError');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases a limiter reservation on abort without delaying the queue', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const calls: number[] = [];
+    const fetchImpl = vi.fn(() => {
+      calls.push(Date.now() - start);
+      return Promise.resolve(fakeResponse({ body: 'ok' }));
+    });
+    const limiter = createRateLimiter(1);
+    const controller = new AbortController();
+    const plain = createHttpClient({ fetchImpl, limiter });
+    const cancellable = createHttpClient({ fetchImpl, limiter, signal: controller.signal });
+
+    const first = plain.request({ url: 'https://a' });
+    const doomed = cancellable.request({ url: 'https://b' }).catch((caught: unknown) => caught);
+    const third = plain.request({ url: 'https://c' });
+    await vi.advanceTimersByTimeAsync(1);
+    controller.abort();
+    await vi.runAllTimersAsync();
+
+    await expect(first).resolves.toBe('ok');
+    await expect(third).resolves.toBe('ok');
+    expect(((await doomed) as DOMException).name).toBe('AbortError');
+    expect(calls).toEqual([0, 1000]);
+  });
+
+  it('rejects an aborted call queued behind a waiting survivor at the abort', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const calls: number[] = [];
+    const fetchImpl = vi.fn(() => {
+      calls.push(Date.now() - start);
+      return Promise.resolve(fakeResponse({ body: 'ok' }));
+    });
+    const limiter = createRateLimiter(1);
+    const spared = new AbortController();
+    const doomed = new AbortController();
+    const plain = createHttpClient({ fetchImpl, limiter });
+    const survivor = createHttpClient({ fetchImpl, limiter, signal: spared.signal });
+    const cancellable = createHttpClient({ fetchImpl, limiter, signal: doomed.signal });
+
+    const first = plain.request({ url: 'https://a' });
+    const second = survivor.request({ url: 'https://b' });
+    let settledAt = -1;
+    const third = cancellable.request({ url: 'https://c' }).catch((caught: unknown) => {
+      settledAt = Date.now() - start;
+      return caught;
+    });
+    await vi.advanceTimersByTimeAsync(1);
+    doomed.abort();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settledAt).toBe(1);
+    await vi.runAllTimersAsync();
+
+    await expect(first).resolves.toBe('ok');
+    await expect(second).resolves.toBe('ok');
+    expect(((await third) as DOMException).name).toBe('AbortError');
+    expect(calls).toEqual([0, 1000]);
   });
 
   it('throws BlockedError for a consent host and for a captcha body', async () => {
@@ -342,6 +529,406 @@ describe('createHttpClient', () => {
       .mockResolvedValue(fakeResponse({ body: 'go to www.google.com/recaptcha now' }));
     const captchaClient = createHttpClient({ fetchImpl: captchaFetch });
     await expect(captchaClient.request({ url: 'https://x' })).rejects.toBeInstanceOf(BlockedError);
+  });
+});
+
+const countingSignal = (
+  controller: AbortController,
+): { signal: AbortSignal; live: () => number } => {
+  const live = new Set<unknown>();
+  const target = controller.signal;
+  const add = target.addEventListener.bind(target);
+  const remove = target.removeEventListener.bind(target);
+  vi.spyOn(target, 'addEventListener').mockImplementation((type, listener, options) => {
+    live.add(listener);
+    add(type as 'abort', listener, options);
+  });
+  vi.spyOn(target, 'removeEventListener').mockImplementation((type, listener, options) => {
+    live.delete(listener);
+    remove(type as 'abort', listener, options);
+  });
+  return { signal: target, live: () => live.size };
+};
+
+describe('cancellation cleanup', () => {
+  it('leaves no listener on the caller signal after a successful request', async () => {
+    const controller = new AbortController();
+    const { signal, live } = countingSignal(controller);
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl, signal });
+
+    await expect(client.request({ url: 'https://x' })).resolves.toBe('ok');
+
+    expect(live()).toBe(0);
+  });
+
+  it('leaves no listener and no timer after retry exhaustion', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(1);
+    const controller = new AbortController();
+    const { signal, live } = countingSignal(controller);
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ status: 500 }));
+    const client = createHttpClient({ fetchImpl, signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.runAllTimersAsync();
+
+    expect(await settled).toBeInstanceOf(HttpError);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(live()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('leaves no listener behind when the caller aborts mid flight', async () => {
+    const controller = new AbortController();
+    const { signal, live } = countingSignal(controller);
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new Error('aborted'));
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    controller.abort();
+    await settled;
+
+    expect(live()).toBe(0);
+  });
+
+  it('leaves no listener behind after a queued reservation settles or aborts', async () => {
+    vi.useFakeTimers();
+    const limiter = createRateLimiter(1);
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const spared = new AbortController();
+    const doomed = new AbortController();
+    const counted = { spared: countingSignal(spared), doomed: countingSignal(doomed) };
+    const plain = createHttpClient({ fetchImpl, limiter });
+    const survivor = createHttpClient({ fetchImpl, limiter, signal: counted.spared.signal });
+    const cancellable = createHttpClient({ fetchImpl, limiter, signal: counted.doomed.signal });
+
+    const pending = [
+      plain.request({ url: 'https://a' }),
+      survivor.request({ url: 'https://b' }),
+      cancellable.request({ url: 'https://c' }).catch((caught: unknown) => caught),
+    ];
+    await vi.advanceTimersByTimeAsync(1);
+    doomed.abort();
+    await vi.runAllTimersAsync();
+    await Promise.all(pending);
+
+    expect(counted.spared.live()).toBe(0);
+    expect(counted.doomed.live()).toBe(0);
+  });
+
+  it('rejects with the caller reason when the body read is aborted', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        url: 'https://play.google.com/store',
+        headers: new Headers(),
+        text: () =>
+          new Promise<string>((_resolve, reject) => {
+            controller.signal.addEventListener('abort', () => {
+              reject(new Error('body read aborted'));
+            });
+          }),
+      } as unknown as Response),
+    );
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.waitFor(() => {
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+    controller.abort(reason);
+
+    await expect(settled).resolves.toBe(reason);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives the caller reason precedence over a per attempt timeout', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new Error('aborted'));
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, signal: controller.signal, timeoutMs: 50 });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.advanceTimersByTimeAsync(10);
+    controller.abort(reason);
+    await vi.runAllTimersAsync();
+
+    await expect(settled).resolves.toBe(reason);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a reservation made with an already aborted signal without queueing', async () => {
+    vi.useFakeTimers();
+    const limiter = createRateLimiter(1);
+    const reason = { code: 'STOP' };
+    await limiter();
+    const queued = limiter();
+
+    const settled = limiter(AbortSignal.abort(reason)).catch((caught: unknown) => caught);
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(settled).resolves.toBe(reason);
+    await vi.runAllTimersAsync();
+    await expect(queued).resolves.toBeUndefined();
+  });
+
+  it('hands an abort raised in onRequest to the fetch it precedes', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    const fetchImpl = vi.fn((_input: string | URL | Request, init?: RequestInit) =>
+      init?.signal?.aborted
+        ? Promise.reject(new Error('aborted'))
+        : Promise.resolve(fakeResponse({ body: 'ok' })),
+    );
+    const client = createHttpClient({
+      fetchImpl,
+      signal: controller.signal,
+      onRequest: () => {
+        controller.abort(reason);
+      },
+    });
+
+    await expect(
+      client.request({ url: 'https://x' }).catch((caught: unknown) => caught),
+    ).resolves.toBe(reason);
+    expect(lastInit(fetchImpl).signal?.reason).toBe(reason);
+  });
+
+  it('emits no retry event after an abort raised in onResponse', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    const retries: RetryEvent[] = [];
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ status: 503 }));
+    const client = createHttpClient({
+      fetchImpl,
+      signal: controller.signal,
+      onResponse: () => {
+        controller.abort(reason);
+      },
+      onRetry: (event) => {
+        retries.push(event);
+      },
+    });
+
+    const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+
+    expect(error).toBe(reason);
+    expect(retries).toEqual([]);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps survivor throughput when half of a queued burst is aborted', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const calls: number[] = [];
+    const fetchImpl = vi.fn(() => {
+      calls.push(Date.now() - start);
+      return Promise.resolve(fakeResponse({ body: 'ok' }));
+    });
+    const limiter = createRateLimiter(1);
+    const controller = new AbortController();
+    const survivors = createHttpClient({ fetchImpl, limiter });
+    const doomed = createHttpClient({ fetchImpl, limiter, signal: controller.signal });
+
+    const pending = [
+      survivors.request({ url: 'https://a' }),
+      doomed.request({ url: 'https://b' }).catch((caught: unknown) => caught),
+      survivors.request({ url: 'https://c' }),
+      doomed.request({ url: 'https://d' }).catch((caught: unknown) => caught),
+      survivors.request({ url: 'https://e' }),
+      doomed.request({ url: 'https://f' }).catch((caught: unknown) => caught),
+    ];
+    await vi.advanceTimersByTimeAsync(1);
+    controller.abort();
+    await vi.runAllTimersAsync();
+    const settled = await Promise.all(pending);
+
+    expect(calls).toEqual([0, 1000, 2000]);
+    expect(settled.filter((value) => value === 'ok')).toHaveLength(3);
+    for (const index of [1, 3, 5]) {
+      expect((settled[index] as DOMException).name).toBe('AbortError');
+    }
+  });
+});
+
+describe('unread response bodies', () => {
+  const streamedResponse = (status: number): Response =>
+    new Response('error page', { status, headers: { 'Retry-After': '0' } });
+
+  it('cancels the body of a terminal error response', async () => {
+    const response = streamedResponse(404);
+    const cancel = vi.spyOn(response.body!, 'cancel');
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const client = createHttpClient({ fetchImpl });
+
+    await expect(client.request({ url: 'https://x' })).rejects.toBeInstanceOf(NotFoundError);
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels the body of every retried error response', async () => {
+    const responses = [streamedResponse(503), streamedResponse(503)];
+    const cancels = responses.map((response) => vi.spyOn(response.body!, 'cancel'));
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(responses[0])
+      .mockResolvedValueOnce(responses[1])
+      .mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl });
+
+    await expect(client.request({ url: 'https://x' })).resolves.toBe('ok');
+
+    for (const cancel of cancels) {
+      expect(cancel).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('keeps the mapped error when the body cannot be cancelled', async () => {
+    const response = streamedResponse(404);
+    response.body!.getReader();
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const client = createHttpClient({ fetchImpl });
+
+    await expect(client.request({ url: 'https://x' })).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe('Retry-After handling', () => {
+  const JITTER_CEILING_MS = 500;
+
+  const retryAfter = (value: string, extra: Record<string, string> = {}): Response =>
+    fakeResponse({ status: 429, headers: { 'Retry-After': value, ...extra } });
+
+  const expectRetryDelay = async (response: Response, delayMs: number): Promise<void> => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(response)
+      .mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl });
+
+    const pending = client.request({ url: 'https://x' });
+    await vi.advanceTimersByTimeAsync(delayMs - 1);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    await expect(pending).resolves.toBe('ok');
+  };
+
+  const expectJitteredFallback = (value: string): Promise<void> =>
+    expectRetryDelay(retryAfter(value), JITTER_CEILING_MS);
+
+  const expectTerminal = async (value: string): Promise<void> => {
+    const fetchImpl = vi.fn().mockResolvedValue(retryAfter(value));
+    const client = createHttpClient({ fetchImpl });
+
+    const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(RateLimitError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(1);
+  });
+
+  it('honors a delta-seconds value at the cap exactly', async () => {
+    await expectRetryDelay(retryAfter('60'), 60000);
+  });
+
+  it('honors a zero padded delta-seconds value', async () => {
+    await expectRetryDelay(retryAfter('007'), 7000);
+  });
+
+  it('honors a zero delta-seconds value as an immediate retry', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(retryAfter('0'))
+      .mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl });
+
+    const pending = client.request({ url: 'https://x' });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    await expect(pending).resolves.toBe('ok');
+  });
+
+  it('ends the call instead of waiting past the cap', async () => {
+    await expectTerminal('120');
+  });
+
+  it('ends the call on a value that would overflow setTimeout', async () => {
+    await expectTerminal('99999999999');
+  });
+
+  it('derives the delay from an http date against the server Date header', async () => {
+    await expectRetryDelay(
+      retryAfter('Wed, 21 Oct 2026 07:28:05 GMT', { Date: 'Wed, 21 Oct 2026 07:28:00 GMT' }),
+      5000,
+    );
+  });
+
+  it('derives the delay from the local clock when the response carries no Date', async () => {
+    vi.setSystemTime(Date.parse('Wed, 21 Oct 2026 07:28:00 GMT'));
+
+    await expectRetryDelay(retryAfter('Wed, 21 Oct 2026 07:28:03 GMT'), 3000);
+  });
+
+  it('ends the call on an http date beyond the cap', async () => {
+    vi.setSystemTime(Date.parse('Wed, 21 Oct 2026 07:28:00 GMT'));
+
+    await expectTerminal('Wed, 21 Oct 2026 07:29:01 GMT');
+  });
+
+  it('falls back to jittered backoff for a past http date', async () => {
+    await expectRetryDelay(
+      retryAfter('Wed, 21 Oct 2026 07:27:00 GMT', { Date: 'Wed, 21 Oct 2026 07:28:00 GMT' }),
+      JITTER_CEILING_MS,
+    );
+  });
+
+  it('falls back to jittered backoff for an empty header instead of retrying at once', async () => {
+    await expectJitteredFallback('');
+  });
+
+  it('falls back to jittered backoff for exponential notation', async () => {
+    await expectJitteredFallback('1e3');
+  });
+
+  it('falls back to jittered backoff for hexadecimal notation', async () => {
+    await expectJitteredFallback('0x10');
+  });
+
+  it('falls back to jittered backoff for a fractional value', async () => {
+    await expectJitteredFallback('1.5');
+  });
+
+  it('falls back to jittered backoff for a date shaped value that is not an http date', async () => {
+    await expectJitteredFallback('2099-01');
+  });
+
+  it('falls back to jittered backoff for a day name that is not a date', async () => {
+    await expectJitteredFallback('Mon');
   });
 });
 
@@ -518,7 +1105,7 @@ describe('request lifecycle hooks', () => {
     const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
 
     expect((error as DOMException).name).toBe('AbortError');
-    expect(events).toEqual([{ kind: 'request', attempt: 1 }]);
+    expect(events).toEqual([]);
   });
 
   it('swallows throwing and rejecting hooks without changing the request', async () => {
