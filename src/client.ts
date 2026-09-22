@@ -5,7 +5,9 @@ import {
   type GooglePlayIterators,
   type Passthrough,
 } from './clientSurface.js';
+import type { OnDegradation } from './core/degradation.js';
 import { clientFromOptions, createRateLimiter, type ResolveClient } from './core/http.js';
+import type { OnIntegrityEvent } from './core/integrity.js';
 import {
   parseOptions,
   requestOptionsSchema,
@@ -18,6 +20,8 @@ export const clientOptionsSchema = z.object({
   country: z.optional(z.string().check(z.length(2))),
   throttle: z.optional(z.number().check(z.positive(), z.lte(50))),
   requestOptions: z.optional(requestOptionsSchema),
+  onDegradation: z.optional(z.custom<OnDegradation>((value) => typeof value === 'function')),
+  onIntegrityEvent: z.optional(z.custom<OnIntegrityEvent>((value) => typeof value === 'function')),
 });
 
 export type ClientOptions = z.input<typeof clientOptionsSchema>;
@@ -25,6 +29,8 @@ export type ClientOptions = z.input<typeof clientOptionsSchema>;
 export interface ClientDefaults {
   lang?: string;
   country?: string;
+  onDegradation?: OnDegradation;
+  onIntegrityEvent?: OnIntegrityEvent;
 }
 
 type ParsedClientOptions = z.infer<typeof clientOptionsSchema>;
@@ -64,6 +70,8 @@ export function createSharedTransport(parsed: ParsedClientOptions): SharedTransp
       ...options,
       lang: given.lang ?? parsed.lang,
       country: given.country ?? parsed.country,
+      onDegradation: given.onDegradation ?? parsed.onDegradation,
+      onIntegrityEvent: given.onIntegrityEvent ?? parsed.onIntegrityEvent,
     };
   };
 
