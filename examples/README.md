@@ -37,7 +37,7 @@ others still run.
 | `dataSafety()`                       | The data safety section of an app               |
 | `createCountryFetch()`               | Routing requests to a per-country fetch         |
 | `errors`                             | The typed error hierarchy raised on failure     |
-| `memoized()`                         | A client that caches identical calls            |
+| `memoized()`                         | A shared client that caches equivalent calls    |
 | `createClient()`                     | One shared limiter and defaults across calls    |
 
 Every method is also available on the aggregate default export:
