@@ -320,6 +320,7 @@ describe('createCallCache', () => {
 
     await expect(method({ id: '' })).rejects.toBeInstanceOf(ValidationError);
     await expect(method({ id: '' })).rejects.toThrow(/^app:/);
+    expect(() => cache.invalidate('app', { id: '' })).toThrow(/^app:/);
     expect(calls).toHaveLength(0);
     expect(cache.size).toBe(0);
   });
