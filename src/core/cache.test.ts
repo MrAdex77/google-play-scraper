@@ -250,6 +250,72 @@ describe('createCallCache', () => {
     expect(pending).toHaveLength(2);
   });
 
+  it('keeps a replacement entry when an invalidated miss fulfills late', async () => {
+    const cache = createCallCache(settings);
+    const { pending, fn } = deferredMethod();
+    const method = cache.memoize('app', optionsSchema, fn);
+
+    const stale = method({ id: 'a' });
+    expect(cache.invalidate('app', { id: 'a' })).toBe(true);
+    const fresh = method({ id: 'a' });
+    pending[1]?.resolve('fresh');
+    await expect(fresh).resolves.toBe('fresh');
+
+    pending[0]?.resolve('stale');
+    await expect(stale).resolves.toBe('stale');
+    expect(cache.size).toBe(1);
+
+    await expect(method({ id: 'a' })).resolves.toBe('fresh');
+    await expect(method({ id: 'a' })).resolves.toBe('fresh');
+    expect(pending).toHaveLength(2);
+  });
+
+  it('drops an in-flight miss evicted by max without restoring it on fulfillment', async () => {
+    const cache = createCallCache({ maxAgeMs: 1000, max: 1 });
+    const { pending, fn } = deferredMethod();
+    const method = cache.memoize('app', optionsSchema, fn);
+
+    const evicted = method({ id: 'a' });
+    const kept = method({ id: 'b' });
+    expect(cache.size).toBe(1);
+
+    pending[0]?.resolve('a');
+    await expect(evicted).resolves.toBe('a');
+    expect(cache.size).toBe(1);
+
+    pending[1]?.resolve('b');
+    await expect(kept).resolves.toBe('b');
+    await expect(method({ id: 'b' })).resolves.toBe('b');
+    expect(pending).toHaveLength(2);
+
+    const refetched = method({ id: 'a' });
+    expect(pending).toHaveLength(3);
+    pending[2]?.resolve('a again');
+    await expect(refetched).resolves.toBe('a again');
+    expect(cache.size).toBe(1);
+  });
+
+  it('does not restore an entry cleared while its miss was in flight', async () => {
+    const cache = createCallCache(settings);
+    const { pending, fn } = deferredMethod();
+    const method = cache.memoize('app', optionsSchema, fn);
+
+    const cleared = method({ id: 'a' });
+    cache.clear();
+    expect(cache.size).toBe(0);
+
+    pending[0]?.resolve('before clear');
+    await expect(cleared).resolves.toBe('before clear');
+    expect(cache.size).toBe(0);
+
+    const refetched = method({ id: 'a' });
+    expect(pending).toHaveLength(2);
+    pending[1]?.resolve('after clear');
+    await expect(refetched).resolves.toBe('after clear');
+    await expect(method({ id: 'a' })).resolves.toBe('after clear');
+    expect(cache.size).toBe(1);
+  });
+
   it('expires entries after maxAgeMs and reports it through size', async () => {
     vi.useFakeTimers();
     const cache = createCallCache(settings);
