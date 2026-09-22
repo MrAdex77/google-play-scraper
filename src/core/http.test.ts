@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clientFromOptions,
   createHttpClient,
@@ -457,6 +457,112 @@ describe('createHttpClient', () => {
       .mockResolvedValue(fakeResponse({ body: 'go to www.google.com/recaptcha now' }));
     const captchaClient = createHttpClient({ fetchImpl: captchaFetch });
     await expect(captchaClient.request({ url: 'https://x' })).rejects.toBeInstanceOf(BlockedError);
+  });
+});
+
+describe('Retry-After handling', () => {
+  const JITTER_CEILING_MS = 500;
+
+  const retryAfter = (value: string, extra: Record<string, string> = {}): Response =>
+    fakeResponse({ status: 429, headers: { 'Retry-After': value, ...extra } });
+
+  const expectRetryDelay = async (response: Response, delayMs: number): Promise<void> => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(response)
+      .mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl });
+
+    const pending = client.request({ url: 'https://x' });
+    await vi.advanceTimersByTimeAsync(delayMs - 1);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    await expect(pending).resolves.toBe('ok');
+  };
+
+  const expectJitteredFallback = (value: string): Promise<void> =>
+    expectRetryDelay(retryAfter(value), JITTER_CEILING_MS);
+
+  const expectTerminal = async (value: string): Promise<void> => {
+    const fetchImpl = vi.fn().mockResolvedValue(retryAfter(value));
+    const client = createHttpClient({ fetchImpl });
+
+    const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(RateLimitError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(1);
+  });
+
+  it('honors a delta-seconds value at the cap exactly', async () => {
+    await expectRetryDelay(retryAfter('60'), 60000);
+  });
+
+  it('honors a zero padded delta-seconds value', async () => {
+    await expectRetryDelay(retryAfter('007'), 7000);
+  });
+
+  it('ends the call instead of waiting past the cap', async () => {
+    await expectTerminal('120');
+  });
+
+  it('ends the call on a value that would overflow setTimeout', async () => {
+    await expectTerminal('99999999999');
+  });
+
+  it('derives the delay from an http date against the server Date header', async () => {
+    await expectRetryDelay(
+      retryAfter('Wed, 21 Oct 2026 07:28:05 GMT', { Date: 'Wed, 21 Oct 2026 07:28:00 GMT' }),
+      5000,
+    );
+  });
+
+  it('derives the delay from the local clock when the response carries no Date', async () => {
+    vi.setSystemTime(Date.parse('Wed, 21 Oct 2026 07:28:00 GMT'));
+
+    await expectRetryDelay(retryAfter('Wed, 21 Oct 2026 07:28:03 GMT'), 3000);
+  });
+
+  it('ends the call on an http date beyond the cap', async () => {
+    vi.setSystemTime(Date.parse('Wed, 21 Oct 2026 07:28:00 GMT'));
+
+    await expectTerminal('Wed, 21 Oct 2026 07:29:01 GMT');
+  });
+
+  it('falls back to jittered backoff for a past http date', async () => {
+    await expectRetryDelay(
+      retryAfter('Wed, 21 Oct 2026 07:27:00 GMT', { Date: 'Wed, 21 Oct 2026 07:28:00 GMT' }),
+      JITTER_CEILING_MS,
+    );
+  });
+
+  it('falls back to jittered backoff for an empty header instead of retrying at once', async () => {
+    await expectJitteredFallback('');
+  });
+
+  it('falls back to jittered backoff for exponential notation', async () => {
+    await expectJitteredFallback('1e3');
+  });
+
+  it('falls back to jittered backoff for hexadecimal notation', async () => {
+    await expectJitteredFallback('0x10');
+  });
+
+  it('falls back to jittered backoff for a fractional value', async () => {
+    await expectJitteredFallback('1.5');
+  });
+
+  it('falls back to jittered backoff for a date shaped value that is not an http date', async () => {
+    await expectJitteredFallback('2099-01');
+  });
+
+  it('falls back to jittered backoff for a day name that is not a date', async () => {
+    await expectJitteredFallback('Mon');
   });
 });
 

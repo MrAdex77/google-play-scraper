@@ -77,6 +77,12 @@ const DEFAULT_HEADERS: Record<string, string> = {
 
 const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded;charset=UTF-8';
 
+const DELTA_SECONDS = /^\d+$/;
+
+const HTTP_DATE_DAY_NAME = /^[A-Za-z]{3}/;
+
+const MAX_RETRY_AFTER_MS = 60000;
+
 function settleAfter(ms: number, signal: AbortSignal | undefined): Promise<void> {
   return new Promise<void>((resolve) => {
     const settle = (): void => {
@@ -167,21 +173,27 @@ function isRetryableStatus(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
+function retryAfterDateMs(header: string, response: Response): number | undefined {
+  const until = HTTP_DATE_DAY_NAME.test(header) ? Date.parse(header) : Number.NaN;
+  if (Number.isNaN(until)) {
+    return undefined;
+  }
+  const serverDate = Date.parse(response.headers.get('date') ?? '');
+  const from = Number.isNaN(serverDate) ? Date.now() : serverDate;
+  const waitMs = until - from;
+  return waitMs > 0 ? waitMs : undefined;
+}
+
 function parseRetryAfter(response: Response): number | undefined {
   const header = response.headers.get('retry-after');
   if (header === null) {
     return undefined;
   }
-  const seconds = Number(header);
-  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+  return DELTA_SECONDS.test(header) ? Number(header) * 1000 : retryAfterDateMs(header, response);
 }
 
-function computeBackoff(attempt: number, retryAfterSeconds: number | undefined): number {
-  if (retryAfterSeconds !== undefined) {
-    return retryAfterSeconds * 1000;
-  }
-  const ceiling = BASE_BACKOFF_MS * 2 ** attempt;
-  return Math.random() * ceiling;
+function jitteredBackoff(attempt: number): number {
+  return Math.random() * (BASE_BACKOFF_MS * 2 ** attempt);
 }
 
 function mapStatusToError(status: number, url: string): GooglePlayError {
@@ -271,8 +283,10 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
           durationMs: performance.now() - startedAt,
         });
 
-        if (isRetryableStatus(response.status) && attempt < retries) {
-          const delayMs = computeBackoff(attempt, parseRetryAfter(response));
+        const retryAfterMs = parseRetryAfter(response);
+        const honored = retryAfterMs === undefined || retryAfterMs <= MAX_RETRY_AFTER_MS;
+        if (isRetryableStatus(response.status) && attempt < retries && honored) {
+          const delayMs = retryAfterMs ?? jitteredBackoff(attempt);
           emit(config.onRetry, {
             ...eventFor(attempt),
             delayMs,
@@ -292,7 +306,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
           throw error;
         }
         if (attempt < retries) {
-          const delayMs = computeBackoff(attempt, undefined);
+          const delayMs = jitteredBackoff(attempt);
           emit(config.onRetry, { ...eventFor(attempt), delayMs, reason: 'network' });
           await wait(delayMs, callerSignal);
           continue;
