@@ -1,41 +1,17 @@
 import * as z from 'zod/mini';
-import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import {
-  clientFromOptions,
-  createRateLimiter,
-  type Limiter,
-  type ResolveClient,
-} from './core/http.js';
-import { parseOptions, requestOptionsSchema, type RequestOptions } from './core/options.js';
-import { createApp, type AppOptions } from './features/app/app.js';
-import { createApps, type AppsOptions } from './features/apps/apps.js';
+  buildClientSurface,
+  type GooglePlayClient,
+  type GooglePlayIterators,
+  type Passthrough,
+} from './clientSurface.js';
+import { clientFromOptions, createRateLimiter, type ResolveClient } from './core/http.js';
 import {
-  createAvailability,
-  type AvailabilityOptions,
-} from './features/availability/availability.js';
-import { categories, type CategoriesOptions } from './features/categories/categories.js';
-import { createDataSafety, type DataSafetyOptions } from './features/datasafety/datasafety.js';
-import { createDeveloper, type DeveloperOptions } from './features/developer/developer.js';
-import { createList, type ListOptions } from './features/list/list.js';
-import { createPermissions, type PermissionsOptions } from './features/permissions/permissions.js';
-import { createReviews, type ReviewsOptions } from './features/reviews/reviews.js';
-import {
-  createReviewsIterator,
-  type ReviewsIteratorOptions,
-} from './features/reviews/reviewsIterator.js';
-import { createReviewsAll, type ReviewsAllOptions } from './features/reviews/reviewsAll.js';
-import { createSearch, type SearchOptions } from './features/search/search.js';
-import {
-  createSearchIterator,
-  type SearchIteratorOptions,
-} from './features/search/searchIterator.js';
-import { createSimilar, type SimilarOptions } from './features/similar/similar.js';
-import {
-  createDeveloperIterator,
-  type DeveloperIteratorOptions,
-} from './features/developer/developerIterator.js';
-import { createSuggest, type SuggestOptions } from './features/suggest/suggest.js';
-import type { GooglePlayClient, GooglePlayIterators } from './index.js';
+  parseOptions,
+  requestOptionsSchema,
+  type MethodWrapper,
+  type RequestOptions,
+} from './core/options.js';
 
 export const clientOptionsSchema = z.object({
   lang: z.optional(z.string().check(z.minLength(2), z.maxLength(7))),
@@ -45,6 +21,20 @@ export const clientOptionsSchema = z.object({
 });
 
 export type ClientOptions = z.input<typeof clientOptionsSchema>;
+
+export interface ClientDefaults {
+  lang?: string;
+  country?: string;
+}
+
+type ParsedClientOptions = z.infer<typeof clientOptionsSchema>;
+
+export type ApplyDefaults = <Options extends object>(options: Options) => Options & ClientDefaults;
+
+export interface SharedTransport {
+  resolveClient: ResolveClient;
+  applyDefaults: ApplyDefaults;
+}
 
 const CLIENT_CONTEXT = 'client';
 
@@ -58,10 +48,8 @@ function mergeRequestOptions(
   return { ...base, ...override };
 }
 
-export function createClient(options?: ClientOptions): GooglePlayClient & GooglePlayIterators {
-  const parsed = parseOptions(clientOptionsSchema, options ?? {}, CLIENT_CONTEXT);
-  const limiter: Limiter | undefined =
-    parsed.throttle !== undefined ? createRateLimiter(parsed.throttle) : undefined;
+export function createSharedTransport(parsed: ParsedClientOptions): SharedTransport {
+  const limiter = parsed.throttle !== undefined ? createRateLimiter(parsed.throttle) : undefined;
 
   const resolveClient: ResolveClient = (opts) =>
     clientFromOptions({
@@ -70,62 +58,23 @@ export function createClient(options?: ClientOptions): GooglePlayClient & Google
       requestOptions: mergeRequestOptions(parsed.requestOptions, opts.requestOptions),
     });
 
-  const mergeDefaults = <Options extends { lang?: string; country?: string }>(
-    callOptions: Options,
-  ): Options => {
-    const merged = { ...callOptions };
-    if (merged.lang === undefined && parsed.lang !== undefined) {
-      merged.lang = parsed.lang;
-    }
-    if (merged.country === undefined && parsed.country !== undefined) {
-      merged.country = parsed.country;
-    }
-    return merged;
+  const applyDefaults: ApplyDefaults = (options) => {
+    const given: ClientDefaults = options;
+    return {
+      ...options,
+      lang: given.lang ?? parsed.lang,
+      country: given.country ?? parsed.country,
+    };
   };
 
-  const boundApp = createApp(resolveClient);
-  const boundApps = createApps(boundApp);
-  const boundAvailability = createAvailability(resolveClient);
-  const boundSearch = createSearch(boundApp, resolveClient);
-  const boundList = createList(boundApp, resolveClient);
-  const boundDeveloper = createDeveloper(boundApp, resolveClient);
-  const boundSimilar = createSimilar(boundApp, resolveClient);
-  const boundSuggest = createSuggest(resolveClient);
-  const boundReviews = createReviews(resolveClient);
-  const boundReviewsIterator = createReviewsIterator(resolveClient);
-  const boundReviewsAll = createReviewsAll(resolveClient);
-  const boundSearchIterator = createSearchIterator(resolveClient);
-  const boundDeveloperIterator = createDeveloperIterator(resolveClient);
-  const boundPermissions = createPermissions(resolveClient);
-  const boundDataSafety = createDataSafety(resolveClient);
+  return { resolveClient, applyDefaults };
+}
 
-  return {
-    BASE_URL,
-    age,
-    category,
-    clusters,
-    collection,
-    permission,
-    sort,
-    app: (callOptions: AppOptions) => boundApp(mergeDefaults(callOptions)),
-    apps: (callOptions: AppsOptions) => boundApps(mergeDefaults(callOptions)),
-    availability: (callOptions: AvailabilityOptions) =>
-      boundAvailability(mergeDefaults(callOptions)),
-    search: (callOptions: SearchOptions) => boundSearch(mergeDefaults(callOptions)),
-    suggest: (callOptions: SuggestOptions) => boundSuggest(mergeDefaults(callOptions)),
-    list: (callOptions: ListOptions) => boundList(mergeDefaults(callOptions)),
-    categories: (callOptions?: CategoriesOptions) => categories(callOptions),
-    developer: (callOptions: DeveloperOptions) => boundDeveloper(mergeDefaults(callOptions)),
-    similar: (callOptions: SimilarOptions) => boundSimilar(mergeDefaults(callOptions)),
-    reviews: (callOptions: ReviewsOptions) => boundReviews(mergeDefaults(callOptions)),
-    reviewsIterator: (callOptions: ReviewsIteratorOptions) =>
-      boundReviewsIterator(mergeDefaults(callOptions)),
-    reviewsAll: (callOptions: ReviewsAllOptions) => boundReviewsAll(mergeDefaults(callOptions)),
-    searchIterator: (callOptions: SearchIteratorOptions) =>
-      boundSearchIterator(mergeDefaults(callOptions)),
-    developerIterator: (callOptions: DeveloperIteratorOptions) =>
-      boundDeveloperIterator(mergeDefaults(callOptions)),
-    permissions: (callOptions: PermissionsOptions) => boundPermissions(mergeDefaults(callOptions)),
-    dataSafety: (callOptions: DataSafetyOptions) => boundDataSafety(mergeDefaults(callOptions)),
-  };
+export function createClient(options?: ClientOptions): GooglePlayClient & GooglePlayIterators {
+  const parsed = parseOptions(clientOptionsSchema, options ?? {}, CLIENT_CONTEXT);
+  const { resolveClient, applyDefaults } = createSharedTransport(parsed);
+  const passthrough: Passthrough = (fn) => (callOptions) => fn(applyDefaults(callOptions));
+  const cached: MethodWrapper = (_name, _schema, fn) => passthrough(fn);
+
+  return buildClientSurface({ resolveClient, cached, passthrough });
 }

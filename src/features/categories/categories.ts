@@ -5,6 +5,8 @@ import { baseOptionsSchema, parseOptions } from '../../core/options.js';
 export const categoriesOptionsSchema = z.pick(baseOptionsSchema, {
   throttle: true,
   requestOptions: true,
+  onDegradation: true,
+  onIntegrityEvent: true,
 });
 
 export type CategoriesOptions = z.input<typeof categoriesOptionsSchema>;

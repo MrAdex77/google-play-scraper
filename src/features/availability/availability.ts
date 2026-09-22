@@ -4,6 +4,7 @@ import { mapWithConcurrency } from '../../core/concurrency.js';
 import { NotFoundError } from '../../core/errors.js';
 import { clientFromOptions, type ResolveClient } from '../../core/http.js';
 import {
+  baseOptionsSchema,
   hasUniqueCountriesIgnoringCase,
   normalizeCountry,
   parseOptions,
@@ -30,6 +31,8 @@ export const availabilityOptionsSchema = z.object({
   concurrency: z._default(z.int().check(z.gte(1), z.lte(20)), 5),
   throttle: z.optional(z.number().check(z.positive(), z.lte(50))),
   requestOptions: z.optional(requestOptionsSchema),
+  onDegradation: baseOptionsSchema.shape.onDegradation,
+  onIntegrityEvent: baseOptionsSchema.shape.onIntegrityEvent,
 });
 
 export type AvailabilityOptions = z.input<typeof availabilityOptionsSchema>;
