@@ -29,10 +29,7 @@ export const baseOptionsSchema = z.object({
 
 export type BaseOptions = z.infer<typeof baseOptionsSchema>;
 
-export interface ObservabilityOptions {
-  onDegradation?: OnDegradation;
-  onIntegrityEvent?: OnIntegrityEvent;
-}
+export type ObservabilityOptions = Pick<BaseOptions, 'onDegradation' | 'onIntegrityEvent'>;
 
 export type ObservableSchema = $ZodType<unknown, ObservabilityOptions>;
 

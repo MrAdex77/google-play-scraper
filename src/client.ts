@@ -26,14 +26,12 @@ export const clientOptionsSchema = z.object({
 
 export type ClientOptions = z.input<typeof clientOptionsSchema>;
 
-export interface ClientDefaults {
-  lang?: string;
-  country?: string;
-  onDegradation?: OnDegradation;
-  onIntegrityEvent?: OnIntegrityEvent;
-}
-
 type ParsedClientOptions = z.infer<typeof clientOptionsSchema>;
+
+export type ClientDefaults = Pick<
+  ParsedClientOptions,
+  'lang' | 'country' | 'onDegradation' | 'onIntegrityEvent'
+>;
 
 export type ApplyDefaults = <Options extends object>(options: Options) => Options & ClientDefaults;
 
