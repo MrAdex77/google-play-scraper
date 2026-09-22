@@ -240,6 +240,10 @@ function attemptSignalFor(timeoutMs: number, caller: AbortSignal | undefined): A
   };
 }
 
+function discardBody(response: Response): void {
+  response.body?.cancel().catch(() => undefined);
+}
+
 function hostIsConsent(finalUrl: string): boolean {
   if (!finalUrl) {
     return false;
@@ -301,6 +305,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
           return { body };
         }
 
+        discardBody(response);
         const retryAfterMs = parseRetryAfter(response);
         const honored = retryAfterMs === undefined || retryAfterMs <= MAX_RETRY_AFTER_MS;
         if (isRetryableStatus(response.status) && attempt < retries && honored) {

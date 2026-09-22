@@ -770,6 +770,48 @@ describe('cancellation cleanup', () => {
   });
 });
 
+describe('unread response bodies', () => {
+  const streamedResponse = (status: number): Response =>
+    new Response('error page', { status, headers: { 'Retry-After': '0' } });
+
+  it('cancels the body of a terminal error response', async () => {
+    const response = streamedResponse(404);
+    const cancel = vi.spyOn(response.body!, 'cancel');
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const client = createHttpClient({ fetchImpl });
+
+    await expect(client.request({ url: 'https://x' })).rejects.toBeInstanceOf(NotFoundError);
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels the body of every retried error response', async () => {
+    const responses = [streamedResponse(503), streamedResponse(503)];
+    const cancels = responses.map((response) => vi.spyOn(response.body!, 'cancel'));
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(responses[0])
+      .mockResolvedValueOnce(responses[1])
+      .mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl });
+
+    await expect(client.request({ url: 'https://x' })).resolves.toBe('ok');
+
+    for (const cancel of cancels) {
+      expect(cancel).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('keeps the mapped error when the body cannot be cancelled', async () => {
+    const response = streamedResponse(404);
+    response.body!.getReader();
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const client = createHttpClient({ fetchImpl });
+
+    await expect(client.request({ url: 'https://x' })).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
 describe('Retry-After handling', () => {
   const JITTER_CEILING_MS = 500;
 
