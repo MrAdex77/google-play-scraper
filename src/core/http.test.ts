@@ -303,17 +303,89 @@ describe('createHttpClient', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it('sends a combined signal that fires when the caller aborts', async () => {
+  it('forwards a caller abort to the in flight attempt signal', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    let attemptSignal: AbortSignal | undefined;
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          attemptSignal = init?.signal ?? undefined;
+          attemptSignal?.addEventListener('abort', () => {
+            reject(new Error('aborted'));
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    expect(attemptSignal?.aborted).toBe(false);
+    controller.abort(reason);
+
+    expect(attemptSignal?.aborted).toBe(true);
+    expect(attemptSignal?.reason).toBe(reason);
+    await expect(settled).resolves.toBe(reason);
+  });
+
+  it('stops forwarding to an attempt signal once the attempt has settled', async () => {
     const controller = new AbortController();
     const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: 'ok' }));
     const client = createHttpClient({ fetchImpl, signal: controller.signal });
 
-    await client.request({ url: 'https://x' });
+    await expect(client.request({ url: 'https://x' })).resolves.toBe('ok');
 
-    const requestSignal = lastInit(fetchImpl).signal;
-    expect(requestSignal?.aborted).toBe(false);
+    const settledSignal = lastInit(fetchImpl).signal;
     controller.abort();
-    expect(requestSignal?.aborted).toBe(true);
+
+    expect(settledSignal?.aborted).toBe(false);
+  });
+
+  it('rejects with the caller reason even when fetchImpl ignores the signal', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    let deliver: (() => void) | undefined;
+    const fetchImpl = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          deliver = () => {
+            resolve(fakeResponse({ body: 'late body' }));
+          };
+        }),
+    );
+    const { events, hooks } = recordingHooks();
+    const client = createHttpClient({ fetchImpl, signal: controller.signal, ...hooks });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.waitFor(() => {
+      expect(deliver).toBeDefined();
+    });
+    controller.abort(reason);
+    deliver?.();
+
+    await expect(settled).resolves.toBe(reason);
+    expect(events.map((event) => event.kind)).toEqual(['request', 'response']);
+  });
+
+  it('retries a per attempt timeout and reports it as the HttpError cause', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(init.signal?.reason as Error);
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, timeoutMs: 50, retries: 1 });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.runAllTimersAsync();
+    const error = await settled;
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect((error as HttpError).cause).toMatchObject({ name: 'TimeoutError' });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('threads the signal from public request options', async () => {

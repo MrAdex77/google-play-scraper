@@ -208,9 +208,27 @@ function mapStatusToError(status: number, url: string): GooglePlayError {
   return new HttpError(`Request to ${url} failed with status ${status.toString()}`, status, url);
 }
 
-function buildRequestSignal(timeoutMs: number, signal: AbortSignal | undefined): AbortSignal {
-  const timeout = AbortSignal.timeout(timeoutMs);
-  return signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
+interface AttemptSignal {
+  signal: AbortSignal;
+  release: () => void;
+}
+
+function attemptSignalFor(timeoutMs: number, caller: AbortSignal | undefined): AttemptSignal {
+  const controller = new AbortController();
+  const forwardAbort = (): void => {
+    controller.abort(caller?.reason);
+  };
+  const timer = setTimeout(() => {
+    controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+  }, timeoutMs);
+  caller?.addEventListener('abort', forwardAbort, { once: true });
+  return {
+    signal: controller.signal,
+    release: () => {
+      clearTimeout(timer);
+      caller?.removeEventListener('abort', forwardAbort);
+    },
+  };
 }
 
 function hostIsConsent(finalUrl: string): boolean {
@@ -255,12 +273,13 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
     const attemptOnce = async (attempt: number): Promise<Attempt> => {
       emit(config.onRequest, eventFor(attempt));
       const startedAt = performance.now();
+      const attemptSignal = attemptSignalFor(timeoutMs, callerSignal);
       try {
         const response = await fetchImpl(req.url, {
           method,
           headers,
           body: req.body,
-          signal: buildRequestSignal(timeoutMs, callerSignal),
+          signal: attemptSignal.signal,
         });
         const body = response.ok ? await response.text() : undefined;
         emit(config.onResponse, {
@@ -291,9 +310,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
         if (error instanceof GooglePlayError) {
           throw error;
         }
-        if (callerSignal?.aborted) {
-          throw error;
-        }
+        callerSignal?.throwIfAborted();
         if (attempt < retries) {
           const delayMs = jitteredBackoff(attempt);
           emit(config.onRetry, { ...eventFor(attempt), delayMs, reason: 'network' });
@@ -302,6 +319,8 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
         const httpError = new HttpError(`Network request to ${req.url} failed`, 0, req.url);
         httpError.cause = error;
         throw httpError;
+      } finally {
+        attemptSignal.release();
       }
     };
 
@@ -312,6 +331,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
       }
       callerSignal?.throwIfAborted();
       const outcome = await attemptOnce(attempt);
+      callerSignal?.throwIfAborted();
       if ('body' in outcome) {
         return outcome.body;
       }
