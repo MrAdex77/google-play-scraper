@@ -532,6 +532,184 @@ describe('createHttpClient', () => {
   });
 });
 
+const countingSignal = (
+  controller: AbortController,
+): { signal: AbortSignal; live: () => number } => {
+  const live = new Set<unknown>();
+  const target = controller.signal;
+  const add = target.addEventListener.bind(target);
+  const remove = target.removeEventListener.bind(target);
+  vi.spyOn(target, 'addEventListener').mockImplementation((type, listener, options) => {
+    live.add(listener);
+    add(type as 'abort', listener, options);
+  });
+  vi.spyOn(target, 'removeEventListener').mockImplementation((type, listener, options) => {
+    live.delete(listener);
+    remove(type as 'abort', listener, options);
+  });
+  return { signal: target, live: () => live.size };
+};
+
+describe('cancellation cleanup', () => {
+  it('leaves no listener on the caller signal after a successful request', async () => {
+    const controller = new AbortController();
+    const { signal, live } = countingSignal(controller);
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl, signal });
+
+    await expect(client.request({ url: 'https://x' })).resolves.toBe('ok');
+
+    expect(live()).toBe(0);
+  });
+
+  it('leaves no listener and no timer after retry exhaustion', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(1);
+    const controller = new AbortController();
+    const { signal, live } = countingSignal(controller);
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ status: 500 }));
+    const client = createHttpClient({ fetchImpl, signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.runAllTimersAsync();
+
+    expect(await settled).toBeInstanceOf(HttpError);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(live()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('leaves no listener behind when the caller aborts mid flight', async () => {
+    const controller = new AbortController();
+    const { signal, live } = countingSignal(controller);
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new Error('aborted'));
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    controller.abort();
+    await settled;
+
+    expect(live()).toBe(0);
+  });
+
+  it('leaves no listener behind after a queued reservation settles or aborts', async () => {
+    vi.useFakeTimers();
+    const limiter = createRateLimiter(1);
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const spared = new AbortController();
+    const doomed = new AbortController();
+    const counted = { spared: countingSignal(spared), doomed: countingSignal(doomed) };
+    const plain = createHttpClient({ fetchImpl, limiter });
+    const survivor = createHttpClient({ fetchImpl, limiter, signal: counted.spared.signal });
+    const cancellable = createHttpClient({ fetchImpl, limiter, signal: counted.doomed.signal });
+
+    const pending = [
+      plain.request({ url: 'https://a' }),
+      survivor.request({ url: 'https://b' }),
+      cancellable.request({ url: 'https://c' }).catch((caught: unknown) => caught),
+    ];
+    await vi.advanceTimersByTimeAsync(1);
+    doomed.abort();
+    await vi.runAllTimersAsync();
+    await Promise.all(pending);
+
+    expect(counted.spared.live()).toBe(0);
+    expect(counted.doomed.live()).toBe(0);
+  });
+
+  it('rejects with the caller reason when the body read is aborted', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        url: 'https://play.google.com/store',
+        headers: new Headers(),
+        text: () =>
+          new Promise<string>((_resolve, reject) => {
+            controller.signal.addEventListener('abort', () => {
+              reject(new Error('body read aborted'));
+            });
+          }),
+      } as unknown as Response),
+    );
+    const client = createHttpClient({ fetchImpl, signal: controller.signal });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.waitFor(() => {
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+    controller.abort(reason);
+
+    await expect(settled).resolves.toBe(reason);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives the caller reason precedence over a per attempt timeout', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    const fetchImpl = vi.fn(
+      (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new Error('aborted'));
+          });
+        }),
+    );
+    const client = createHttpClient({ fetchImpl, signal: controller.signal, timeoutMs: 50 });
+
+    const settled = client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+    await vi.advanceTimersByTimeAsync(10);
+    controller.abort(reason);
+    await vi.runAllTimersAsync();
+
+    await expect(settled).resolves.toBe(reason);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps survivor throughput when half of a queued burst is aborted', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const calls: number[] = [];
+    const fetchImpl = vi.fn(() => {
+      calls.push(Date.now() - start);
+      return Promise.resolve(fakeResponse({ body: 'ok' }));
+    });
+    const limiter = createRateLimiter(1);
+    const controller = new AbortController();
+    const survivors = createHttpClient({ fetchImpl, limiter });
+    const doomed = createHttpClient({ fetchImpl, limiter, signal: controller.signal });
+
+    const pending = [
+      survivors.request({ url: 'https://a' }),
+      doomed.request({ url: 'https://b' }).catch((caught: unknown) => caught),
+      survivors.request({ url: 'https://c' }),
+      doomed.request({ url: 'https://d' }).catch((caught: unknown) => caught),
+      survivors.request({ url: 'https://e' }),
+      doomed.request({ url: 'https://f' }).catch((caught: unknown) => caught),
+    ];
+    await vi.advanceTimersByTimeAsync(1);
+    controller.abort();
+    await vi.runAllTimersAsync();
+    const settled = await Promise.all(pending);
+
+    expect(calls).toEqual([0, 1000, 2000]);
+    expect(settled.filter((value) => value === 'ok')).toHaveLength(3);
+    for (const index of [1, 3, 5]) {
+      expect((settled[index] as DOMException).name).toBe('AbortError');
+    }
+  });
+});
+
 describe('Retry-After handling', () => {
   const JITTER_CEILING_MS = 500;
 
