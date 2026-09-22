@@ -4,16 +4,16 @@ import {
   type GooglePlayClient,
   type GooglePlayIterators,
   type Passthrough,
-} from './clientSurface.js';
-import type { OnDegradation } from './core/degradation.js';
-import { clientFromOptions, createRateLimiter, type ResolveClient } from './core/http.js';
-import type { OnIntegrityEvent } from './core/integrity.js';
+} from './clientSurface.ts';
+import type { OnDegradation } from './core/degradation.ts';
+import { clientFromOptions, createRateLimiter, type ResolveClient } from './core/http.ts';
+import type { OnIntegrityEvent } from './core/integrity.ts';
 import {
   parseOptions,
   requestOptionsSchema,
   type MethodWrapper,
   type RequestOptions,
-} from './core/options.js';
+} from './core/options.ts';
 
 export const clientOptionsSchema = z.object({
   lang: z.optional(z.string().check(z.minLength(2), z.maxLength(7))),

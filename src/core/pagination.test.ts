@@ -6,13 +6,13 @@ import {
   clusterUrl,
   CLUSTER_PAGE_SIZE,
   fetchClusterApps,
-} from './pagination.js';
-import { BATCH_URL } from './batchexecute.js';
-import type { DegradationEvent } from './degradation.js';
-import { ParseError } from './errors.js';
-import type { HttpClient, HttpRequest } from './http.js';
-import type { IntegrityEvent } from './integrity.js';
-import { required, type SpecMap } from './spec.js';
+} from './pagination.ts';
+import { BATCH_URL } from './batchexecute.ts';
+import type { DegradationEvent } from './degradation.ts';
+import { ParseError } from './errors.ts';
+import type { HttpClient, HttpRequest } from './http.ts';
+import type { IntegrityEvent } from './integrity.ts';
+import { required, type SpecMap } from './spec.ts';
 
 const itemSpecs = {
   id: { paths: [[0]], missing: required(), schema: z.string() },

@@ -15,7 +15,7 @@ import {
   SpecError,
   ValidationError,
   type App,
-} from '../src/index.js';
+} from '../src/index.ts';
 
 type Client = ReturnType<typeof createClient>;
 

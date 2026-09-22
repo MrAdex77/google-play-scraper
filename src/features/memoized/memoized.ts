@@ -1,14 +1,14 @@
 import * as z from 'zod/mini';
-import { clientOptionsSchema, createSharedTransport } from '../../client.js';
+import { clientOptionsSchema, createSharedTransport } from '../../client.ts';
 import {
   buildClientSurface,
   type CachedMethodName,
   type GooglePlayClient,
   type GooglePlayIterators,
   type Passthrough,
-} from '../../clientSurface.js';
-import { createCallCache } from '../../core/cache.js';
-import { parseOptions, type MethodWrapper } from '../../core/options.js';
+} from '../../clientSurface.ts';
+import { createCallCache } from '../../core/cache.ts';
+import { parseOptions, type MethodWrapper } from '../../core/options.ts';
 
 const DEFAULT_MAX_AGE_MS = 1000 * 60 * 5;
 const DEFAULT_MAX = 1000;

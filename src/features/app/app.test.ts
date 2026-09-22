@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { app, type AppOptions } from './app.js';
-import { getPath } from '../../core/path.js';
-import { parseScriptData } from '../../core/scriptData.js';
-import { NotFoundError, SpecError, ValidationError } from '../../core/errors.js';
-import { APP_DETAILS_RPC_ID, appCommentsRootSchema, appDetailsRootSchema } from './specs.js';
+import { app, type AppOptions } from './app.ts';
+import { getPath } from '../../core/path.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
+import { NotFoundError, SpecError, ValidationError } from '../../core/errors.ts';
+import { APP_DETAILS_RPC_ID, appCommentsRootSchema, appDetailsRootSchema } from './specs.ts';
 
 const readFixture = (name: string): string =>
   readFileSync(

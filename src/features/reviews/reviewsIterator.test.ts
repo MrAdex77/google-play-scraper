@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { createReviewsIterator, reviewsIterator } from './reviewsIterator.js';
-import { reviews } from './reviews.js';
-import { REVIEWS_RPC_ID } from './specs.js';
-import { reviewSchema } from './schema.js';
-import { ValidationError } from '../../core/errors.js';
+import { createReviewsIterator, reviewsIterator } from './reviewsIterator.ts';
+import { reviews } from './reviews.ts';
+import { REVIEWS_RPC_ID } from './specs.ts';
+import { reviewSchema } from './schema.ts';
+import { ValidationError } from '../../core/errors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 

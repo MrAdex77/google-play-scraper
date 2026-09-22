@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { categories, category, type ListItem } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { categories, category, type ListItem } from '../src/index.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 liveDescribe('categories live contract', () => {
   it('returns exactly the category taxonomy constant', async () => {

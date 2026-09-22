@@ -1,12 +1,12 @@
-import { BASE_URL } from '../../constants.js';
-import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
-import { getPath, type Path } from '../../core/path.js';
-import { rawArrayPathSchema } from '../../core/raw.js';
-import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.js';
-import { deriveScriptDataSelection, type ScriptData } from '../../core/scriptData.js';
-import type { OnIntegrityEvent } from '../../core/integrity.js';
-import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
-import { similarAppSchema } from './schema.js';
+import { BASE_URL } from '../../constants.ts';
+import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
+import { getPath, type Path } from '../../core/path.ts';
+import { rawArrayPathSchema } from '../../core/raw.ts';
+import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.ts';
+import { deriveScriptDataSelection, type ScriptData } from '../../core/scriptData.ts';
+import type { OnIntegrityEvent } from '../../core/integrity.ts';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
+import { similarAppSchema } from './schema.ts';
 import * as z from 'zod/mini';
 
 const shape = similarAppSchema.shape;

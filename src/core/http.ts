@@ -1,11 +1,11 @@
-import type { RequestOptions } from './options.js';
+import type { RequestOptions } from './options.ts';
 import {
   BlockedError,
   GooglePlayError,
   HttpError,
   NotFoundError,
   RateLimitError,
-} from './errors.js';
+} from './errors.ts';
 
 export interface HttpRequest {
   url: string;

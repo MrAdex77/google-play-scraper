@@ -7,8 +7,8 @@ import {
   type RequestEvent,
   type ResponseEvent,
   type RetryEvent,
-} from './http.js';
-import { BlockedError, HttpError, NotFoundError, RateLimitError } from './errors.js';
+} from './http.ts';
+import { BlockedError, HttpError, NotFoundError, RateLimitError } from './errors.ts';
 
 interface FakeResponseInit {
   body?: string;

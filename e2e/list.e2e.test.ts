@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
-import { type ListItem } from '../src/index.js';
-import { expectAppItemsContract, expectRequestedCountContract } from './contracts.js';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
+import { type ListItem } from '../src/index.ts';
+import { expectAppItemsContract, expectRequestedCountContract } from './contracts.ts';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 
 const LIST_CEILING_PROBE = 500;
 

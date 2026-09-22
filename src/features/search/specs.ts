@@ -1,10 +1,10 @@
-import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
-import { getPath, type Path } from '../../core/path.js';
-import { rawArrayPathSchema } from '../../core/raw.js';
-import type { ScriptRootSpec } from '../../core/scriptRoot.js';
-import { deriveScriptDataSelection } from '../../core/scriptData.js';
-import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
-import { searchResultSchema } from './schema.js';
+import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
+import { getPath, type Path } from '../../core/path.ts';
+import { rawArrayPathSchema } from '../../core/raw.ts';
+import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
+import { deriveScriptDataSelection } from '../../core/scriptData.ts';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
+import { searchResultSchema } from './schema.ts';
 import * as z from 'zod/mini';
 
 const shape = searchResultSchema.shape;

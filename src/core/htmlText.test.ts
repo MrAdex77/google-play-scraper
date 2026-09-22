@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { htmlToPlainText } from './htmlText.js';
+import { htmlToPlainText } from './htmlText.ts';
 
 describe('htmlToPlainText', () => {
   it('decodes each supported named entity', () => {

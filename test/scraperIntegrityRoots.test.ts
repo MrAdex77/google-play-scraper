@@ -1,41 +1,41 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
-import { permission } from '../src/constants.js';
-import { parseBatchResponse } from '../src/core/batchexecute.js';
-import type { DegradationEvent } from '../src/core/degradation.js';
-import { ParseError } from '../src/core/errors.js';
-import type { HttpClient } from '../src/core/http.js';
-import { getPath } from '../src/core/path.js';
-import { clusterPages } from '../src/core/pagination.js';
-import { parseRaw } from '../src/core/raw.js';
-import { parseScriptData } from '../src/core/scriptData.js';
-import { required, type SpecMap } from '../src/core/spec.js';
-import { APPS_PATH, LIST_RPC_ID, listResponseSchema } from '../src/features/list/specs.js';
+import { permission } from '../src/constants.ts';
+import { parseBatchResponse } from '../src/core/batchexecute.ts';
+import type { DegradationEvent } from '../src/core/degradation.ts';
+import { ParseError } from '../src/core/errors.ts';
+import type { HttpClient } from '../src/core/http.ts';
+import { getPath } from '../src/core/path.ts';
+import { clusterPages } from '../src/core/pagination.ts';
+import { parseRaw } from '../src/core/raw.ts';
+import { parseScriptData } from '../src/core/scriptData.ts';
+import { required, type SpecMap } from '../src/core/spec.ts';
+import { APPS_PATH, LIST_RPC_ID, listResponseSchema } from '../src/features/list/specs.ts';
 import {
   commonPermissionsResponseSchema,
   otherPermissionsResponseSchema,
   PERMISSIONS_RPC_ID,
-} from '../src/features/permissions/specs.js';
+} from '../src/features/permissions/specs.ts';
 import {
   REVIEWS_RESPONSE_PATHS,
   REVIEWS_RPC_ID,
   reviewsCollectionResponseSchema,
-} from '../src/features/reviews/specs.js';
+} from '../src/features/reviews/specs.ts';
 import {
   CLUSTER_PAGE_MAPPINGS,
   similarClusterPageRootSpec,
-} from '../src/features/similar/specs.js';
+} from '../src/features/similar/specs.ts';
 import {
   SUGGESTIONS_PATH,
   SUGGEST_RPC_ID,
   suggestResponseSchema,
-} from '../src/features/suggest/specs.js';
+} from '../src/features/suggest/specs.ts';
 import {
   NUMERIC_INITIAL_MAPPINGS,
   numericInitialRootSpec,
-} from '../src/features/developer/specs.js';
-import { deletePath, movePath } from './helpers/responseMutation.js';
+} from '../src/features/developer/specs.ts';
+import { deletePath, movePath } from './helpers/responseMutation.ts';
 
 const readFixture = (path: string): string =>
   readFileSync(new URL(`./fixtures/${path}`, import.meta.url), 'utf8');

@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { GooglePlayError, NotFoundError } from '../core/errors.js';
-import { runCli } from './cli.js';
-import { commands } from './commands.js';
-import type { CliApi } from './commands.js';
+import { GooglePlayError, NotFoundError } from '../core/errors.ts';
+import { runCli } from './cli.ts';
+import { commands } from './commands.ts';
+import type { CliApi } from './commands.ts';
 
 interface RecordedIo {
   io: { out: (text: string) => void; err: (text: string) => void };

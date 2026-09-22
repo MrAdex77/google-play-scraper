@@ -1,19 +1,19 @@
 import { expect, it } from 'vitest';
-import { clientFromOptions, type HttpClient, type ResolveClient } from '../src/core/http.js';
-import { app } from '../src/features/app/app.js';
-import { createSearch, fetchSearchFirstPage } from '../src/features/search/search.js';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../src/core/http.ts';
+import { app } from '../src/features/app/app.ts';
+import { createSearch, fetchSearchFirstPage } from '../src/features/search/search.ts';
 import {
   type App,
   type DegradationEvent,
   type IntegrityEvent,
   type SearchResult,
-} from '../src/index.js';
+} from '../src/index.ts';
 import {
   expectAppItemsContract,
   expectRequestedCountContract,
   expectSearchListingAgreement,
-} from './contracts.js';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
+} from './contracts.ts';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 
 const GEO_GAME = 'com.adex77.WhereAmI';
 const EXACT_MATCH_CARD_CANDIDATES = [

@@ -1,4 +1,4 @@
-import type { ObservabilityOptions, RequestOptions } from './options.js';
+import type { ObservabilityOptions, RequestOptions } from './options.ts';
 
 export interface FullDetailOptions extends ObservabilityOptions {
   lang: string;

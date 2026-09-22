@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { liveClient, liveDescribe } from './helpers.js';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 liveDescribe('suggest live contract', () => {
   it('completes the where am i phrase with related suggestions', async () => {

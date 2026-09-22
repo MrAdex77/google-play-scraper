@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPath } from './path.js';
+import { getPath } from './path.ts';
 
 describe('getPath', () => {
   it('resolves a nested hit through arrays and objects', () => {

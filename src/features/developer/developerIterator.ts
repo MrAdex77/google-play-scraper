@@ -1,11 +1,11 @@
 import * as z from 'zod/mini';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
-import { parseOptions } from '../../core/options.js';
-import { clusterItemSpecs } from '../../core/clusterItem.js';
-import { clusterPages } from '../../core/pagination.js';
-import { DEVELOPER_CONTEXT, developerOptionsSchema, fetchDeveloperFirstPage } from './developer.js';
-import { developerAppSchema, type DeveloperApp } from './schema.js';
-import { CLUSTER_MAPPINGS } from './specs.js';
+import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import { parseOptions } from '../../core/options.ts';
+import { clusterItemSpecs } from '../../core/clusterItem.ts';
+import { clusterPages } from '../../core/pagination.ts';
+import { DEVELOPER_CONTEXT, developerOptionsSchema, fetchDeveloperFirstPage } from './developer.ts';
+import { developerAppSchema, type DeveloperApp } from './schema.ts';
+import { CLUSTER_MAPPINGS } from './specs.ts';
 
 const DEVELOPER_ITERATOR_CONTEXT = 'developerIterator';
 

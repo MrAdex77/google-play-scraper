@@ -1,4 +1,4 @@
-import type { ParseError } from './errors.js';
+import type { ParseError } from './errors.ts';
 
 export interface DegradationEvent {
   context: string;

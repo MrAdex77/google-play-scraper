@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { memoized } from './memoized.js';
-import { category } from '../../constants.js';
-import type { DegradationEvent } from '../../core/degradation.js';
-import { NotFoundError, ValidationError } from '../../core/errors.js';
-import type { RequestOptions } from '../../core/options.js';
-import type { App } from '../app/schema.js';
+import { memoized } from './memoized.ts';
+import { category } from '../../constants.ts';
+import type { DegradationEvent } from '../../core/degradation.ts';
+import { NotFoundError, ValidationError } from '../../core/errors.ts';
+import type { RequestOptions } from '../../core/options.ts';
+import type { App } from '../app/schema.ts';
 
 const readFixture = (dir: string, name: string): string =>
   readFileSync(

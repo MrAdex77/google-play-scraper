@@ -1,6 +1,6 @@
 import { $ZodError, parse, type $ZodType, type output } from 'zod/v4/core';
 import * as z from 'zod/mini';
-import { ParseError } from './errors.js';
+import { ParseError } from './errors.ts';
 
 function formatIssues(error: $ZodError): string {
   return error.issues

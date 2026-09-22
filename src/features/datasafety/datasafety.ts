@@ -1,12 +1,12 @@
 import * as z from 'zod/mini';
-import { BASE_URL } from '../../constants.js';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { parseScriptData } from '../../core/scriptData.js';
-import { resolveScriptRoot } from '../../core/scriptRoot.js';
-import { extract } from '../../core/spec.js';
-import { dataSafetySchema, type DataSafety } from './schema.js';
-import { dataSafetyRootSpec, dataSafetyScriptDataSelection, dataSafetySpecs } from './specs.js';
+import { BASE_URL } from '../../constants.ts';
+import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
+import { resolveScriptRoot } from '../../core/scriptRoot.ts';
+import { extract } from '../../core/spec.ts';
+import { dataSafetySchema, type DataSafety } from './schema.ts';
+import { dataSafetyRootSpec, dataSafetyScriptDataSelection, dataSafetySpecs } from './specs.ts';
 
 const DATA_SAFETY_CONTEXT = 'dataSafety';
 

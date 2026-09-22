@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
-import { defaulted, extract, optional, required } from './spec.js';
-import { parseScriptData, type ScriptData } from './scriptData.js';
-import { SpecError } from './errors.js';
+import { defaulted, extract, optional, required } from './spec.ts';
+import { parseScriptData, type ScriptData } from './scriptData.ts';
+import { SpecError } from './errors.ts';
 
 const detailsLike = readFileSync(
   fileURLToPath(new URL('../../test/fixtures/synthetic/details-like.html', import.meta.url)),

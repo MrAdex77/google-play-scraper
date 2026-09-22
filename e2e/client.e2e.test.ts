@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { createClient, memoized, type SearchResult } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { createClient, memoized, type SearchResult } from '../src/index.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 const QUEUE_DEPTH = 4;

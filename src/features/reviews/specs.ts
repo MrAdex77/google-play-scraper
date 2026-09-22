@@ -1,10 +1,10 @@
 import * as z from 'zod/mini';
-import { BASE_URL } from '../../constants.js';
-import type { Path } from '../../core/path.js';
-import { rawArrayPathSchema, rawOptionalArrayPathSchema } from '../../core/raw.js';
-import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
-import { sanitizeText } from '../../core/text.js';
-import { reviewSchema } from './schema.js';
+import { BASE_URL } from '../../constants.ts';
+import type { Path } from '../../core/path.ts';
+import { rawArrayPathSchema, rawOptionalArrayPathSchema } from '../../core/raw.ts';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
+import { sanitizeText } from '../../core/text.ts';
+import { reviewSchema } from './schema.ts';
 
 export const REVIEWS_RPC_ID = 'UsvDTd';
 export const REVIEWS_PER_REQUEST = 150;

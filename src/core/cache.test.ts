@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as z from 'zod/mini';
-import { createCallCache, createKeyBuilder } from './cache.js';
-import type { DegradationEvent } from './degradation.js';
-import { ParseError, ValidationError } from './errors.js';
-import type { IntegrityEvent } from './integrity.js';
-import { baseOptionsSchema, type ObservabilityOptions } from './options.js';
+import { createCallCache, createKeyBuilder } from './cache.ts';
+import type { DegradationEvent } from './degradation.ts';
+import { ParseError, ValidationError } from './errors.ts';
+import type { IntegrityEvent } from './integrity.ts';
+import { baseOptionsSchema, type ObservabilityOptions } from './options.ts';
 
 const optionsSchema = z.extend(baseOptionsSchema, {
   id: z.string().check(z.minLength(1)),

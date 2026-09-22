@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { suggest } from './suggest.js';
-import { SUGGEST_RPC_ID } from './specs.js';
-import { ParseError, ValidationError } from '../../core/errors.js';
+import { suggest } from './suggest.ts';
+import { SUGGEST_RPC_ID } from './specs.ts';
+import { ParseError, ValidationError } from '../../core/errors.ts';
 
 const pandFixture = readFileSync(
   fileURLToPath(new URL('../../../test/fixtures/suggest/pand.txt', import.meta.url)),

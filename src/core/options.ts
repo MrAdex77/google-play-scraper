@@ -1,9 +1,9 @@
 import { safeParse, type $ZodType } from 'zod/v4/core';
 import * as z from 'zod/mini';
-import type { OnDegradation } from './degradation.js';
-import type { OnRequest, OnResponse, OnRetry } from './http.js';
-import type { OnIntegrityEvent } from './integrity.js';
-import { ValidationError } from './errors.js';
+import type { OnDegradation } from './degradation.ts';
+import type { OnRequest, OnResponse, OnRetry } from './http.ts';
+import type { OnIntegrityEvent } from './integrity.ts';
+import { ValidationError } from './errors.ts';
 
 export const requestOptionsSchema = z.object({
   headers: z.optional(z.record(z.string(), z.string())),

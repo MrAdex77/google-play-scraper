@@ -1,8 +1,8 @@
-import type gplay from '../index.js';
-import { age, category, collection, sort } from '../constants.js';
-import type { Sort } from '../constants.js';
-import { ValidationError } from '../core/errors.js';
-import type { SearchOptions } from '../features/search/search.js';
+import type gplay from '../index.ts';
+import { age, category, collection, sort } from '../constants.ts';
+import type { Sort } from '../constants.ts';
+import { ValidationError } from '../core/errors.ts';
+import type { SearchOptions } from '../features/search/search.ts';
 
 export type CliApi = Pick<
   typeof gplay,

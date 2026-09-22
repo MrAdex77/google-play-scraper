@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { app } from '../src/features/app/app.js';
-import { APP_DETAILS_RPC_ID, appScriptDataSelection, appSpecs } from '../src/features/app/specs.js';
-import { dataSafety } from '../src/features/datasafety/datasafety.js';
-import { search } from '../src/features/search/search.js';
-import { ParseError, SpecError } from '../src/core/errors.js';
-import type { IntegrityEvent } from '../src/core/integrity.js';
-import { getPath, type Path } from '../src/core/path.js';
-import { parseScriptData } from '../src/core/scriptData.js';
+import { app } from '../src/features/app/app.ts';
+import { APP_DETAILS_RPC_ID, appScriptDataSelection, appSpecs } from '../src/features/app/specs.ts';
+import { dataSafety } from '../src/features/datasafety/datasafety.ts';
+import { search } from '../src/features/search/search.ts';
+import { ParseError, SpecError } from '../src/core/errors.ts';
+import type { IntegrityEvent } from '../src/core/integrity.ts';
+import { getPath, type Path } from '../src/core/path.ts';
+import { parseScriptData } from '../src/core/scriptData.ts';
 import {
   changeRoutingTableEntry,
   corruptScriptBlockData,
@@ -17,7 +17,7 @@ import {
   renameAfInitDataCallbackKey,
   reorderRoutingTableEntries,
   replaceScriptBlockData,
-} from './helpers/responseMutation.js';
+} from './helpers/responseMutation.ts';
 
 const APP_ID = 'com.google.android.apps.translate';
 const SYNTHETIC_KEY = 'ds:50';

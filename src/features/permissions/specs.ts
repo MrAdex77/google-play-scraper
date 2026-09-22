@@ -1,8 +1,8 @@
-import { BASE_URL, permission } from '../../constants.js';
-import { buildBatchBody } from '../../core/batchexecute.js';
-import { getPath, type Path } from '../../core/path.js';
-import { rawOptionalArrayPathSchema } from '../../core/raw.js';
-import type { AppPermission } from './schema.js';
+import { BASE_URL, permission } from '../../constants.ts';
+import { buildBatchBody } from '../../core/batchexecute.ts';
+import { getPath, type Path } from '../../core/path.ts';
+import { rawOptionalArrayPathSchema } from '../../core/raw.ts';
+import type { AppPermission } from './schema.ts';
 import * as z from 'zod/mini';
 
 export const PERMISSIONS_RPC_ID = 'xdSrCf';

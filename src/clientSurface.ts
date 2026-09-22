@@ -1,44 +1,44 @@
-import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
-import type { ResolveClient } from './core/http.js';
-import type { MethodWrapper } from './core/options.js';
-import type { app } from './features/app/app.js';
-import { appOptionsSchema, createApp } from './features/app/app.js';
-import type { apps } from './features/apps/apps.js';
-import { createApps } from './features/apps/apps.js';
-import type { availability } from './features/availability/availability.js';
+import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.ts';
+import type { ResolveClient } from './core/http.ts';
+import type { MethodWrapper } from './core/options.ts';
+import type { app } from './features/app/app.ts';
+import { appOptionsSchema, createApp } from './features/app/app.ts';
+import type { apps } from './features/apps/apps.ts';
+import { createApps } from './features/apps/apps.ts';
+import type { availability } from './features/availability/availability.ts';
 import {
   availabilityOptionsSchema,
   createAvailability,
-} from './features/availability/availability.js';
+} from './features/availability/availability.ts';
 import {
   categories,
   categoriesOptionsSchema,
   type CategoriesOptions,
-} from './features/categories/categories.js';
-import type { dataSafety } from './features/datasafety/datasafety.js';
-import { createDataSafety, dataSafetyOptionsSchema } from './features/datasafety/datasafety.js';
-import type { developer } from './features/developer/developer.js';
-import { createDeveloper, developerOptionsSchema } from './features/developer/developer.js';
-import type { developerIterator } from './features/developer/developerIterator.js';
-import { createDeveloperIterator } from './features/developer/developerIterator.js';
-import type { list } from './features/list/list.js';
-import { createList, listOptionsSchema } from './features/list/list.js';
-import type { permissions } from './features/permissions/permissions.js';
-import { createPermissions, permissionsOptionsSchema } from './features/permissions/permissions.js';
-import type { reviews } from './features/reviews/reviews.js';
-import { createReviews, reviewsOptionsSchema } from './features/reviews/reviews.js';
-import type { reviewsAll } from './features/reviews/reviewsAll.js';
-import { createReviewsAll } from './features/reviews/reviewsAll.js';
-import type { reviewsIterator } from './features/reviews/reviewsIterator.js';
-import { createReviewsIterator } from './features/reviews/reviewsIterator.js';
-import type { search } from './features/search/search.js';
-import { createSearch, searchOptionsSchema } from './features/search/search.js';
-import type { searchIterator } from './features/search/searchIterator.js';
-import { createSearchIterator } from './features/search/searchIterator.js';
-import type { similar } from './features/similar/similar.js';
-import { createSimilar, similarOptionsSchema } from './features/similar/similar.js';
-import type { suggest } from './features/suggest/suggest.js';
-import { createSuggest, suggestOptionsSchema } from './features/suggest/suggest.js';
+} from './features/categories/categories.ts';
+import type { dataSafety } from './features/datasafety/datasafety.ts';
+import { createDataSafety, dataSafetyOptionsSchema } from './features/datasafety/datasafety.ts';
+import type { developer } from './features/developer/developer.ts';
+import { createDeveloper, developerOptionsSchema } from './features/developer/developer.ts';
+import type { developerIterator } from './features/developer/developerIterator.ts';
+import { createDeveloperIterator } from './features/developer/developerIterator.ts';
+import type { list } from './features/list/list.ts';
+import { createList, listOptionsSchema } from './features/list/list.ts';
+import type { permissions } from './features/permissions/permissions.ts';
+import { createPermissions, permissionsOptionsSchema } from './features/permissions/permissions.ts';
+import type { reviews } from './features/reviews/reviews.ts';
+import { createReviews, reviewsOptionsSchema } from './features/reviews/reviews.ts';
+import type { reviewsAll } from './features/reviews/reviewsAll.ts';
+import { createReviewsAll } from './features/reviews/reviewsAll.ts';
+import type { reviewsIterator } from './features/reviews/reviewsIterator.ts';
+import { createReviewsIterator } from './features/reviews/reviewsIterator.ts';
+import type { search } from './features/search/search.ts';
+import { createSearch, searchOptionsSchema } from './features/search/search.ts';
+import type { searchIterator } from './features/search/searchIterator.ts';
+import { createSearchIterator } from './features/search/searchIterator.ts';
+import type { similar } from './features/similar/similar.ts';
+import { createSimilar, similarOptionsSchema } from './features/similar/similar.ts';
+import type { suggest } from './features/suggest/suggest.ts';
+import { createSuggest, suggestOptionsSchema } from './features/suggest/suggest.ts';
 
 export interface GooglePlayClient {
   BASE_URL: typeof BASE_URL;

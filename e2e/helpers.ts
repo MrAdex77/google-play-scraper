@@ -1,6 +1,6 @@
 import { describe, expect } from 'vitest';
-import { createClient } from '../src/index.js';
-import { fieldCoverage } from './coverage.js';
+import { createClient } from '../src/index.ts';
+import { fieldCoverage } from './coverage.ts';
 
 const LIVE_TESTS_DISABLED = process.env.GP_E2E === '0';
 

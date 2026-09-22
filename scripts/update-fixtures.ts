@@ -1,28 +1,28 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BASE_URL } from '../src/constants.js';
-import { buildBatchBody, parseBatchResponse } from '../src/core/batchexecute.js';
-import { createHttpClient, type HttpClient } from '../src/core/http.js';
-import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.js';
-import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.js';
-import { category, collection, sort } from '../src/constants.js';
-import { developerUrl } from '../src/features/developer/specs.js';
+import { BASE_URL } from '../src/constants.ts';
+import { buildBatchBody, parseBatchResponse } from '../src/core/batchexecute.ts';
+import { createHttpClient, type HttpClient } from '../src/core/http.ts';
+import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.ts';
+import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.ts';
+import { category, collection, sort } from '../src/constants.ts';
+import { developerUrl } from '../src/features/developer/specs.ts';
 import {
   findSimilarClusterPath,
   similarClusterUrl,
   similarDetailsUrl,
-} from '../src/features/similar/specs.js';
+} from '../src/features/similar/specs.ts';
 import {
   buildInitialReviewsBody,
   buildPaginatedReviewsBody,
   REVIEWS_RESPONSE_PATHS,
   REVIEWS_RPC_ID,
   reviewsUrl,
-} from '../src/features/reviews/specs.js';
-import { buildPermissionsBody, permissionsUrl } from '../src/features/permissions/specs.js';
-import { getPath } from '../src/core/path.js';
-import { parseScriptData } from '../src/core/scriptData.js';
+} from '../src/features/reviews/specs.ts';
+import { buildPermissionsBody, permissionsUrl } from '../src/features/permissions/specs.ts';
+import { getPath } from '../src/core/path.ts';
+import { parseScriptData } from '../src/core/scriptData.ts';
 
 interface Recorder {
   name: string;

@@ -2,9 +2,9 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { category } from '../src/index.js';
-import { expectRequestedCountContract } from './contracts.js';
-import { liveDescribe } from './helpers.js';
+import { category } from '../src/index.ts';
+import { expectRequestedCountContract } from './contracts.ts';
+import { liveDescribe } from './helpers.ts';
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -26,7 +26,7 @@ function runCliProcess(args: readonly string[]): Promise<CliRun> {
   return new Promise((resolve) => {
     execFile(
       process.execPath,
-      ['--import', 'tsx', 'src/cli/main.ts', ...args],
+      ['src/cli/main.ts', ...args],
       { cwd: REPO_ROOT, encoding: 'utf8', timeout: CLI_PROCESS_TIMEOUT_MS },
       (error, stdout, stderr) => {
         const exitCode = error === null ? 0 : typeof error.code === 'number' ? error.code : 1;

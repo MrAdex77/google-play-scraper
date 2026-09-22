@@ -3,17 +3,17 @@ import {
   age as ageConstants,
   category as categoryConstants,
   collection as collectionConstants,
-} from '../../constants.js';
-import { parseBatchResponse } from '../../core/batchexecute.js';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { getPath } from '../../core/path.js';
-import { parseRaw } from '../../core/raw.js';
-import { resolveFullDetail, type GetApp } from '../../core/fullDetail.js';
-import { extract } from '../../core/spec.js';
-import { app } from '../app/app.js';
-import type { App } from '../app/schema.js';
-import { listItemSchema, type ListItem } from './schema.js';
+} from '../../constants.ts';
+import { parseBatchResponse } from '../../core/batchexecute.ts';
+import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { getPath } from '../../core/path.ts';
+import { parseRaw } from '../../core/raw.ts';
+import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
+import { extract } from '../../core/spec.ts';
+import { app } from '../app/app.ts';
+import type { App } from '../app/schema.ts';
+import { listItemSchema, type ListItem } from './schema.ts';
 import {
   APPS_PATH,
   buildListBody,
@@ -22,7 +22,7 @@ import {
   LIST_RPC_ID,
   listResponseSchema,
   listUrl,
-} from './specs.js';
+} from './specs.ts';
 
 export const listOptionsSchema = z.extend(baseOptionsSchema, {
   collection: z._default(z.enum(collectionConstants), 'TOP_FREE'),

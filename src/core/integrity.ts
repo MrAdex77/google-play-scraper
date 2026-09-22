@@ -1,4 +1,4 @@
-import { ParseError } from './errors.js';
+import { ParseError } from './errors.ts';
 
 export type IntegrityReason =
   | 'rpc-anchor-fallback'

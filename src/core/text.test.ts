@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeText } from './text.js';
+import { sanitizeText } from './text.ts';
 
 describe('sanitizeText', () => {
   it('strips null bytes from within text', () => {

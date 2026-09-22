@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { reviewsAll } from './reviewsAll.js';
-import { REVIEWS_RPC_ID } from './specs.js';
-import { ValidationError } from '../../core/errors.js';
+import { reviewsAll } from './reviewsAll.ts';
+import { REVIEWS_RPC_ID } from './specs.ts';
+import { ValidationError } from '../../core/errors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coverageReport, fieldCoverage } from '../e2e/coverage.js';
+import { coverageReport, fieldCoverage } from '../e2e/coverage.ts';
 
 describe('fieldCoverage', () => {
   it('reports full coverage when every item fills the field', () => {

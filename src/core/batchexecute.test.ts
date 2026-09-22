@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BATCH_URL, buildBatchBody, parseBatchResponse } from './batchexecute.js';
-import { BASE_URL } from '../constants.js';
-import { ParseError } from './errors.js';
+import { BATCH_URL, buildBatchBody, parseBatchResponse } from './batchexecute.ts';
+import { BASE_URL } from '../constants.ts';
+import { ParseError } from './errors.ts';
 
 const chunked = readFileSync(
   fileURLToPath(new URL('../../test/fixtures/synthetic/batch-chunked.txt', import.meta.url)),

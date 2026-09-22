@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createClient } from './client.js';
-import { app } from './features/app/app.js';
-import type { App } from './features/app/schema.js';
-import type { DegradationEvent } from './core/degradation.js';
-import { ValidationError } from './core/errors.js';
+import { createClient } from './client.ts';
+import { app } from './features/app/app.ts';
+import type { App } from './features/app/schema.ts';
+import type { DegradationEvent } from './core/degradation.ts';
+import { ValidationError } from './core/errors.ts';
 
 const readFixture = (path: string): string =>
   readFileSync(fileURLToPath(new URL(`../test/fixtures/${path}`, import.meta.url)), 'utf8');

@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { createList, list, type ListOptions } from './list.js';
-import { listItemSchema, type ListItem } from './schema.js';
-import { buildListBody, CLUSTER_NAMES, LIST_RPC_ID } from './specs.js';
-import type { App } from '../app/schema.js';
-import type { OnIntegrityEvent } from '../../core/integrity.js';
-import type { OnDegradation } from '../../core/degradation.js';
-import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
+import { createList, list, type ListOptions } from './list.ts';
+import { listItemSchema, type ListItem } from './schema.ts';
+import { buildListBody, CLUSTER_NAMES, LIST_RPC_ID } from './specs.ts';
+import type { App } from '../app/schema.ts';
+import type { OnIntegrityEvent } from '../../core/integrity.ts';
+import type { OnDegradation } from '../../core/degradation.ts';
+import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 
 const topFreeGame = readFileSync(
   fileURLToPath(new URL('../../../test/fixtures/list/topfree-game.txt', import.meta.url)),

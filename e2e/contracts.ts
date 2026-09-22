@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import type { App, AppItem, Review, ReviewsResult } from '../src/index.js';
+import type { App, AppItem, Review, ReviewsResult } from '../src/index.ts';
 
 const PLAY_ORIGIN = 'https://play.google.com';
 const HTTPS_PROTOCOL = 'https:';

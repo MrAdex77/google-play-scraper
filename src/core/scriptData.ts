@@ -1,6 +1,6 @@
-import { ParseError } from './errors.js';
-import type { FieldSpec } from './spec.js';
-import type { ScriptRootSpec } from './scriptRoot.js';
+import { ParseError } from './errors.ts';
+import type { FieldSpec } from './spec.ts';
+import type { ScriptRootSpec } from './scriptRoot.ts';
 
 export interface ScriptData {
   blocks: Record<string, unknown>;

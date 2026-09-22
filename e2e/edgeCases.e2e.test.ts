@@ -1,14 +1,14 @@
 import { expect, it } from 'vitest';
-import { permission } from '../src/index.js';
-import type { App, IntegrityEvent, ListItem, SearchResult, SimilarApp } from '../src/index.js';
+import { permission } from '../src/index.ts';
+import type { App, IntegrityEvent, ListItem, SearchResult, SimilarApp } from '../src/index.ts';
 import {
   expectAppItemsContract,
   expectListingContract,
   expectRequestedCountContract,
   expectReviewsContract,
   expectSearchListingAgreement,
-} from './contracts.js';
-import { liveClient, liveDescribe } from './helpers.js';
+} from './contracts.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const SPARSE_REVIEW_ANCHOR = 'app.hobby_tracker_app';
 const SPARSE_RATING_ANCHOR = 'com.geoguess.app';

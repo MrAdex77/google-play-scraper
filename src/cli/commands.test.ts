@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { sort } from '../constants.js';
-import { ValidationError } from '../core/errors.js';
-import { commands } from './commands.js';
-import type { CliApi, CliCommand, CliValues } from './commands.js';
+import { sort } from '../constants.ts';
+import { ValidationError } from '../core/errors.ts';
+import { commands } from './commands.ts';
+import type { CliApi, CliCommand, CliValues } from './commands.ts';
 
 interface RecordedCall {
   method: string;

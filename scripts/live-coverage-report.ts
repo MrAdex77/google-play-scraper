@@ -1,6 +1,6 @@
-import { coverageReport, type CoverageCounts } from '../e2e/coverage.js';
-import { liveClient } from '../e2e/helpers.js';
-import { sort } from '../src/index.js';
+import { coverageReport, type CoverageCounts } from '../e2e/coverage.ts';
+import { liveClient } from '../e2e/helpers.ts';
+import { sort } from '../src/index.ts';
 
 type Items = readonly Record<string, unknown>[];
 

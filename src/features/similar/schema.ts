@@ -1,4 +1,4 @@
-import { appItemSchema, type AppItem } from '../../core/appItem.js';
+import { appItemSchema, type AppItem } from '../../core/appItem.ts';
 
 export const similarAppSchema = appItemSchema;
 

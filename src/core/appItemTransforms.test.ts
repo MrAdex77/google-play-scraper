@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isFreeMicros, microsToUnits, resolveAppUrl } from './appItemTransforms.js';
+import { isFreeMicros, microsToUnits, resolveAppUrl } from './appItemTransforms.ts';
 
 describe('app item transforms', () => {
   it('resolves relative app links and rejects non-string values', () => {

@@ -1,9 +1,9 @@
 import { bench, describe } from 'vitest';
-import { parseScriptData } from '../src/core/scriptData.js';
-import { createApp } from '../src/features/app/app.js';
-import { appScriptDataSelection } from '../src/features/app/specs.js';
-import { APP_FIXTURES, loadAppFixture } from './fixtures.js';
-import type { AppFixtureName } from './fixtures.js';
+import { parseScriptData } from '../src/core/scriptData.ts';
+import { createApp } from '../src/features/app/app.ts';
+import { appScriptDataSelection } from '../src/features/app/specs.ts';
+import { APP_FIXTURES, loadAppFixture } from './fixtures.ts';
+import type { AppFixtureName } from './fixtures.ts';
 
 const offlineApp = (html: string) => createApp(() => ({ request: () => Promise.resolve(html) }));
 
