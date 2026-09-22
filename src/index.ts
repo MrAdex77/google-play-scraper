@@ -106,8 +106,8 @@ export {
 } from './features/datasafety/schema.js';
 export type { DataEntry, DataSafety, SecurityPractice } from './features/datasafety/schema.js';
 
-export { memoized } from './features/memoized/memoized.js';
-export type { MemoizedOptions } from './features/memoized/memoized.js';
+export { memoized, memoizedOptionsSchema } from './features/memoized/memoized.js';
+export type { ClientCache, MemoizedClient, MemoizedOptions } from './features/memoized/memoized.js';
 
 export { createClient, clientOptionsSchema } from './client.js';
 export type { ClientOptions } from './client.js';

@@ -1,134 +1,57 @@
-import { LRUCache } from 'lru-cache';
+import * as z from 'zod/mini';
+import { clientOptionsSchema, createSharedTransport } from '../../client.js';
 import {
-  BASE_URL,
-  age,
-  category,
-  clusters,
-  collection,
-  permission,
-  sort,
-} from '../../constants.js';
-import type { GooglePlayClient } from '../../index.js';
-import { app } from '../app/app.js';
-import { createApps } from '../apps/apps.js';
-import { availability } from '../availability/availability.js';
-import { categories, type CategoriesOptions } from '../categories/categories.js';
-import { dataSafety } from '../datasafety/datasafety.js';
-import { createDeveloper } from '../developer/developer.js';
-import { createList } from '../list/list.js';
-import { permissions } from '../permissions/permissions.js';
-import { reviews } from '../reviews/reviews.js';
-import { createSearch } from '../search/search.js';
-import { createSimilar } from '../similar/similar.js';
-import { suggest } from '../suggest/suggest.js';
-
-export interface MemoizedOptions {
-  maxAgeMs?: number;
-  max?: number;
-}
+  buildClientSurface,
+  type CachedMethodName,
+  type GooglePlayClient,
+  type GooglePlayIterators,
+  type Passthrough,
+} from '../../clientSurface.js';
+import { createCallCache } from '../../core/cache.js';
+import { parseOptions, type MethodWrapper } from '../../core/options.js';
 
 const DEFAULT_MAX_AGE_MS = 1000 * 60 * 5;
 const DEFAULT_MAX = 1000;
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+const MAX_ENTRIES = 1_000_000;
+const MEMOIZED_CONTEXT = 'memoized';
 
-type AsyncMethod<Args, Result> = (options: Args) => Promise<Result>;
+export const memoizedOptionsSchema = z.extend(clientOptionsSchema, {
+  maxAgeMs: z._default(z.int().check(z.positive(), z.lte(MAX_TIMER_DELAY_MS)), DEFAULT_MAX_AGE_MS),
+  max: z._default(z.int().check(z.positive(), z.lte(MAX_ENTRIES)), DEFAULT_MAX),
+});
 
-type Memoizer = <Args, Result>(
-  name: string,
-  fn: AsyncMethod<Args, Result>,
-) => AsyncMethod<Args, Result>;
+export type MemoizedOptions = z.input<typeof memoizedOptionsSchema>;
 
-function createKeyBuilder(): (name: string, options: unknown) => string {
-  const identities = new WeakMap<WeakKey, number>();
-  let nextIdentity = 0;
-
-  const identityOf = (value: WeakKey): number => {
-    let identity = identities.get(value);
-    if (identity === undefined) {
-      nextIdentity += 1;
-      identity = nextIdentity;
-      identities.set(value, identity);
-    }
-    return identity;
-  };
-
-  const encode = (value: unknown): unknown =>
-    typeof value === 'function' || value instanceof AbortSignal
-      ? `identity:${identityOf(value).toString()}`
-      : value;
-
-  return (name, options) =>
-    `${name}:${JSON.stringify(options, (_property, value: unknown) => encode(value))}`;
+export interface ClientCache {
+  readonly size: number;
+  clear(): void;
+  invalidate<Name extends CachedMethodName>(
+    name: Name,
+    options: Parameters<GooglePlayClient[Name]>[0],
+  ): boolean;
 }
 
-function createMemoizer(maxAgeMs: number, max: number): Memoizer {
-  const keyFor = createKeyBuilder();
-  const lifecycle = new LRUCache<string, () => void>({
-    max,
-    ttl: maxAgeMs,
-    ttlAutopurge: true,
-    perf: { now: () => Date.now() },
-    dispose: (drop) => {
-      drop();
-    },
-  });
+export type MemoizedClient = GooglePlayClient & GooglePlayIterators & { cache: ClientCache };
 
-  return <Args, Result>(name: string, fn: AsyncMethod<Args, Result>): AsyncMethod<Args, Result> => {
-    const store = new Map<string, Promise<Result>>();
+export function memoized(options?: MemoizedOptions): MemoizedClient {
+  const parsed = parseOptions(memoizedOptionsSchema, options ?? {}, MEMOIZED_CONTEXT);
+  const { resolveClient, applyDefaults } = createSharedTransport(parsed);
+  const cache = createCallCache(parsed);
 
-    return (options: Args): Promise<Result> => {
-      const key = keyFor(name, options);
-
-      if (lifecycle.has(key)) {
-        const cached = store.get(key);
-        if (cached !== undefined) {
-          return cached;
-        }
-      }
-
-      const pending = fn(options);
-      store.set(key, pending);
-      lifecycle.set(key, () => {
-        store.delete(key);
-      });
-      pending.catch(() => {
-        store.delete(key);
-        lifecycle.delete(key);
-      });
-
-      return pending;
-    };
-  };
-}
-
-export function memoized(options?: MemoizedOptions): GooglePlayClient {
-  const maxAgeMs = options?.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
-  const max = options?.max ?? DEFAULT_MAX;
-  const memoize = createMemoizer(maxAgeMs, max);
-
-  const memoApp = memoize('app', app);
-  const memoCategories = memoize('categories', (input: CategoriesOptions | undefined) =>
-    categories(input),
-  );
+  const passthrough: Passthrough = (fn) => (callOptions) => fn(applyDefaults(callOptions));
+  const cached: MethodWrapper = (name, schema, fn) => passthrough(cache.memoize(name, schema, fn));
 
   return {
-    BASE_URL,
-    age,
-    category,
-    clusters,
-    collection,
-    permission,
-    sort,
-    app: memoApp,
-    apps: createApps(memoApp),
-    availability: memoize('availability', availability),
-    search: memoize('search', createSearch(memoApp)),
-    suggest: memoize('suggest', suggest),
-    list: memoize('list', createList(memoApp)),
-    categories: (input?: CategoriesOptions) => memoCategories(input),
-    developer: memoize('developer', createDeveloper(memoApp)),
-    similar: memoize('similar', createSimilar(memoApp)),
-    reviews: memoize('reviews', reviews),
-    permissions: memoize('permissions', permissions),
-    dataSafety: memoize('dataSafety', dataSafety),
+    ...buildClientSurface({ resolveClient, cached, passthrough }),
+    cache: {
+      get size() {
+        return cache.size;
+      },
+      clear: () => {
+        cache.clear();
+      },
+      invalidate: (name, callOptions) => cache.invalidate(name, applyDefaults(callOptions ?? {})),
+    },
   };
 }
