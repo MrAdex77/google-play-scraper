@@ -14,10 +14,24 @@ updates:
     labels:
       - dependencies
     groups:
-      production-dependencies:
+      production-minor-patch:
         dependency-type: production
-      development-dependencies:
+        update-types:
+          - minor
+          - patch
+      production-major:
+        dependency-type: production
+        update-types:
+          - major
+      development-minor-patch:
         dependency-type: development
+        update-types:
+          - minor
+          - patch
+      development-major:
+        dependency-type: development
+        update-types:
+          - major
   - package-ecosystem: github-actions
     directory: /
     schedule:
