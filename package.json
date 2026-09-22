@@ -114,7 +114,7 @@
     "lint-staged": "^17.3.0",
     "prettier": "^3.9.6",
     "publint": "^0.3.22",
-    "tsdown": "^0.22.14",
+    "tsdown": "^0.23.0",
     "tsx": "^4.23.5",
     "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
