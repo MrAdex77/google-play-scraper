@@ -54,6 +54,8 @@ export interface HttpClient {
   request(req: HttpRequest): Promise<string>;
 }
 
+type Attempt = { body: string } | { delayMs: number };
+
 export type ResolveClient = (opts: {
   throttle?: number;
   requestOptions?: RequestOptions;
@@ -250,12 +252,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
       attempt: attempt + 1,
     });
 
-    for (let attempt = 0; ; attempt += 1) {
-      callerSignal?.throwIfAborted();
-      if (limiter) {
-        await limiter(callerSignal);
-      }
-      callerSignal?.throwIfAborted();
+    const attemptOnce = async (attempt: number): Promise<Attempt> => {
       emit(config.onRequest, eventFor(attempt));
       const startedAt = performance.now();
       try {
@@ -265,23 +262,16 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
           body: req.body,
           signal: buildRequestSignal(timeoutMs, callerSignal),
         });
-
-        if (response.ok) {
-          const body = await response.text();
-          emit(config.onResponse, {
-            ...eventFor(attempt),
-            status: response.status,
-            durationMs: performance.now() - startedAt,
-          });
-          assertNotBlocked(response, body);
-          return body;
-        }
-
+        const body = response.ok ? await response.text() : undefined;
         emit(config.onResponse, {
           ...eventFor(attempt),
           status: response.status,
           durationMs: performance.now() - startedAt,
         });
+        if (body !== undefined) {
+          assertNotBlocked(response, body);
+          return { body };
+        }
 
         const retryAfterMs = parseRetryAfter(response);
         const honored = retryAfterMs === undefined || retryAfterMs <= MAX_RETRY_AFTER_MS;
@@ -293,8 +283,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
             reason: 'status',
             status: response.status,
           });
-          await wait(delayMs, callerSignal);
-          continue;
+          return { delayMs };
         }
 
         throw mapStatusToError(response.status, req.url);
@@ -308,13 +297,25 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
         if (attempt < retries) {
           const delayMs = jitteredBackoff(attempt);
           emit(config.onRetry, { ...eventFor(attempt), delayMs, reason: 'network' });
-          await wait(delayMs, callerSignal);
-          continue;
+          return { delayMs };
         }
         const httpError = new HttpError(`Network request to ${req.url} failed`, 0, req.url);
         httpError.cause = error;
         throw httpError;
       }
+    };
+
+    for (let attempt = 0; ; attempt += 1) {
+      callerSignal?.throwIfAborted();
+      if (limiter) {
+        await limiter(callerSignal);
+      }
+      callerSignal?.throwIfAborted();
+      const outcome = await attemptOnce(attempt);
+      if ('body' in outcome) {
+        return outcome.body;
+      }
+      await wait(outcome.delayMs, callerSignal);
     }
   };
 
