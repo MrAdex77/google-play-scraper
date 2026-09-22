@@ -186,6 +186,37 @@ describe('createCallCache', () => {
     await expect(retried).resolves.toBe('ok');
   });
 
+  it('delivers events recorded before a rejection to every caller of the failed miss', async () => {
+    const cache = createCallCache(settings);
+    const { pending, fn } = deferredMethod();
+    const emitThenFail = (options: Options & ObservabilityOptions): Promise<string> => {
+      const promise = fn();
+      options.onDegradation?.(degradation('search'));
+      return promise;
+    };
+    const method = cache.memoize('search', optionsSchema, emitThenFail);
+    const seen: string[] = [];
+
+    const first = method({
+      id: 'a',
+      onDegradation: (event) => {
+        seen.push(`first:${event.reason}`);
+      },
+    });
+    const second = method({
+      id: 'a',
+      onDegradation: (event) => {
+        seen.push(`second:${event.reason}`);
+      },
+    });
+    pending[0]?.reject(new Error('boom'));
+
+    await expect(first).rejects.toThrow('boom');
+    await expect(second).rejects.toThrow('boom');
+    expect(seen).toEqual(['first:cluster-page-parse', 'second:cluster-page-parse']);
+    expect(cache.size).toBe(0);
+  });
+
   it('keeps a replacement entry when an invalidated miss rejects late', async () => {
     const cache = createCallCache(settings);
     const { pending, fn } = deferredMethod();

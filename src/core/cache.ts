@@ -156,9 +156,11 @@ export function createCallCache(settings: CacheSettings): CallCache {
       const key = keyOf(options);
       const cached = lifecycle.get(key) === undefined ? undefined : store.get(key);
       const entry = cached ?? begin(key, options);
-      const result = await entry.promise;
-      deliver(entry.events, options);
-      return result;
+      try {
+        return await entry.promise;
+      } finally {
+        deliver(entry.events, options);
+      }
     };
   };
 
