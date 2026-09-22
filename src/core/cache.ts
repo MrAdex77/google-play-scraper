@@ -32,18 +32,18 @@ interface CacheEntry<Result> {
   events: RecordedEvent[];
 }
 
-const PAYLOAD_NEUTRAL_KEYS: ReadonlySet<string> = new Set([
+const PAYLOAD_NEUTRAL_OPTIONS: ReadonlySet<string> = new Set([
   'throttle',
   'concurrency',
   'onDegradation',
   'onIntegrityEvent',
+]);
+
+const PAYLOAD_NEUTRAL_REQUEST_OPTIONS: ReadonlySet<string> = new Set([
   'onRequest',
   'onResponse',
   'onRetry',
 ]);
-
-const COUNTRY_KEY = 'country';
-const COUNTRIES_KEY = 'countries';
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return (
@@ -59,8 +59,30 @@ function sortedRecord(value: Record<string, unknown>): Record<string, unknown> {
   );
 }
 
+function withoutProperties(
+  value: Record<string, unknown>,
+  excluded: ReadonlySet<string>,
+): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([property]) => !excluded.has(property)));
+}
+
 function normalizeCountries(value: readonly unknown[]): unknown[] {
   return value.map((entry) => (typeof entry === 'string' ? normalizeCountry(entry) : entry));
+}
+
+function payloadOptions(parsedOptions: unknown): unknown {
+  if (!isPlainRecord(parsedOptions)) {
+    return parsedOptions;
+  }
+  const { country, countries, requestOptions } = parsedOptions;
+  return {
+    ...withoutProperties(parsedOptions, PAYLOAD_NEUTRAL_OPTIONS),
+    country: typeof country === 'string' ? normalizeCountry(country) : country,
+    countries: Array.isArray(countries) ? normalizeCountries(countries) : countries,
+    requestOptions: isPlainRecord(requestOptions)
+      ? withoutProperties(requestOptions, PAYLOAD_NEUTRAL_REQUEST_OPTIONS)
+      : requestOptions,
+  };
 }
 
 export function createKeyBuilder(): (name: string, parsedOptions: unknown) => string {
@@ -77,24 +99,15 @@ export function createKeyBuilder(): (name: string, parsedOptions: unknown) => st
     return identity;
   };
 
-  const canonical = (key: string, value: unknown): unknown => {
-    if (PAYLOAD_NEUTRAL_KEYS.has(key)) {
-      return undefined;
-    }
+  const canonical = (value: unknown): unknown => {
     if (typeof value === 'function' || value instanceof AbortSignal) {
       return `identity:${identityOf(value).toString()}`;
-    }
-    if (key === COUNTRY_KEY && typeof value === 'string') {
-      return normalizeCountry(value);
-    }
-    if (key === COUNTRIES_KEY && Array.isArray(value)) {
-      return normalizeCountries(value);
     }
     return isPlainRecord(value) ? sortedRecord(value) : value;
   };
 
   return (name, parsedOptions) =>
-    `${name}:${JSON.stringify(parsedOptions, (key, value: unknown) => canonical(key, value))}`;
+    `${name}:${JSON.stringify(payloadOptions(parsedOptions), (_key, value: unknown) => canonical(value))}`;
 }
 
 function deliver(events: readonly RecordedEvent[], callbacks: ObservabilityOptions): void {

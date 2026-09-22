@@ -80,6 +80,18 @@ describe('createKeyBuilder', () => {
     );
   });
 
+  it('normalizes only top-level options and leaves same-named headers in the key', () => {
+    const headers = (country: string, throttle: string) =>
+      keyFor('app', { requestOptions: { headers: { country, throttle } } });
+
+    expect(headers('PL', '1')).not.toBe(headers('pl', '1'));
+    expect(headers('pl', '1')).not.toBe(headers('pl', '2'));
+  });
+
+  it('keys options that are not a plain object as given', () => {
+    expect(keyFor('suggest', 'term')).toBe('suggest:"term"');
+  });
+
   it('keys functions and signals by identity', () => {
     const fetchImpl: typeof fetch = () => Promise.reject(new Error('unused'));
     const otherFetch: typeof fetch = () => Promise.reject(new Error('unused'));
