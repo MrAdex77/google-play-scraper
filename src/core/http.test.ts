@@ -676,6 +676,66 @@ describe('cancellation cleanup', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it('rejects a reservation made with an already aborted signal without queueing', async () => {
+    vi.useFakeTimers();
+    const limiter = createRateLimiter(1);
+    const reason = { code: 'STOP' };
+    await limiter();
+    const queued = limiter();
+
+    const settled = limiter(AbortSignal.abort(reason)).catch((caught: unknown) => caught);
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(settled).resolves.toBe(reason);
+    await vi.runAllTimersAsync();
+    await expect(queued).resolves.toBeUndefined();
+  });
+
+  it('hands an abort raised in onRequest to the fetch it precedes', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    const fetchImpl = vi.fn((_input: string | URL | Request, init?: RequestInit) =>
+      init?.signal?.aborted
+        ? Promise.reject(new Error('aborted'))
+        : Promise.resolve(fakeResponse({ body: 'ok' })),
+    );
+    const client = createHttpClient({
+      fetchImpl,
+      signal: controller.signal,
+      onRequest: () => {
+        controller.abort(reason);
+      },
+    });
+
+    await expect(
+      client.request({ url: 'https://x' }).catch((caught: unknown) => caught),
+    ).resolves.toBe(reason);
+    expect(lastInit(fetchImpl).signal?.reason).toBe(reason);
+  });
+
+  it('emits no retry event after an abort raised in onResponse', async () => {
+    const controller = new AbortController();
+    const reason = { code: 'STOP' };
+    const retries: RetryEvent[] = [];
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ status: 503 }));
+    const client = createHttpClient({
+      fetchImpl,
+      signal: controller.signal,
+      onResponse: () => {
+        controller.abort(reason);
+      },
+      onRetry: (event) => {
+        retries.push(event);
+      },
+    });
+
+    const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+
+    expect(error).toBe(reason);
+    expect(retries).toEqual([]);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps survivor throughput when half of a queued burst is aborted', async () => {
     vi.useFakeTimers();
     const start = Date.now();
@@ -755,6 +815,20 @@ describe('Retry-After handling', () => {
 
   it('honors a zero padded delta-seconds value', async () => {
     await expectRetryDelay(retryAfter('007'), 7000);
+  });
+
+  it('honors a zero delta-seconds value as an immediate retry', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(retryAfter('0'))
+      .mockResolvedValue(fakeResponse({ body: 'ok' }));
+    const client = createHttpClient({ fetchImpl });
+
+    const pending = client.request({ url: 'https://x' });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    await expect(pending).resolves.toBe('ok');
   });
 
   it('ends the call instead of waiting past the cap', async () => {

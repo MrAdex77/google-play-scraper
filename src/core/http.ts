@@ -97,6 +97,13 @@ function settleAfter(ms: number, signal: AbortSignal | undefined): Promise<void>
   });
 }
 
+function onAbort(signal: AbortSignal, listener: () => void): void {
+  signal.addEventListener('abort', listener, { once: true });
+  if (signal.aborted) {
+    listener();
+  }
+}
+
 function settledOrAborted(pending: Promise<void>, signal: AbortSignal | undefined): Promise<void> {
   if (signal === undefined) {
     return pending;
@@ -106,7 +113,7 @@ function settledOrAborted(pending: Promise<void>, signal: AbortSignal | undefine
       signal.removeEventListener('abort', settle);
       resolve();
     };
-    signal.addEventListener('abort', settle, { once: true });
+    onAbort(signal, settle);
     pending.then(settle, settle);
   }).then(() => {
     signal.throwIfAborted();
@@ -221,7 +228,9 @@ function attemptSignalFor(timeoutMs: number, caller: AbortSignal | undefined): A
   const timer = setTimeout(() => {
     controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
   }, timeoutMs);
-  caller?.addEventListener('abort', forwardAbort, { once: true });
+  if (caller !== undefined) {
+    onAbort(caller, forwardAbort);
+  }
   return {
     signal: controller.signal,
     release: () => {
@@ -295,6 +304,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
         const retryAfterMs = parseRetryAfter(response);
         const honored = retryAfterMs === undefined || retryAfterMs <= MAX_RETRY_AFTER_MS;
         if (isRetryableStatus(response.status) && attempt < retries && honored) {
+          callerSignal?.throwIfAborted();
           const delayMs = retryAfterMs ?? jitteredBackoff(attempt);
           emit(config.onRetry, {
             ...eventFor(attempt),
