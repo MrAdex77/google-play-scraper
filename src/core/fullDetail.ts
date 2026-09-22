@@ -1,4 +1,4 @@
-import type { RequestOptions } from './options.js';
+import type { ObservabilityOptions, RequestOptions } from './options.js';
 
 export interface FullDetailOptions {
   lang: string;
@@ -7,7 +7,7 @@ export interface FullDetailOptions {
   requestOptions?: RequestOptions;
 }
 
-export interface GetAppParams {
+export interface GetAppParams extends ObservabilityOptions {
   appId: string;
   lang: string;
   country: string;

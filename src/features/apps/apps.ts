@@ -44,6 +44,8 @@ export function createApps(getApp: GetApp<App>) {
             country: parsed.country,
             throttle: parsed.throttle,
             requestOptions: parsed.requestOptions,
+            onDegradation: parsed.onDegradation,
+            onIntegrityEvent: parsed.onIntegrityEvent,
           });
           return { appId, status: 'fulfilled', app: result };
         } catch (error) {
