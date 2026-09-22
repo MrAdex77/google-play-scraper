@@ -417,9 +417,11 @@ will therefore appear to be ignored, which is correct.
 
 Cancellation is terminal and immediate at every stage: before the call, during
 the request or body read, during backoff or a `Retry-After` wait, and while
-queued behind a throttle slot. An aborted call performs no fetch, emits no
-lifecycle hook event past the point of abort, consumes no rate slot, and leaves
-no listener on the caller's signal. `e2e/client.e2e.test.ts` gates the queued
+queued behind a throttle slot. An aborted call performs no fetch, consumes no
+rate slot, and leaves no listener on the caller's signal. It emits no lifecycle
+hook event past the point of abort, with one exception: a custom `fetchImpl`
+that ignores `init.signal` still yields an `onResponse` event when its late
+response settles, and the call then rejects with the caller's reason. `e2e/client.e2e.test.ts` gates the queued
 case live: with a throttle of one request per second, four calls sharing one
 signal must all settle inside the first throttle window. Before the fix that run
 took 3002 ms; after it, 205 ms. A regression there means the signal stopped
