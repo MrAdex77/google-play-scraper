@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createClient, type SearchResult } from '../src/index.js';
+import { createClient, memoized, type SearchResult } from '../src/index.js';
 import { liveClient, liveDescribe } from './helpers.js';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -27,6 +27,36 @@ liveDescribe('createClient live contract', () => {
 
     expect(details.appId).toBe(TRANSLATE);
     expect(details.url).toContain('gl=pl');
+  });
+});
+
+liveDescribe('memoized live contract', () => {
+  it('serves an equivalent app call from cache and honors targeted invalidation', async () => {
+    const requested: string[] = [];
+    const client = memoized({
+      country: 'pl',
+      lang: 'pl',
+      throttle: 1,
+      requestOptions: {
+        onRequest: (event) => {
+          requested.push(event.url);
+        },
+      },
+    });
+
+    const warmed = await client.app({ appId: TRANSLATE });
+    const hit = await client.app({ appId: TRANSLATE, country: 'PL', lang: 'pl' });
+
+    expect(warmed.url).toContain('gl=pl');
+    expect(warmed.url).toContain('hl=pl');
+    expect(hit).toBe(warmed);
+    expect(requested).toHaveLength(1);
+    expect(client.cache.size).toBe(1);
+
+    expect(client.cache.invalidate('app', { appId: TRANSLATE })).toBe(true);
+    const refreshed = await client.app({ appId: TRANSLATE });
+    expect(refreshed.appId).toBe(TRANSLATE);
+    expect(requested).toHaveLength(2);
   });
 });
 
