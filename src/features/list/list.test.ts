@@ -5,6 +5,8 @@ import { createList, list, type ListOptions } from './list.js';
 import { listItemSchema, type ListItem } from './schema.js';
 import { buildListBody, CLUSTER_NAMES, LIST_RPC_ID } from './specs.js';
 import type { App } from '../app/schema.js';
+import type { OnIntegrityEvent } from '../../core/integrity.js';
+import type { OnDegradation } from '../../core/degradation.js';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
 
 const topFreeGame = readFileSync(
@@ -201,6 +203,31 @@ describe('list option validation', () => {
 });
 
 describe('list fullDetail', () => {
+  it('forwards per-call observability callbacks to each detail lookup', async () => {
+    const onDegradation: OnDegradation = () => undefined;
+    const onIntegrityEvent: OnIntegrityEvent = () => undefined;
+    const received: [unknown, unknown][] = [];
+    const detailed = createList((params) => {
+      received.push([params.onDegradation, params.onIntegrityEvent]);
+      return Promise.resolve({ appId: params.appId } as App);
+    });
+
+    await detailed({
+      collection: 'TOP_FREE',
+      category: 'GAME',
+      num: 5,
+      requestOptions: { fetchImpl: fetchReturning(topFreeGame) },
+      fullDetail: true,
+      onDegradation,
+      onIntegrityEvent,
+    });
+
+    expect(received.length).toBeGreaterThan(0);
+    for (const pair of received) {
+      expect(pair).toEqual([onDegradation, onIntegrityEvent]);
+    }
+  });
+
   it('resolves each item through the injected getApp exactly once', async () => {
     const plain = (await list({
       collection: 'TOP_FREE',

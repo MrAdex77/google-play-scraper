@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { memoized } from './memoized.js';
 import { category } from '../../constants.js';
-import { NotFoundError } from '../../core/errors.js';
+import type { DegradationEvent } from '../../core/degradation.js';
+import { NotFoundError, ValidationError } from '../../core/errors.js';
 import type { RequestOptions } from '../../core/options.js';
 import type { App } from '../app/schema.js';
 
@@ -14,6 +15,7 @@ const readFixture = (dir: string, name: string): string =>
   );
 
 const translateHtml = readFixture('app', 'translate.html');
+const reviewsInitial = readFixture('reviews', 'translate-initial.txt');
 
 const TRANSLATE_ID = 'com.google.android.apps.translate';
 
@@ -53,6 +55,38 @@ const searchPageHtml = (ids: string[], token: string): string => {
   const ds4 = [[null, [section]]];
   const value = JSON.stringify(ds4);
   return `<script>AF_initDataCallback({key: 'ds:4', hash: '1', data:${value}, sideChannel: {}});</script>`;
+};
+
+const malformedClusterBatch = (): string => {
+  const inner: unknown[] = [];
+  inner[0] = [[42]];
+  inner[7] = [null, null];
+  const json = JSON.stringify([
+    ['wrb.fr', 'qnKhOb', JSON.stringify([[inner]]), null, null, null, 'generic'],
+  ]);
+  return `)]}'\n\n${json.length.toString()}\n${json}`;
+};
+
+const urlOf = (input: string | URL | Request): string =>
+  typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+const recordingFetch = (
+  bodyFor: (url: string) => string,
+): { fetchImpl: typeof fetch; urls: string[] } => {
+  const urls: string[] = [];
+  const fetchImpl: typeof fetch = (input) => {
+    const url = urlOf(input);
+    urls.push(url);
+    return Promise.resolve(new Response(bodyFor(url), { status: 200 }));
+  };
+  return { fetchImpl, urls };
+};
+
+const degradedSearchFetch = (): { fetchImpl: typeof fetch; urls: string[] } => {
+  const firstPage = searchPageHtml(['a', 'b'], 'page-2-token');
+  return recordingFetch((url) =>
+    url.includes('/store/search') ? firstPage : malformedClusterBatch(),
+  );
 };
 
 describe('memoized', () => {
@@ -186,23 +220,6 @@ describe('memoized', () => {
     expect(fetch.state.calls).toBe(4);
   });
 
-  it('keys entries by lifecycle hook identity', async () => {
-    const client = memoized();
-    const fetch = countingAppFetch();
-    const stableHook = (): void => undefined;
-    const requestOptionsWith = (onRequest: () => void): RequestOptions => ({
-      fetchImpl: fetch.fetchImpl,
-      onRequest,
-    });
-
-    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith(stableHook) });
-    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith(stableHook) });
-    expect(fetch.state.calls).toBe(1);
-
-    await client.app({ appId: 'com.a', requestOptions: requestOptionsWith((): void => undefined) });
-    expect(fetch.state.calls).toBe(2);
-  });
-
   it('memoizes methods that take no options and exposes the constants', async () => {
     const client = memoized();
 
@@ -219,5 +236,188 @@ describe('memoized', () => {
     expect(typeof client.similar).toBe('function');
     expect(typeof client.suggest).toBe('function');
     expect(typeof client.list).toBe('function');
+  });
+
+  it('applies constructor language and country defaults and lets a per-call value win', async () => {
+    const fetch = recordingFetch(() => translateHtml);
+    const client = memoized({
+      lang: 'pl',
+      country: 'pl',
+      requestOptions: { fetchImpl: fetch.fetchImpl },
+    });
+
+    await client.app({ appId: 'com.a' });
+    await client.app({ appId: 'com.a', country: 'de' });
+
+    expect(fetch.urls[0]).toContain('hl=pl');
+    expect(fetch.urls[0]).toContain('gl=pl');
+    expect(fetch.urls[1]).toContain('hl=pl');
+    expect(fetch.urls[1]).toContain('gl=de');
+  });
+
+  it('applies the constructor defaults to the uncached iterators', async () => {
+    const fetch = recordingFetch(() => reviewsInitial);
+    const client = memoized({
+      lang: 'pl',
+      country: 'pl',
+      requestOptions: { fetchImpl: fetch.fetchImpl },
+    });
+
+    const first = await client.reviewsIterator({ appId: 'com.a' }).next();
+    await client.reviewsIterator({ appId: 'com.a' }).next();
+
+    expect(first.done).toBe(false);
+    expect(fetch.urls).toHaveLength(2);
+    expect(fetch.urls[0]).toContain('hl=pl');
+    expect(fetch.urls[0]).toContain('gl=pl');
+  });
+
+  it('treats omitted defaults, country casing, and property order as one entry', async () => {
+    const client = memoized();
+    const fetch = countingAppFetch();
+    const requestOptions = requestOptionsFor(fetch.fetchImpl);
+
+    await client.app({ appId: 'com.a', requestOptions });
+    await client.app({ appId: 'com.a', lang: 'en', country: 'us', requestOptions });
+    await client.app({ requestOptions, country: 'US', appId: 'com.a' });
+    await client.app({ appId: 'com.a', requestOptions, country: undefined });
+
+    expect(fetch.state.calls).toBe(1);
+    expect(client.cache.size).toBe(1);
+  });
+
+  it('never fragments the cache on callbacks or lifecycle hooks and skips hooks on a hit', async () => {
+    const client = memoized();
+    const fetch = countingAppFetch();
+    const requests: number[] = [];
+    const requestOptionsWith = (onRequest: () => void): RequestOptions => ({
+      fetchImpl: fetch.fetchImpl,
+      onRequest,
+    });
+
+    await client.app({
+      appId: 'com.a',
+      throttle: 5,
+      onIntegrityEvent: () => undefined,
+      requestOptions: requestOptionsWith(() => {
+        requests.push(1);
+      }),
+    });
+    await client.app({
+      appId: 'com.a',
+      onDegradation: () => undefined,
+      requestOptions: requestOptionsWith(() => {
+        requests.push(2);
+      }),
+    });
+
+    expect(fetch.state.calls).toBe(1);
+    expect(requests).toEqual([1]);
+  });
+
+  it('replays degradation events on a cache hit across a callback boundary', async () => {
+    const fetch = degradedSearchFetch();
+    const client = memoized({ requestOptions: { fetchImpl: fetch.fetchImpl } });
+
+    const warmed = await client.search({ term: 'panda', num: 5 });
+    const events: DegradationEvent[] = [];
+    const hit = await client.search({
+      term: 'panda',
+      num: 5,
+      onDegradation: (event) => events.push(event),
+    });
+
+    expect(hit).toEqual(warmed);
+    expect(fetch.urls).toHaveLength(2);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('search');
+    expect(events[0]?.reason).toBe('cluster-page-parse');
+  });
+
+  it('applies a constructor degradation callback to misses and hits alike', async () => {
+    const fetch = degradedSearchFetch();
+    const contexts: string[] = [];
+    const client = memoized({
+      requestOptions: { fetchImpl: fetch.fetchImpl },
+      onDegradation: (event) => contexts.push(event.context),
+    });
+
+    await client.search({ term: 'panda', num: 5 });
+    await client.search({ term: 'panda', num: 5 });
+
+    expect(fetch.urls).toHaveLength(2);
+    expect(contexts).toEqual(['search', 'search']);
+  });
+
+  it('shares one limiter across direct, batch, iterator, and cache-miss requests', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const timings: number[] = [];
+    const fetchImpl: typeof fetch = (input) => {
+      timings.push(Date.now() - start);
+      const body = urlOf(input).includes('/store/apps/details') ? translateHtml : reviewsInitial;
+      return Promise.resolve(new Response(body, { status: 200 }));
+    };
+    const client = memoized({ throttle: 2, requestOptions: { fetchImpl } });
+
+    const pending = Promise.all([
+      client.app({ appId: 'com.a' }),
+      client.apps({ appIds: ['com.b', 'com.c'] }),
+      client.reviewsIterator({ appId: 'com.a' }).next(),
+    ]);
+    await vi.runAllTimersAsync();
+    await pending;
+
+    expect(timings.sort((a, b) => a - b)).toEqual([0, 0, 1000, 1000]);
+  });
+
+  it('serves batch lookups from warm app entries', async () => {
+    const client = memoized();
+    const fetch = countingAppFetch();
+    const requestOptions = requestOptionsFor(fetch.fetchImpl);
+
+    await client.app({ appId: 'com.a', requestOptions });
+    const entries = await client.apps({ appIds: ['com.a', 'com.b'], requestOptions });
+    await client.app({ appId: 'com.b', requestOptions });
+
+    expect(entries.map((entry) => entry.status)).toEqual(['fulfilled', 'fulfilled']);
+    expect(fetch.state.calls).toBe(2);
+  });
+
+  it('exposes size, targeted invalidation, and clearing', async () => {
+    const client = memoized({ country: 'pl' });
+    const fetch = countingAppFetch();
+    const requestOptions = requestOptionsFor(fetch.fetchImpl);
+
+    await client.app({ appId: 'com.a', requestOptions });
+    await client.app({ appId: 'com.b', requestOptions });
+    expect(client.cache.size).toBe(2);
+
+    expect(client.cache.invalidate('app', { appId: 'com.a', requestOptions })).toBe(true);
+    expect(client.cache.invalidate('app', { appId: 'com.a', requestOptions })).toBe(false);
+    expect(client.cache.size).toBe(1);
+
+    await client.app({ appId: 'com.a', requestOptions });
+    await client.app({ appId: 'com.b', requestOptions });
+    expect(fetch.state.calls).toBe(3);
+
+    await client.categories();
+    expect(client.cache.invalidate('categories')).toBe(true);
+    expect(client.cache.invalidate('categories', {})).toBe(false);
+
+    client.cache.clear();
+    expect(client.cache.size).toBe(0);
+    await client.app({ appId: 'com.b', requestOptions });
+    expect(fetch.state.calls).toBe(4);
+  });
+
+  it('rejects invalid options before creating any cache or HTTP state', () => {
+    expect(() => memoized({ max: 0 })).toThrow(ValidationError);
+    expect(() => memoized({ max: 0 })).toThrow(/^memoized:/);
+    expect(() => memoized({ maxAgeMs: 1.5 })).toThrow(ValidationError);
+    expect(() => memoized({ maxAgeMs: 2_147_483_648 })).toThrow(ValidationError);
+    expect(() => memoized({ throttle: -1 })).toThrow(ValidationError);
+    expect(() => memoized({ onDegradation: 'log' as never })).toThrow(ValidationError);
+    expect(() => memoized({ country: 'usa' })).toThrow(ValidationError);
   });
 });

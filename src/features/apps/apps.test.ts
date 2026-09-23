@@ -7,6 +7,9 @@ import { memoized } from '../memoized/memoized.js';
 import type { GetApp } from '../../core/fullDetail.js';
 import { GooglePlayError, NotFoundError, ValidationError } from '../../core/errors.js';
 import type { App } from '../app/schema.js';
+import type { OnDegradation } from '../../core/degradation.js';
+import type { OnIntegrityEvent } from '../../core/integrity.js';
+import { changeRoutingTableEntry } from '../../../test/helpers/responseMutation.js';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -15,6 +18,7 @@ const readFixture = (name: string): string =>
   );
 
 const translateHtml = readFixture('translate.html');
+const reroutedHtml = changeRoutingTableEntry(translateHtml, 'ds:5', { rpcId: 'unrelatedRpc' });
 
 const urlOf = (input: string | URL | Request): string =>
   typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -155,5 +159,51 @@ describe('apps', () => {
 
     await client.apps({ appIds: ['com.b', 'com.c'], requestOptions });
     expect(fetch.state.calls).toBe(3);
+  });
+  it('forwards per-call observability callbacks to every app lookup', async () => {
+    const onDegradation: OnDegradation = () => undefined;
+    const onIntegrityEvent: OnIntegrityEvent = () => undefined;
+    const received: unknown[] = [];
+    const getApp: GetApp<App> = (params) => {
+      received.push([params.onDegradation, params.onIntegrityEvent]);
+      return Promise.resolve({} as App);
+    };
+
+    await createApps(getApp)({ appIds: ['com.a', 'com.b'], onDegradation, onIntegrityEvent });
+
+    expect(received).toEqual([
+      [onDegradation, onIntegrityEvent],
+      [onDegradation, onIntegrityEvent],
+    ]);
+  });
+
+  it('reports app integrity events to the batch callback', async () => {
+    const contexts: string[] = [];
+
+    await apps({
+      appIds: ['com.a', 'com.b'],
+      onIntegrityEvent: (event) => contexts.push(event.context),
+      requestOptions: { fetchImpl: fetchReturning(reroutedHtml) },
+    });
+
+    expect(contexts).toEqual(['app details', 'app details']);
+  });
+
+  it('replays cached app integrity events to a per-call batch callback over the client default', async () => {
+    const clientContexts: string[] = [];
+    const client = memoized({
+      onIntegrityEvent: (event) => clientContexts.push(`client:${event.context}`),
+      requestOptions: { fetchImpl: fetchReturning(reroutedHtml) },
+    });
+    await client.app({ appId: 'com.a' });
+    const batchContexts: string[] = [];
+
+    await client.apps({
+      appIds: ['com.a'],
+      onIntegrityEvent: (event) => batchContexts.push(`batch:${event.context}`),
+    });
+
+    expect(clientContexts).toEqual(['client:app details']);
+    expect(batchContexts).toEqual(['batch:app details']);
   });
 });

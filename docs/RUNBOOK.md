@@ -426,3 +426,30 @@ case live: with a throttle of one request per second, four calls sharing one
 signal must all settle inside the first throttle window. Before the fix that run
 took 3002 ms; after it, 205 ms. A regression there means the signal stopped
 reaching the limiter, not that Google changed anything.
+
+## Cache semantics
+
+Three symptoms around `memoized()` look like breakage and are not.
+
+**A degradation or integrity event on a call that made no request.** Cache
+hits replay the events recorded when the entry was fetched, in their original
+order, to the callbacks of the call that hit. That is by design: a cached
+degraded payload must be reported as degraded to every caller, or the
+`onDegradation` and `onIntegrityEvent` channels stop being observability the
+moment a cache sits in front of them. `src/core/cache.ts` records the events on
+the entry; `src/core/cache.test.ts` pins the replay across a callback boundary.
+Lifecycle hooks are not replayed, because no request happened.
+
+**`cache.size` falling without any call.** Entries expire on `maxAgeMs` through
+lru-cache's `ttlAutopurge`, whose timers are unref'd and never hold the process
+open. A falling `size` between calls is expiry, not eviction of live data.
+
+**Two callers with different inline callbacks hitting one entry.** Callbacks,
+lifecycle hooks, `throttle` and `concurrency` are excluded from the cache key on
+purpose, and the key is built from the options after validation and defaulting.
+If a change to a feature's options schema starts fragmenting the cache, the
+`createKeyBuilder` tests in `src/core/cache.test.ts` are where it shows.
+`country` is lowercased in the key because Google serves byte-identical listings
+for `gl=us` and `gl=US`; that equivalence was measured live on 2026-09-22 on
+prices, install bands and search ranking, and is the only normalization the key
+applies beyond sorting properties.

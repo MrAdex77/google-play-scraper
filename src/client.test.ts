@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client.js';
 import { app } from './features/app/app.js';
 import type { App } from './features/app/schema.js';
+import type { DegradationEvent } from './core/degradation.js';
 import { ValidationError } from './core/errors.js';
 
 const readFixture = (path: string): string =>
@@ -38,6 +39,44 @@ const timingFetch = (calls: TimedCall[], start: number): typeof fetch => {
     const body = url.includes('/store/apps/details') ? translateHtml : reviewsInitial;
     return Promise.resolve(respond(body));
   };
+};
+
+const coreData = (id: string): unknown[] => {
+  const core: unknown[] = [];
+  core[0] = [id];
+  core[1] = [null, null, null, [null, null, `https://icon.example/${id}`]];
+  core[3] = `App ${id}`;
+  core[4] = ['4.5', 4.5];
+  core[8] = [null, [[0, 'USD']]];
+  core[10] = [null, null, null, null, [null, null, `/store/apps/details?id=${id}`]];
+  core[13] = [null, `Summary of ${id}`];
+  core[14] = `Dev ${id}`;
+  return core;
+};
+
+const searchPageHtml = (ids: string[], token: string): string => {
+  const section: unknown[] = [];
+  section[22] = [ids.map((id) => [coreData(id)]), [null, null, null, [null, token]]];
+  const value = JSON.stringify([[null, [section]]]);
+  return `<script>AF_initDataCallback({key: 'ds:4', hash: '1', data:${value}, sideChannel: {}});</script>`;
+};
+
+const malformedClusterBatch = (): string => {
+  const inner: unknown[] = [];
+  inner[0] = [[42]];
+  inner[7] = [null, null];
+  const json = JSON.stringify([
+    ['wrb.fr', 'qnKhOb', JSON.stringify([[inner]]), null, null, null, 'generic'],
+  ]);
+  return `)]}'\n\n${json.length.toString()}\n${json}`;
+};
+
+const degradedSearchFetch = (): typeof fetch => {
+  const firstPage = searchPageHtml(['a', 'b'], 'page-2-token');
+  return (input) =>
+    Promise.resolve(
+      respond(urlOf(input).includes('/store/search') ? firstPage : malformedClusterBatch()),
+    );
 };
 
 afterEach(() => {
@@ -288,5 +327,31 @@ describe('createClient', () => {
 
     expect(result.appId).toBe(TRANSLATE);
     expect(result.title.length).toBeGreaterThan(0);
+  });
+
+  it('applies client degradation defaults and lets a per-call callback replace them', async () => {
+    const clientEvents: DegradationEvent[] = [];
+    const callEvents: DegradationEvent[] = [];
+    const client = createClient({
+      requestOptions: { fetchImpl: degradedSearchFetch() },
+      onDegradation: (event) => clientEvents.push(event),
+    });
+
+    await client.search({ term: 'panda', num: 5 });
+    expect(clientEvents).toHaveLength(1);
+    expect(clientEvents[0]?.reason).toBe('cluster-page-parse');
+
+    await client.search({
+      term: 'panda',
+      num: 5,
+      onDegradation: (event) => callEvents.push(event),
+    });
+    expect(clientEvents).toHaveLength(1);
+    expect(callEvents).toHaveLength(1);
+  });
+
+  it('rejects a client callback that is not a function', () => {
+    expect(() => createClient({ onIntegrityEvent: 'log' as never })).toThrow(ValidationError);
+    expect(() => createClient({ onDegradation: 'log' as never })).toThrow(/^client:/);
   });
 });

@@ -309,13 +309,16 @@ async function showErrors(): Promise<void> {
 }
 
 async function showMemoized(): Promise<void> {
-  heading('memoized()', 'a client that caches identical calls');
-  const client = memoized();
+  heading('memoized()', 'a shared client that caches equivalent calls');
+  const client = memoized({ country: 'us', throttle: 1 });
   const first = await timed(() => client.app({ appId: TEST_APP_ID }));
-  const second = await timed(() => client.app({ appId: TEST_APP_ID }));
+  const second = await timed(() => client.app({ appId: TEST_APP_ID, country: 'US' }));
   field('First call', `${first.ms.toFixed(1)} ms (network)`);
-  field('Second call', `${second.ms.toFixed(1)} ms (cached)`);
+  field('Second call', `${second.ms.toFixed(1)} ms (cached, country casing ignored)`);
   field('Same result', first.value.title === second.value.title);
+  field('Cache size', client.cache.size);
+  field('Invalidated', client.cache.invalidate('app', { appId: TEST_APP_ID }));
+  field('Cache size after invalidate', client.cache.size);
 }
 
 async function showSharedClient(client: Client): Promise<void> {

@@ -177,8 +177,9 @@ Precedence rules:
 2. A per-call `throttle` passed to a client method is superseded by the client limiter. When the client was created without `throttle`, a per-call value behaves exactly like the top-level functions do today (a call-scoped limiter).
 3. `requestOptions` merge shallowly, with per-call keys winning: `{ ...client, ...call }`.
 4. Per-call `lang` and `country` win over the client defaults; the built-in `en`/`us` defaults apply last.
+5. A client-level `onDegradation` or `onIntegrityEvent` applies to every call, including the `fullDetail` and batch lookups the client makes on your behalf. A per-call callback replaces the client-level one for that call; callbacks do not chain.
 
-Every method from the [reference below](#methods) is available on the client, alongside the exported constants. Two clients created with `createClient` are fully independent and never share a limiter.
+Every method from the [reference below](#methods) is available on the client, alongside the exported constants. Two clients created with `createClient` are fully independent and never share a limiter. [`memoized`](#memoized) accepts the same options and adds an LRU cache on top.
 
 > A per-call `throttle` on the top-level functions only rate-limits the requests within that single call, such as its pagination pages. Reach for `createClient` when you need one limit to span many calls.
 
@@ -194,7 +195,7 @@ Every method from the [reference below](#methods) is available on the client, al
 - [permissions](#permissions): permissions an app requests
 - [dataSafety](#datasafety): the data safety section of an app
 - [categories](#categories): the Google Play category taxonomy
-- [memoized](#memoized): a client that caches identical calls
+- [memoized](#memoized): a shared client that caches equivalent calls
 
 ### app
 
@@ -652,23 +653,45 @@ Returns `string[]`:
 
 ### memoized
 
-Returns a client whose methods share an LRU cache held in memory, so identical calls made within the TTL resolve from cache instead of hitting Google Play again.
+Returns a [shared client](#shared-client) whose promise-returning methods share an LRU cache held in memory, so equivalent calls made within the TTL resolve from cache instead of hitting Google Play again. It accepts every `createClient` option plus the two cache bounds:
 
-| Option     | Type     | Default  | Description                                    |
-| ---------- | -------- | -------- | ---------------------------------------------- |
-| `maxAgeMs` | `number` | `300000` | Time to live per cache entry, in milliseconds. |
-| `max`      | `number` | `1000`   | Maximum number of cached entries.              |
+| Option             | Type       | Default  | Description                                                                                                                                  |
+| ------------------ | ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lang`             | `string`   | `'en'`   | Language default applied to every call that does not set its own.                                                                            |
+| `country`          | `string`   | `'us'`   | Country default applied to every call that does not set its own.                                                                             |
+| `throttle`         | `number`   | none     | One shared limiter for every request the client makes, cache misses included.                                                                |
+| `requestOptions`   | `object`   | none     | Client-level HTTP overrides, merged under per-call ones. See [requestOptions](#throttling-and-requestoptions).                               |
+| `onDegradation`    | `function` | none     | Client-level degradation callback. See [Monitoring drift](#monitoring-drift).                                                                |
+| `onIntegrityEvent` | `function` | none     | Client-level integrity callback. See [Monitoring drift](#monitoring-drift).                                                                  |
+| `maxAgeMs`         | `number`   | `300000` | Time to live per cache entry, in milliseconds, counted from the moment the filling request completes. A positive integer up to `2147483647`. |
+| `max`              | `number`   | `1000`   | Maximum number of cached entries. A positive integer up to `1000000`.                                                                        |
 
 ```typescript
 import { memoized } from '@mradex77/google-play-scraper';
 
-const client = memoized({ maxAgeMs: 60000, max: 500 });
+const client = memoized({ country: 'pl', lang: 'pl', throttle: 5, maxAgeMs: 60000, max: 500 });
 
 await client.app({ appId: 'com.google.android.apps.translate' });
 await client.app({ appId: 'com.google.android.apps.translate' });
 ```
 
-The returned client exposes every method above plus the exported constants.
+Invalid options throw `ValidationError` before any cache or HTTP state exists.
+
+**What counts as the same call.** Entries are keyed by the options _after_ validation and defaulting, so these all share one entry: `{}` and `{ lang: 'en', country: 'us' }`, `country: 'US'` and `country: 'us'`, and the same options in any property order. Anything that changes the response or how it is obtained separates entries: `lang`, `country`, every feature option, and the `headers`, `timeoutMs`, `retries`, `fetchImpl` and `signal` fields of `requestOptions` (the last two by object identity, so two callers sharing a signal share an entry and one caller's abort never rejects an unrelated caller; a fresh signal on every call therefore never hits, so prefer `timeoutMs` for per-call deadlines). Pacing and telemetry never fragment the cache: `throttle`, `concurrency`, `onDegradation`, `onIntegrityEvent`, `onRequest`, `onResponse` and `onRetry` are ignored by the key, so inline callbacks are fine.
+
+**What is cached.** `app`, `availability`, `search`, `suggest`, `list`, `categories`, `developer`, `similar`, `reviews`, `permissions` and `dataSafety`. Concurrent equivalent calls share one in-flight request. A hit resolves to the same object the filling call returned, so treat cached results as read-only. A rejected call is never cached, so the next call retries. `apps` and the `fullDetail` lookups of `search`, `list`, `developer` and `similar` are served from the `app` entries they warm. `reviewsIterator`, `searchIterator`, `developerIterator`, `reviewsAll` and `apps` are not cached themselves; they share the client's defaults, limiter and request options and pass through to Google Play.
+
+**Cache hits replay their events.** Degradation and integrity events recorded while an entry was fetched are delivered again, in their original order, to the callbacks of every later call that hits the entry. A hit performs no request, so `onRequest`, `onResponse` and `onRetry` are not replayed. A replayed callback that throws rejects only the call it was passed to; the entry stays valid for other callers. Events recorded before a call fails are still delivered to every caller that shared the failed request. Events raised by the app lookups a `fullDetail` call or an `apps` batch makes on your behalf belong to that outer call: they reach its callbacks, and a cached `fullDetail` result replays them with its entry.
+
+**Cache controls.** The client exposes explicit control without global state:
+
+```typescript
+client.cache.size;
+client.cache.invalidate('app', { appId: 'com.google.android.apps.translate' });
+client.cache.clear();
+```
+
+`invalidate` takes the method name and the same options you would pass to that method, applies the client defaults and validation to them (throwing `ValidationError` for options the method itself would reject), and drops the matching entry, returning whether one existed. The next equivalent call requests again while unrelated entries survive. `size` counts live entries and falls as entries expire or are evicted.
 
 ## Streaming and bulk reads
 
@@ -1027,7 +1050,7 @@ Two boundaries to know:
 - `app` emits `optional-section-parse` with context `app comments` when the available comment roots are structurally invalid. A valid empty comment root returns an empty list without an event. Treat a rising event rate as a signal, not each event.
 - `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`.
 
-With `memoized()`, `onDegradation`, `onIntegrityEvent`, and the lifecycle hooks `onRequest`, `onResponse`, and `onRetry` participate in the cache key by identity like any function option, so pass stable function references rather than inline closures to keep cache hits.
+With `memoized()`, callbacks never affect which entry a call hits. Degradation and integrity events are recorded with the entry and replayed, in order, to the callbacks of every call that hits it, so a cached degraded result is reported as degraded to each caller. Lifecycle hooks are not replayed, because a hit performs no request. See [memoized](#memoized).
 
 ## Versioning and API stability
 

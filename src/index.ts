@@ -106,11 +106,12 @@ export {
 } from './features/datasafety/schema.js';
 export type { DataEntry, DataSafety, SecurityPractice } from './features/datasafety/schema.js';
 
-export { memoized } from './features/memoized/memoized.js';
-export type { MemoizedOptions } from './features/memoized/memoized.js';
+export { memoized, memoizedOptionsSchema } from './features/memoized/memoized.js';
+export type { ClientCache, MemoizedClient, MemoizedOptions } from './features/memoized/memoized.js';
 
 export { createClient, clientOptionsSchema } from './client.js';
 export type { ClientOptions } from './client.js';
+export type { CachedMethodName, GooglePlayClient, GooglePlayIterators } from './clientSurface.js';
 
 import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.js';
 import { app } from './features/app/app.js';
@@ -131,35 +132,7 @@ import { permissions } from './features/permissions/permissions.js';
 import { dataSafety } from './features/datasafety/datasafety.js';
 import { memoized } from './features/memoized/memoized.js';
 import { createClient } from './client.js';
-
-export interface GooglePlayClient {
-  BASE_URL: typeof BASE_URL;
-  age: typeof age;
-  category: typeof category;
-  clusters: typeof clusters;
-  collection: typeof collection;
-  permission: typeof permission;
-  sort: typeof sort;
-  app: typeof app;
-  apps: typeof apps;
-  availability: typeof availability;
-  search: typeof search;
-  suggest: typeof suggest;
-  list: typeof list;
-  categories: typeof categories;
-  developer: typeof developer;
-  similar: typeof similar;
-  reviews: typeof reviews;
-  permissions: typeof permissions;
-  dataSafety: typeof dataSafety;
-}
-
-export interface GooglePlayIterators {
-  reviewsIterator: typeof reviewsIterator;
-  reviewsAll: typeof reviewsAll;
-  searchIterator: typeof searchIterator;
-  developerIterator: typeof developerIterator;
-}
+import type { GooglePlayClient, GooglePlayIterators } from './clientSurface.js';
 
 const gplay: GooglePlayClient &
   GooglePlayIterators & {

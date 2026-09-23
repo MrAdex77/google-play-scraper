@@ -29,6 +29,20 @@ export const baseOptionsSchema = z.object({
 
 export type BaseOptions = z.infer<typeof baseOptionsSchema>;
 
+export type ObservabilityOptions = Pick<BaseOptions, 'onDegradation' | 'onIntegrityEvent'>;
+
+export type ObservableSchema = $ZodType<unknown, ObservabilityOptions>;
+
+export type SchemaBoundMethod<Schema extends ObservableSchema, Result> = (
+  options: z.input<Schema>,
+) => Promise<Result>;
+
+export type MethodWrapper<Name extends string = string> = <Schema extends ObservableSchema, Result>(
+  name: Name,
+  schema: Schema,
+  fn: SchemaBoundMethod<Schema, Result>,
+) => SchemaBoundMethod<Schema, Result>;
+
 export function normalizeCountry(country: string): string {
   return country.toLowerCase();
 }

@@ -812,6 +812,32 @@ describe('unread response bodies', () => {
   });
 });
 
+describe('clientFromOptions', () => {
+  it('prefers an injected limiter over a per-call throttle', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const timings: number[] = [];
+    const fetchImpl = vi.fn(() => {
+      timings.push(Date.now() - start);
+      return Promise.resolve(fakeResponse({ body: 'ok' }));
+    });
+    const client = clientFromOptions({
+      limiter: createRateLimiter(1),
+      throttle: 50,
+      requestOptions: { fetchImpl },
+    });
+
+    const pending = Promise.all([
+      client.request({ url: 'https://x' }),
+      client.request({ url: 'https://x' }),
+    ]);
+    await vi.runAllTimersAsync();
+    await pending;
+
+    expect(timings).toEqual([0, 1000]);
+  });
+});
+
 describe('Retry-After handling', () => {
   const JITTER_CEILING_MS = 500;
 

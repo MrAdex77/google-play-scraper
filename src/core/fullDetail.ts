@@ -1,13 +1,13 @@
-import type { RequestOptions } from './options.js';
+import type { ObservabilityOptions, RequestOptions } from './options.js';
 
-export interface FullDetailOptions {
+export interface FullDetailOptions extends ObservabilityOptions {
   lang: string;
   country: string;
   throttle?: number;
   requestOptions?: RequestOptions;
 }
 
-export interface GetAppParams {
+export interface GetAppParams extends ObservabilityOptions {
   appId: string;
   lang: string;
   country: string;
@@ -42,6 +42,8 @@ export async function resolveFullDetail<Result>(
         country: options.country,
         throttle: options.throttle,
         requestOptions: options.requestOptions,
+        onDegradation: options.onDegradation,
+        onIntegrityEvent: options.onIntegrityEvent,
       });
     }
   };

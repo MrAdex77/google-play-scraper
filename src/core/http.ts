@@ -359,17 +359,12 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
 
 export function clientFromOptions(opts: {
   throttle?: number;
+  limiter?: Limiter;
   requestOptions?: RequestOptions;
 }): HttpClient {
   return createHttpClient({
+    ...opts.requestOptions,
     throttle: opts.throttle,
-    fetchImpl: opts.requestOptions?.fetchImpl,
-    retries: opts.requestOptions?.retries,
-    timeoutMs: opts.requestOptions?.timeoutMs,
-    headers: opts.requestOptions?.headers,
-    signal: opts.requestOptions?.signal,
-    onRequest: opts.requestOptions?.onRequest,
-    onResponse: opts.requestOptions?.onResponse,
-    onRetry: opts.requestOptions?.onRetry,
+    limiter: opts.limiter,
   });
 }
