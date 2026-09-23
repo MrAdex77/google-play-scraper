@@ -15,6 +15,17 @@ export default tseslint.config(
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-console': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^\\.{1,2}/.*\\.js$',
+              message: 'Use .ts extensions for relative imports.',
+            },
+          ],
+        },
+      ],
     },
   },
   { files: ['**/*.js'], extends: [tseslint.configs.disableTypeChecked] },
