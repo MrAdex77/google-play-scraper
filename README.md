@@ -798,7 +798,7 @@ Every failure surfaces as a typed subclass of `GooglePlayError`, so you can bran
 | `HttpError`       | `GooglePlayError` | A request fails with an unsuccessful status or a network error. Carries `status` and `url`. |
 | `NotFoundError`   | `HttpError`       | Google Play responds `404`, e.g. an unknown `appId`.                                        |
 | `RateLimitError`  | `HttpError`       | Google Play responds `429` after retries are exhausted.                                     |
-| `BlockedError`    | `GooglePlayError` | A consent wall or captcha interstitial is detected.                                         |
+| `BlockedError`    | `GooglePlayError` | A consent wall redirect, or a captcha challenge redirect that outlasts every retry.         |
 | `ParseError`      | `GooglePlayError` | A batchexecute response cannot be parsed.                                                   |
 | `SpecError`       | `ParseError`      | Extraction fails; lists every failing field and the paths that were tried.                  |
 
@@ -911,6 +911,41 @@ const details = await app({
 ```
 
 `ProxyAgent` also accepts an options object when the proxy needs more configuration, such as a `token` carrying a preformatted `Proxy-Authorization` header or TLS settings for the proxy connection.
+
+### Rotating proxies when blocked
+
+Google answers a burst of requests from one IP address with a redirect to its captcha challenge at `www.google.com/sorry`. The client retries that redirect like a `429`, and most challenges clear on the next attempt. When they keep coming, the call rejects with a `BlockedError` whose message names the cause (`captcha challenge` or `consent wall`), which is the signal to slow down or switch to another exit IP:
+
+```typescript
+import { ProxyAgent, fetch as undiciFetch, type RequestInit } from 'undici';
+import { BlockedError, search } from '@mradex77/google-play-scraper';
+
+const throughProxy = (proxyUrl: string): typeof fetch => {
+  const dispatcher = new ProxyAgent(proxyUrl);
+  return ((input: string | URL, init?: RequestInit) =>
+    undiciFetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
+};
+
+const routes = [
+  'http://user:password@proxy-1.example.com:8080',
+  'http://user:password@proxy-2.example.com:8080',
+].map(throughProxy);
+
+async function searchWithRotation(term: string) {
+  for (const fetchImpl of routes) {
+    try {
+      return await search({ term, throttle: 2, requestOptions: { fetchImpl } });
+    } catch (error) {
+      if (!(error instanceof BlockedError)) {
+        throw error;
+      }
+    }
+  }
+  throw new Error('Every proxy is blocked');
+}
+```
+
+The challenge is driven by request rate per IP, so a `throttle` on each route prevents most blocks before rotation is needed. Detection reads only the final response URL, never page text, so a search term or review that quotes a captcha message is returned as data.
 
 ### Routing by country
 
@@ -1116,7 +1151,7 @@ Call [reviews](#reviews) with the app id. Use `paginate: true` and the returned 
 
 ### How do I avoid getting rate limited or blocked?
 
-Set the `throttle` option to cap requests per second, keep the default retry behavior, and reuse results through the [memoized](#memoized) client. If you run large jobs, spread them out over time or [route them through a proxy](#routing-requests-through-a-proxy). A `RateLimitError` or `BlockedError` tells you exactly when Google started pushing back.
+Set the `throttle` option to cap requests per second, keep the default retry behavior, and reuse results through the [memoized](#memoized) client. If you run large jobs, spread them out over time or [route them through a proxy](#routing-requests-through-a-proxy). A `RateLimitError` or `BlockedError` tells you exactly when Google started pushing back, and [rotating proxies](#rotating-proxies-when-blocked) shows how to react to a block.
 
 ### Does this library work in the browser?
 
