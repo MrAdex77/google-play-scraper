@@ -582,6 +582,20 @@ describe('createHttpClient', () => {
     expect(text).not.toHaveBeenCalled();
   });
 
+  it('throws BlockedError at once when a captcha redirect asks to wait past the cap', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        fakeResponse({ status: 429, url: CAPTCHA_URL, headers: { 'Retry-After': '120' } }),
+      );
+    const client = createHttpClient({ fetchImpl });
+
+    const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(BlockedError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     'https://example.com/sorry/index',
     'https://notgoogle.com/sorry/index',
