@@ -517,18 +517,25 @@ describe('createHttpClient', () => {
     expect(calls).toEqual([0, 1000]);
   });
 
-  it('throws BlockedError for a consent host and for a captcha body', async () => {
-    const consentFetch = vi
+  it('throws BlockedError without retrying when the final url is a consent wall', async () => {
+    const fetchImpl = vi
       .fn()
-      .mockResolvedValue(fakeResponse({ body: 'fine', url: 'https://consent.google.com/m' }));
-    const consentClient = createHttpClient({ fetchImpl: consentFetch });
-    await expect(consentClient.request({ url: 'https://x' })).rejects.toBeInstanceOf(BlockedError);
+      .mockResolvedValue(fakeResponse({ status: 500, url: 'https://consent.google.com/m' }));
+    const client = createHttpClient({ fetchImpl });
 
-    const captchaFetch = vi
-      .fn()
-      .mockResolvedValue(fakeResponse({ body: 'go to www.google.com/recaptcha now' }));
-    const captchaClient = createHttpClient({ fetchImpl: captchaFetch });
-    await expect(captchaClient.request({ url: 'https://x' })).rejects.toBeInstanceOf(BlockedError);
+    const error = await client.request({ url: 'https://x' }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(BlockedError);
+    expect((error as BlockedError).message).toBe('Blocked by Google Play (consent wall)');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a successful body that quotes block markers', async () => {
+    const quoted = 'unusual traffic www.google.com/recaptcha captcha-form';
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: quoted }));
+    const client = createHttpClient({ fetchImpl });
+
+    await expect(client.request({ url: 'https://x' })).resolves.toBe(quoted);
   });
 });
 

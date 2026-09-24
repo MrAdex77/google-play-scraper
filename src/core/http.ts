@@ -244,25 +244,10 @@ function discardBody(response: Response): void {
   response.body?.cancel().catch(() => undefined);
 }
 
-function hostIsConsent(finalUrl: string): boolean {
-  if (!finalUrl) {
-    return false;
-  }
-  try {
-    return new URL(finalUrl).host === 'consent.google.com';
-  } catch {
-    return false;
-  }
-}
+const CONSENT_HOST = 'consent.google.com';
 
-function assertNotBlocked(response: Response, body: string): void {
-  if (
-    hostIsConsent(response.url) ||
-    body.includes('www.google.com/recaptcha') ||
-    body.includes('unusual traffic')
-  ) {
-    throw new BlockedError('Blocked by Google Play (consent wall or captcha)');
-  }
+function isConsentWall(finalUrl: string): boolean {
+  return URL.parse(finalUrl)?.host === CONSENT_HOST;
 }
 
 export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
@@ -294,18 +279,21 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
           body: req.body,
           signal: attemptSignal.signal,
         });
-        const body = response.ok ? await response.text() : undefined;
+        const consentWall = isConsentWall(response.url);
+        const body = response.ok && !consentWall ? await response.text() : undefined;
         emit(config.onResponse, {
           ...eventFor(attempt),
           status: response.status,
           durationMs: performance.now() - startedAt,
         });
         if (body !== undefined) {
-          assertNotBlocked(response, body);
           return { body };
         }
 
         discardBody(response);
+        if (consentWall) {
+          throw new BlockedError('Blocked by Google Play (consent wall)');
+        }
         const retryAfterMs = parseRetryAfter(response);
         const honored = retryAfterMs === undefined || retryAfterMs <= MAX_RETRY_AFTER_MS;
         if (isRetryableStatus(response.status) && attempt < retries && honored) {
