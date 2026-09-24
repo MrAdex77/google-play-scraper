@@ -798,7 +798,7 @@ Every failure surfaces as a typed subclass of `GooglePlayError`, so you can bran
 | `HttpError`       | `GooglePlayError` | A request fails with an unsuccessful status or a network error. Carries `status` and `url`. |
 | `NotFoundError`   | `HttpError`       | Google Play responds `404`, e.g. an unknown `appId`.                                        |
 | `RateLimitError`  | `HttpError`       | Google Play responds `429` after retries are exhausted.                                     |
-| `BlockedError`    | `GooglePlayError` | A consent wall or captcha interstitial is detected.                                         |
+| `BlockedError`    | `GooglePlayError` | A consent wall redirect, or a captcha challenge redirect that retries cannot clear.         |
 | `ParseError`      | `GooglePlayError` | A batchexecute response cannot be parsed.                                                   |
 | `SpecError`       | `ParseError`      | Extraction fails; lists every failing field and the paths that were tried.                  |
 
@@ -839,7 +839,7 @@ Pass `throttle` to cap requests per second, and `requestOptions` to override the
 | `headers`            | `Record<string, string>`         | Extra headers merged into every request.                                                                                                                                  |
 | `fetchImpl`          | `typeof fetch`                   | A custom `fetch` implementation, useful for proxies and tests. Combine with [`createCountryFetch`](#routing-by-country) to route each storefront country separately.      |
 | `timeoutMs`          | `number`                         | Timeout per request, up to `120000`. Default `30000`.                                                                                                                     |
-| `retries`            | `number`                         | Retry count for `429` and `5xx`, `0` to `5`. Default `2`.                                                                                                                 |
+| `retries`            | `number`                         | Retry count for `429`, `5xx` and captcha challenge redirects, `0` to `5`. Default `2`.                                                                                    |
 | `signal`             | `AbortSignal`                    | Cancels the call at once, including an in-flight request, a body read, retry backoff, a `Retry-After` wait and a queued throttle slot. See [Cancellation](#cancellation). |
 | `onRequest`          | `(event: RequestEvent) => void`  | Called before every attempt, including retries. See [Request lifecycle hooks](#request-lifecycle-hooks).                                                                  |
 | `onResponse`         | `(event: ResponseEvent) => void` | Called for each settled response — after the body is read on success — with `status` and `durationMs`.                                                                    |
@@ -862,7 +862,7 @@ const details = await app({
 
 Retries use exponential backoff with jitter. A `Retry-After` response header overrides the backoff when it is well formed, in either form RFC 9110 allows: a count of seconds, or an HTTP date, which is resolved against the response `Date` header when the server sends one and against the local clock otherwise.
 
-A `Retry-After` longer than 60 seconds is not waited on. The call ends immediately with the mapped status error, `RateLimitError` for a `429`, so a server cannot park a request for minutes. The ceiling is fixed and independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored and normal jittered backoff applies.
+A `Retry-After` longer than 60 seconds is not waited on. The call ends immediately with the mapped status error, `RateLimitError` for a `429` or `BlockedError` for a captcha challenge redirect, so a server cannot park a request for minutes. The ceiling is fixed and independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored and normal jittered backoff applies.
 
 ### Request lifecycle hooks
 
@@ -911,6 +911,43 @@ const details = await app({
 ```
 
 `ProxyAgent` also accepts an options object when the proxy needs more configuration, such as a `token` carrying a preformatted `Proxy-Authorization` header or TLS settings for the proxy connection.
+
+### Rotating proxies when blocked
+
+Google answers a burst of requests from one IP address with a redirect to its captcha challenge at `www.google.com/sorry`. The client retries that redirect like a `429`, and most challenges clear on the next attempt. When they keep coming until retries run out, or the challenge asks to wait longer than the `Retry-After` ceiling, the call rejects with a `BlockedError` whose message names the cause (`captcha challenge` or `consent wall`), which is the signal to slow down or switch to another exit IP:
+
+```typescript
+import { ProxyAgent, fetch as undiciFetch, type RequestInit } from 'undici';
+import { BlockedError, createClient } from '@mradex77/google-play-scraper';
+
+const throughProxy = (proxyUrl: string): typeof fetch => {
+  const dispatcher = new ProxyAgent(proxyUrl);
+  return ((input: string | URL, init?: RequestInit) =>
+    undiciFetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
+};
+
+const routes = [
+  'http://user:password@proxy-1.example.com:8080',
+  'http://user:password@proxy-2.example.com:8080',
+].map((proxyUrl) =>
+  createClient({ throttle: 2, requestOptions: { fetchImpl: throughProxy(proxyUrl) } }),
+);
+
+async function searchWithRotation(term: string) {
+  for (const client of routes) {
+    try {
+      return await client.search({ term });
+    } catch (error) {
+      if (!(error instanceof BlockedError)) {
+        throw error;
+      }
+    }
+  }
+  throw new Error('Every proxy is blocked');
+}
+```
+
+The challenge is driven by request rate per IP, so each route gets its own `createClient` whose limiter spans every call through that proxy, concurrent ones included, and prevents most blocks before rotation is needed. A per-call `throttle` on `search` would only pace the requests inside that one call. Detection reads only the final response URL, never page text, so a search term or review that quotes a captcha message is returned as data.
 
 ### Routing by country
 
@@ -1116,7 +1153,7 @@ Call [reviews](#reviews) with the app id. Use `paginate: true` and the returned 
 
 ### How do I avoid getting rate limited or blocked?
 
-Set the `throttle` option to cap requests per second, keep the default retry behavior, and reuse results through the [memoized](#memoized) client. If you run large jobs, spread them out over time or [route them through a proxy](#routing-requests-through-a-proxy). A `RateLimitError` or `BlockedError` tells you exactly when Google started pushing back.
+Set the `throttle` option to cap requests per second, keep the default retry behavior, and reuse results through the [memoized](#memoized) client. If you run large jobs, spread them out over time or [route them through a proxy](#routing-requests-through-a-proxy). A `RateLimitError` or `BlockedError` tells you exactly when Google started pushing back, and [rotating proxies](#rotating-proxies-when-blocked) shows how to react to a block.
 
 ### Does this library work in the browser?
 

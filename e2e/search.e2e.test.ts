@@ -16,6 +16,7 @@ import {
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 
 const GEO_GAME = 'com.adex77.WhereAmI';
+const BLOCK_MARKER_TERM = 'unusual traffic';
 const EXACT_MATCH_CARD_CANDIDATES = [
   'com.spotify.music',
   'com.whatsapp',
@@ -54,6 +55,18 @@ liveDescribe('search live contract', () => {
     expectRequestedCountContract(results.length, num, 'broad term search');
     expectAppItemsContract(results, 'broad term search');
     expect(events).toEqual([]);
+  });
+
+  it('returns results for a term the page echoes as a block marker', async () => {
+    const num = 10;
+    const page = await clientFromOptions({ throttle: 1 }).request({
+      url: `https://play.google.com/store/search?q=${encodeURIComponent(BLOCK_MARKER_TERM)}&c=apps&hl=en&gl=us`,
+    });
+    const results = (await liveClient.search({ term: BLOCK_MARKER_TERM, num })) as SearchResult[];
+
+    expect(page).toContain(BLOCK_MARKER_TERM);
+    expectRequestedCountContract(results.length, num, 'block marker search');
+    expectAppItemsContract(results, 'block marker search');
   });
 
   it('agrees with the listing surface for the Where Am I game', async (ctx) => {
