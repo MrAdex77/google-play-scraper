@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createSearchIterator, searchIterator } from './searchIterator.js';
-import { searchResultSchema } from './schema.js';
-import { ValidationError } from '../../core/errors.js';
+import { createSearchIterator, searchIterator } from './searchIterator.ts';
+import { searchResultSchema } from './schema.ts';
+import { ValidationError } from '../../core/errors.ts';
 
 const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () => number } => {
   let index = 0;

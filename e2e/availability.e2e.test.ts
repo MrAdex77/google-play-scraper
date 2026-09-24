@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { liveClient, liveDescribe } from './helpers.js';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const GEO_GAME_ID = 'com.adex77.WhereAmI';
 

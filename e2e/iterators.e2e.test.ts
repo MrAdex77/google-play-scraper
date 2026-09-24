@@ -1,19 +1,19 @@
 import { expect, it } from 'vitest';
-import { clientFromOptions } from '../src/core/http.js';
+import { clientFromOptions } from '../src/core/http.ts';
 import {
   fetchDeveloperFirstPage,
   type DeveloperQuery,
-} from '../src/features/developer/developer.js';
-import { fetchSearchFirstPage, type SearchQuery } from '../src/features/search/search.js';
-import { type DegradationEvent, type IntegrityEvent, type Review } from '../src/index.js';
+} from '../src/features/developer/developer.ts';
+import { fetchSearchFirstPage, type SearchQuery } from '../src/features/search/search.ts';
+import { type DegradationEvent, type IntegrityEvent, type Review } from '../src/index.ts';
 import {
   expectAppItemContract,
   expectContinuationContract,
   expectReviewContract,
   expectReviewsContract,
   reviewsAnchor,
-} from './contracts.js';
-import { liveClient, liveDescribe } from './helpers.js';
+} from './contracts.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const WHATSAPP = 'com.whatsapp';
 const GEO_GAME = 'com.adex77.WhereAmI';

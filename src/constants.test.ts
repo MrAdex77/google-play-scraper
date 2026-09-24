@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { age, category, clusters, collection, permission, sort } from './constants.js';
+import { age, category, clusters, collection, permission, sort } from './constants.ts';
 
 describe('constants', () => {
   it('freezes every enum object', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { clusterItemSpecs } from './clusterItem.js';
-import { SpecError } from './errors.js';
-import { extract } from './spec.js';
+import { clusterItemSpecs } from './clusterItem.ts';
+import { SpecError } from './errors.ts';
+import { extract } from './spec.ts';
 
 const buildClusterItem = (priceCell: unknown[] | undefined): unknown[] => {
   const item: unknown[] = [];

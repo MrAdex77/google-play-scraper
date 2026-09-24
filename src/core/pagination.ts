@@ -1,11 +1,11 @@
-import { BATCH_URL, parseBatchResponse } from './batchexecute.js';
-import type { OnDegradation } from './degradation.js';
-import { ParseError } from './errors.js';
-import type { HttpClient } from './http.js';
-import { detectPaginationTokenCycle, type OnIntegrityEvent } from './integrity.js';
-import { getPath, type Path } from './path.js';
-import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.js';
-import { extract, type Extracted, type SpecMap } from './spec.js';
+import { BATCH_URL, parseBatchResponse } from './batchexecute.ts';
+import type { OnDegradation } from './degradation.ts';
+import { ParseError } from './errors.ts';
+import type { HttpClient } from './http.ts';
+import { detectPaginationTokenCycle, type OnIntegrityEvent } from './integrity.ts';
+import { getPath, type Path } from './path.ts';
+import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.ts';
+import { extract, type Extracted, type SpecMap } from './spec.ts';
 import * as z from 'zod/mini';
 
 export const CLUSTER_RPC_ID = 'qnKhOb';

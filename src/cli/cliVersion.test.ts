@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { runCli } from './cli.js';
+import { runCli } from './cli.ts';
 
 vi.mock('node:fs/promises', () => ({
   readFile: vi.fn(() => Promise.reject(new Error('ENOENT'))),

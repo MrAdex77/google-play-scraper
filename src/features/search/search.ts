@@ -1,18 +1,18 @@
 import * as z from 'zod/mini';
-import { BASE_URL } from '../../constants.js';
-import { ParseError } from '../../core/errors.js';
-import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
-import { parseOptionalSection, type OnIntegrityEvent } from '../../core/integrity.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { getPath } from '../../core/path.js';
-import { fetchClusterApps } from '../../core/pagination.js';
-import { resolveFullDetail, type GetApp } from '../../core/fullDetail.js';
-import { parseScriptData } from '../../core/scriptData.js';
-import { resolveScriptRoot } from '../../core/scriptRoot.js';
-import { extract, type Extracted } from '../../core/spec.js';
-import { app } from '../app/app.js';
-import type { App } from '../app/schema.js';
-import { searchResultSchema, type SearchResult } from './schema.js';
+import { BASE_URL } from '../../constants.ts';
+import { ParseError } from '../../core/errors.ts';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
+import { parseOptionalSection, type OnIntegrityEvent } from '../../core/integrity.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { getPath } from '../../core/path.ts';
+import { fetchClusterApps } from '../../core/pagination.ts';
+import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
+import { resolveScriptRoot } from '../../core/scriptRoot.ts';
+import { extract, type Extracted } from '../../core/spec.ts';
+import { app } from '../app/app.ts';
+import type { App } from '../app/schema.ts';
+import { searchResultSchema, type SearchResult } from './schema.ts';
 import {
   CLUSTER_MAPPINGS,
   EXACT_MATCH_MAPPINGS,
@@ -26,7 +26,7 @@ import {
   searchRootSpec,
   searchScriptDataSelection,
   SECTIONS_MAPPING,
-} from './specs.js';
+} from './specs.ts';
 
 export const searchOptionsSchema = z.extend(baseOptionsSchema, {
   term: z.string().check(z.minLength(1)),

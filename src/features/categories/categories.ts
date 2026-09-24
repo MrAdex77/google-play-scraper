@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
-import { category } from '../../constants.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
+import { category } from '../../constants.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 
 export const categoriesOptionsSchema = z.pick(baseOptionsSchema, {
   throttle: true,

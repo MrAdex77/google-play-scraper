@@ -1,16 +1,16 @@
 import { expect, it } from 'vitest';
-import { clientFromOptions } from '../src/core/http.js';
+import { clientFromOptions } from '../src/core/http.ts';
 import {
   fetchDeveloperFirstPage,
   type DeveloperQuery,
-} from '../src/features/developer/developer.js';
-import { NotFoundError, type DegradationEvent, type DeveloperApp } from '../src/index.js';
+} from '../src/features/developer/developer.ts';
+import { NotFoundError, type DegradationEvent, type DeveloperApp } from '../src/index.ts';
 import {
   expectAppItemsContract,
   expectContinuationContract,
   type ContinuationAnchor,
-} from './contracts.js';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
+} from './contracts.ts';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
 const GOOGLE_QUERY: DeveloperQuery = {

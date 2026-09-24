@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createCountryFetch } from './countryFetch.js';
-import { ValidationError } from './errors.js';
-import { clientFromOptions } from './http.js';
+import { createCountryFetch } from './countryFetch.ts';
+import { ValidationError } from './errors.ts';
+import { clientFromOptions } from './http.ts';
 
 const fetchMock = (body: string) => vi.fn(() => Promise.resolve(new Response(body)));
 

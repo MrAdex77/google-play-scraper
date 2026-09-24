@@ -1,9 +1,9 @@
 import * as z from 'zod/mini';
-import { buildBatchBody, parseBatchResponse } from '../../core/batchexecute.js';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { getPath } from '../../core/path.js';
-import { parseRaw } from '../../core/raw.js';
+import { buildBatchBody, parseBatchResponse } from '../../core/batchexecute.ts';
+import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { getPath } from '../../core/path.ts';
+import { parseRaw } from '../../core/raw.ts';
 import {
   buildSuggestPayload,
   SUGGEST_RPC_ID,
@@ -11,7 +11,7 @@ import {
   SUGGESTIONS_PATH,
   suggestResponseSchema,
   suggestUrl,
-} from './specs.js';
+} from './specs.ts';
 
 export const suggestOptionsSchema = z.extend(baseOptionsSchema, {
   term: z.string().check(z.minLength(1)),

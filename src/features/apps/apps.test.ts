@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apps, createApps } from './apps.js';
-import { createClient } from '../../client.js';
-import { memoized } from '../memoized/memoized.js';
-import type { GetApp } from '../../core/fullDetail.js';
-import { GooglePlayError, NotFoundError, ValidationError } from '../../core/errors.js';
-import type { App } from '../app/schema.js';
-import type { OnDegradation } from '../../core/degradation.js';
-import type { OnIntegrityEvent } from '../../core/integrity.js';
-import { changeRoutingTableEntry } from '../../../test/helpers/responseMutation.js';
+import { apps, createApps } from './apps.ts';
+import { createClient } from '../../client.ts';
+import { memoized } from '../memoized/memoized.ts';
+import type { GetApp } from '../../core/fullDetail.ts';
+import { GooglePlayError, NotFoundError, ValidationError } from '../../core/errors.ts';
+import type { App } from '../app/schema.ts';
+import type { OnDegradation } from '../../core/degradation.ts';
+import type { OnIntegrityEvent } from '../../core/integrity.ts';
+import { changeRoutingTableEntry } from '../../../test/helpers/responseMutation.ts';
 
 const readFixture = (name: string): string =>
   readFileSync(

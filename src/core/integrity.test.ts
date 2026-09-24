@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ParseError } from './errors.js';
-import { parseOptionalSection, type IntegrityEvent } from './integrity.js';
+import { ParseError } from './errors.ts';
+import { parseOptionalSection, type IntegrityEvent } from './integrity.ts';
 
 describe('parseOptionalSection', () => {
   it('returns a parsed section without emitting an event', () => {

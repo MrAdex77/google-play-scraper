@@ -1,13 +1,13 @@
 import * as z from 'zod/mini';
-import { sort } from '../../constants.js';
-import { parseBatchResponse } from '../../core/batchexecute.js';
-import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
-import { detectPaginationTokenCycle } from '../../core/integrity.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { getPath } from '../../core/path.js';
-import { parseRaw } from '../../core/raw.js';
-import { extract, type Extracted } from '../../core/spec.js';
-import { reviewsResultSchema, type ReviewsResult } from './schema.js';
+import { sort } from '../../constants.ts';
+import { parseBatchResponse } from '../../core/batchexecute.ts';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
+import { detectPaginationTokenCycle } from '../../core/integrity.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { getPath } from '../../core/path.ts';
+import { parseRaw } from '../../core/raw.ts';
+import { extract, type Extracted } from '../../core/spec.ts';
+import { reviewsResultSchema, type ReviewsResult } from './schema.ts';
 import {
   buildInitialReviewsBody,
   buildPaginatedReviewsBody,
@@ -17,7 +17,7 @@ import {
   reviewsCollectionResponseSchema,
   reviewsTokenResponseSchema,
   reviewsUrl,
-} from './specs.js';
+} from './specs.ts';
 
 const REVIEWS_CONTEXT = 'reviews';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapWithConcurrency } from './concurrency.js';
+import { mapWithConcurrency } from './concurrency.ts';
 
 interface Gate {
   promise: Promise<void>;

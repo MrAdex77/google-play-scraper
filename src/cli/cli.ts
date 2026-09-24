@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import * as z from 'zod/mini';
-import gplay from '../index.js';
-import { GooglePlayError, ValidationError } from '../core/errors.js';
-import { commands } from './commands.js';
-import type { CliApi, CliCommand, CliValues } from './commands.js';
+import gplay from '../index.ts';
+import { GooglePlayError, ValidationError } from '../core/errors.ts';
+import { commands } from './commands.ts';
+import type { CliApi, CliCommand, CliValues } from './commands.ts';
 
 export interface CliIo {
   out: (text: string) => void;

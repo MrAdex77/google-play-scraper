@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
-import { ParseError } from './errors.js';
-import type { IntegrityEvent } from './integrity.js';
-import { resolveScriptRoot, type ScriptRootSpec } from './scriptRoot.js';
-import type { ScriptData } from './scriptData.js';
-import { defaulted, optional, required } from './spec.js';
+import { ParseError } from './errors.ts';
+import type { IntegrityEvent } from './integrity.ts';
+import { resolveScriptRoot, type ScriptRootSpec } from './scriptRoot.ts';
+import type { ScriptData } from './scriptData.ts';
+import { defaulted, optional, required } from './spec.ts';
 
 const rootSchema = z.object({ title: z.string() });
 

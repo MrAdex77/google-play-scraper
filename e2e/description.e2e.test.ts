@@ -1,8 +1,8 @@
 import * as cheerio from 'cheerio';
 import { expect, it } from 'vitest';
-import { htmlToPlainText } from '../src/core/htmlText.js';
-import { sanitizeText } from '../src/core/text.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { htmlToPlainText } from '../src/core/htmlText.ts';
+import { sanitizeText } from '../src/core/text.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 function legacyDescriptionText(html: string): string {
   const document = cheerio.load(`<div>${html.replace(/<br>/g, '\r\n')}</div>`);

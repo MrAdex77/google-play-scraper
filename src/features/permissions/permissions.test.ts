@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { permissions, type PermissionsOptions } from './permissions.js';
-import { mapPermissions } from './specs.js';
-import { permissionSchema, type AppPermission } from './schema.js';
-import { permission } from '../../constants.js';
-import { ParseError, ValidationError } from '../../core/errors.js';
+import { permissions, type PermissionsOptions } from './permissions.ts';
+import { mapPermissions } from './specs.ts';
+import { permissionSchema, type AppPermission } from './schema.ts';
+import { permission } from '../../constants.ts';
+import { ParseError, ValidationError } from '../../core/errors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 

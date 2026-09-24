@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { createDeveloper, developer, type DeveloperOptions } from './developer.js';
-import { developerAppSchema, type DeveloperApp } from './schema.js';
-import { developerUrl } from './specs.js';
-import type { App } from '../app/schema.js';
-import type { OnIntegrityEvent } from '../../core/integrity.js';
-import type { OnDegradation } from '../../core/degradation.js';
-import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
+import { createDeveloper, developer, type DeveloperOptions } from './developer.ts';
+import { developerAppSchema, type DeveloperApp } from './schema.ts';
+import { developerUrl } from './specs.ts';
+import type { App } from '../app/schema.ts';
+import type { OnIntegrityEvent } from '../../core/integrity.ts';
+import type { OnDegradation } from '../../core/degradation.ts';
+import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 
 const readFixture = (name: string): string =>
   readFileSync(

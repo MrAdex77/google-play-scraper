@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { dataSafety, type DataSafetyOptions } from './datasafety.js';
-import { ParseError, ValidationError } from '../../core/errors.js';
-import { DATA_SAFETY_RPC_ID } from './specs.js';
+import { dataSafety, type DataSafetyOptions } from './datasafety.ts';
+import { ParseError, ValidationError } from '../../core/errors.ts';
+import { DATA_SAFETY_RPC_ID } from './specs.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 

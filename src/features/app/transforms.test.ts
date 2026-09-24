@@ -10,7 +10,7 @@ import {
   extractScreenshots,
   normalizeAndroidVersion,
   priceText,
-} from './transforms.js';
+} from './transforms.ts';
 
 const detailWithDescriptions = (translated: unknown, original: unknown): unknown[] => {
   const detail: unknown[] = [];

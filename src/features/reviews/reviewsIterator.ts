@@ -1,8 +1,8 @@
 import * as z from 'zod/mini';
-import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
-import { parseOptions } from '../../core/options.js';
-import { reviewPages, reviewsOptionsSchema } from './reviews.js';
-import { reviewSchema, type Review } from './schema.js';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
+import { parseOptions } from '../../core/options.ts';
+import { reviewPages, reviewsOptionsSchema } from './reviews.ts';
+import { reviewSchema, type Review } from './schema.ts';
 
 const REVIEWS_ITERATOR_CONTEXT = 'reviewsIterator';
 

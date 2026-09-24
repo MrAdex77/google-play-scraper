@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import type { IntegrityEvent } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import type { IntegrityEvent } from '../src/index.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 

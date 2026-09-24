@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import * as api from '../src/index.js';
+import * as api from '../src/index.ts';
 
 const exampleSource = readFileSync(new URL('../examples/all-methods.ts', import.meta.url), 'utf8');
 

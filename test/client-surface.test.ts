@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import gplay, { createClient, memoized } from '../src/index.js';
+import gplay, { createClient, memoized } from '../src/index.ts';
 
 const FACTORY_ONLY_MEMBERS = ['createClient', 'memoized'];
 const CACHED_ONLY_MEMBERS = ['cache'];

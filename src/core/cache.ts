@@ -1,7 +1,7 @@
 import { LRUCache } from 'lru-cache';
 import type * as z from 'zod/mini';
-import type { DegradationEvent } from './degradation.js';
-import type { IntegrityEvent } from './integrity.js';
+import type { DegradationEvent } from './degradation.ts';
+import type { IntegrityEvent } from './integrity.ts';
 import {
   normalizeCountry,
   parseOptions,
@@ -9,7 +9,7 @@ import {
   type ObservabilityOptions,
   type ObservableSchema,
   type SchemaBoundMethod,
-} from './options.js';
+} from './options.ts';
 
 export interface CacheSettings {
   maxAgeMs: number;

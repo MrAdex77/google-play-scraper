@@ -1,11 +1,11 @@
-import { microsToUnits } from '../../core/appItemTransforms.js';
-import { getPath, isRecord } from '../../core/path.js';
-import type { ScriptRootSpec } from '../../core/scriptRoot.js';
-import { deriveScriptDataSelection } from '../../core/scriptData.js';
-import { sanitizeText } from '../../core/text.js';
-import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
+import { microsToUnits } from '../../core/appItemTransforms.ts';
+import { getPath, isRecord } from '../../core/path.ts';
+import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
+import { deriveScriptDataSelection } from '../../core/scriptData.ts';
+import { sanitizeText } from '../../core/text.ts';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
 import * as z from 'zod/mini';
-import { appSchema } from './schema.js';
+import { appSchema } from './schema.ts';
 import {
   buildHistogram,
   categoriesFromDetail,
@@ -15,7 +15,7 @@ import {
   extractScreenshots,
   normalizeAndroidVersion,
   priceText,
-} from './transforms.js';
+} from './transforms.ts';
 
 const shape = appSchema.shape;
 const REQUIRED = required();

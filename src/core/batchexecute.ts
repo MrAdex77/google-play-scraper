@@ -1,7 +1,7 @@
-import { BASE_URL } from '../constants.js';
+import { BASE_URL } from '../constants.ts';
 import * as z from 'zod/mini';
-import { ParseError } from './errors.js';
-import { parseRaw } from './raw.js';
+import { ParseError } from './errors.ts';
+import { parseRaw } from './raw.ts';
 
 export const BATCH_URL = `${BASE_URL}/_/PlayStoreUi/data/batchexecute`;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { baseOptionsSchema, parseOptions } from './options.js';
-import { ValidationError } from './errors.js';
+import { baseOptionsSchema, parseOptions } from './options.ts';
+import { ValidationError } from './errors.ts';
 
 describe('parseOptions', () => {
   it('fills defaults for lang and country', () => {

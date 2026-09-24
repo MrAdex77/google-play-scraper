@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createDeveloperIterator, developerIterator } from './developerIterator.js';
-import { developerAppSchema } from './schema.js';
-import type { DegradationEvent } from '../../core/degradation.js';
-import { ParseError, ValidationError } from '../../core/errors.js';
+import { createDeveloperIterator, developerIterator } from './developerIterator.ts';
+import { developerAppSchema } from './schema.ts';
+import type { DegradationEvent } from '../../core/degradation.ts';
+import { ParseError, ValidationError } from '../../core/errors.ts';
 
 const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () => number } => {
   let index = 0;

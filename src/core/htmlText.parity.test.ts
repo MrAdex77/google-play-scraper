@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as cheerio from 'cheerio';
 import { describe, expect, it } from 'vitest';
-import { htmlToPlainText } from './htmlText.js';
-import { parseScriptData } from './scriptData.js';
-import { resolveScriptRoot } from './scriptRoot.js';
-import { extract } from './spec.js';
-import { appDetailsRootSpec, appSpecs } from '../features/app/specs.js';
+import { htmlToPlainText } from './htmlText.ts';
+import { parseScriptData } from './scriptData.ts';
+import { resolveScriptRoot } from './scriptRoot.ts';
+import { extract } from './spec.ts';
+import { appDetailsRootSpec, appSpecs } from '../features/app/specs.ts';
 
 function legacyDescriptionText(html: string): string {
   const document = cheerio.load(`<div>${html.replace(/<br>/g, '\r\n')}</div>`);

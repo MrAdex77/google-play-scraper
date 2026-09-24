@@ -1,6 +1,6 @@
-import { BASE_URL } from '../constants.js';
-import { appItemSchema } from './appItem.js';
-import { defaulted, optional, required, type SpecMap } from './spec.js';
+import { BASE_URL } from '../constants.ts';
+import { appItemSchema } from './appItem.ts';
+import { defaulted, optional, required, type SpecMap } from './spec.ts';
 
 const shape = appItemSchema.shape;
 const PRICE_NUMBER = /([0-9.,]+)/;

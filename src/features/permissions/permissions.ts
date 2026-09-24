@@ -1,10 +1,10 @@
 import * as z from 'zod/mini';
-import { permission } from '../../constants.js';
-import { parseBatchResponse } from '../../core/batchexecute.js';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { parseRaw } from '../../core/raw.js';
-import { permissionSchema, type AppPermission } from './schema.js';
+import { permission } from '../../constants.ts';
+import { parseBatchResponse } from '../../core/batchexecute.ts';
+import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { parseRaw } from '../../core/raw.ts';
+import { permissionSchema, type AppPermission } from './schema.ts';
 import {
   buildPermissionsBody,
   commonPermissionsResponseSchema,
@@ -12,7 +12,7 @@ import {
   otherPermissionsResponseSchema,
   PERMISSIONS_RPC_ID,
   permissionsUrl,
-} from './specs.js';
+} from './specs.ts';
 
 const PERMISSIONS_CONTEXT = 'permissions';
 

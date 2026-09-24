@@ -1,6 +1,6 @@
-import { BATCH_URL } from '../../core/batchexecute.js';
-import type { Path } from '../../core/path.js';
-import { rawArrayPathSchema } from '../../core/raw.js';
+import { BATCH_URL } from '../../core/batchexecute.ts';
+import type { Path } from '../../core/path.ts';
+import { rawArrayPathSchema } from '../../core/raw.ts';
 import * as z from 'zod/mini';
 
 export const SUGGEST_RPC_ID = 'IJ4APc';

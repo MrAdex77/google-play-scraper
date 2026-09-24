@@ -1,9 +1,9 @@
-import { BATCH_URL } from '../../core/batchexecute.js';
-import type { Category, Collection } from '../../constants.js';
-import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.js';
-import { rawArrayPathSchema } from '../../core/raw.js';
-import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
-import { appItemSchema } from '../../core/appItem.js';
+import { BATCH_URL } from '../../core/batchexecute.ts';
+import type { Category, Collection } from '../../constants.ts';
+import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
+import { rawArrayPathSchema } from '../../core/raw.ts';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
+import { appItemSchema } from '../../core/appItem.ts';
 import * as z from 'zod/mini';
 
 export const LIST_RPC_ID = 'vyAe2';

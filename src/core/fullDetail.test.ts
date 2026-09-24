@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { OnDegradation } from './degradation.js';
-import { resolveFullDetail, type GetAppParams } from './fullDetail.js';
-import type { OnIntegrityEvent } from './integrity.js';
+import type { OnDegradation } from './degradation.ts';
+import { resolveFullDetail, type GetAppParams } from './fullDetail.ts';
+import type { OnIntegrityEvent } from './integrity.ts';
 
 const options = { lang: 'en', country: 'us' };
 

@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
-import { createCountryFetch, type SearchResult } from '../src/index.js';
-import { expectAppItemsContract } from './contracts.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { createCountryFetch, type SearchResult } from '../src/index.ts';
+import { expectAppItemsContract } from './contracts.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const trackedFetch = (calls: string[], label: string): typeof fetch => {
   return (input, init) => {

@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
-import { sort, type IntegrityEvent } from '../src/index.js';
-import { expectContinuationContract, expectReviewsContract, reviewsAnchor } from './contracts.js';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
+import { sort, type IntegrityEvent } from '../src/index.ts';
+import { expectContinuationContract, expectReviewsContract, reviewsAnchor } from './contracts.ts';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 const GEO_GAME = 'com.adex77.WhereAmI';

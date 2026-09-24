@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { hasUniqueCountriesIgnoringCase, normalizeCountry, parseOptions } from './options.js';
+import { hasUniqueCountriesIgnoringCase, normalizeCountry, parseOptions } from './options.ts';
 
 const COUNTRY_QUERY_PARAM = 'gl';
 const COUNTRY_FETCH_CONTEXT = 'countryFetch';

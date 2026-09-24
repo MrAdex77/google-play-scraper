@@ -1,10 +1,10 @@
 import { $ZodError, parse, type $ZodType } from 'zod/v4/core';
 import type * as z from 'zod/mini';
-import type { Path } from './path.js';
-import { getPath } from './path.js';
-import type { ScriptData } from './scriptData.js';
-import type { SpecFailure } from './errors.js';
-import { SpecError } from './errors.js';
+import type { Path } from './path.ts';
+import { getPath } from './path.ts';
+import type { ScriptData } from './scriptData.ts';
+import type { SpecFailure } from './errors.ts';
+import { SpecError } from './errors.ts';
 
 export interface FieldSpec<T = unknown> {
   paths: readonly Path[];

@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { reviewPages, reviews, type ReviewPageQuery, type ReviewsOptions } from './reviews.js';
-import { REVIEWS_RPC_ID } from './specs.js';
-import { reviewSchema } from './schema.js';
-import { createHttpClient } from '../../core/http.js';
-import { sort } from '../../constants.js';
-import { ParseError, SpecError, ValidationError } from '../../core/errors.js';
-import type { IntegrityEvent } from '../../core/integrity.js';
+import { reviewPages, reviews, type ReviewPageQuery, type ReviewsOptions } from './reviews.ts';
+import { REVIEWS_RPC_ID } from './specs.ts';
+import { reviewSchema } from './schema.ts';
+import { createHttpClient } from '../../core/http.ts';
+import { sort } from '../../constants.ts';
+import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
+import type { IntegrityEvent } from '../../core/integrity.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { NotFoundError } from '../src/index.js';
-import { liveClient, liveDescribe } from './helpers.js';
+import { NotFoundError } from '../src/index.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE_ID = 'com.google.android.apps.translate';
 const INSTAGRAM_ID = 'com.instagram.android';

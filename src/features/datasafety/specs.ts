@@ -1,9 +1,9 @@
 import * as z from 'zod/mini';
-import { getPath, isRecord, type Path } from '../../core/path.js';
-import type { ScriptRootSpec } from '../../core/scriptRoot.js';
-import { deriveScriptDataSelection } from '../../core/scriptData.js';
-import { defaulted, optional, required, type SpecMap } from '../../core/spec.js';
-import { dataEntrySchema, securityPracticeSchema } from './schema.js';
+import { getPath, isRecord, type Path } from '../../core/path.ts';
+import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
+import { deriveScriptDataSelection } from '../../core/scriptData.ts';
+import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
+import { dataEntrySchema, securityPracticeSchema } from './schema.ts';
 
 export const DATA_SAFETY_RPC_ID = 'Ws7gDc';
 

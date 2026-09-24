@@ -4,7 +4,7 @@ Thanks for your interest in improving this project. This guide covers the local 
 
 ## Prerequisites
 
-- Node.js 22.12 or newer
+- Node.js 24 or newer
 - [pnpm](https://pnpm.io) 11
 
 ## Setup

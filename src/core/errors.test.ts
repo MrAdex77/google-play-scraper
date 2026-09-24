@@ -8,8 +8,8 @@ import {
   RateLimitError,
   SpecError,
   ValidationError,
-} from './errors.js';
-import type { SpecFailure } from './errors.js';
+} from './errors.ts';
+import type { SpecFailure } from './errors.ts';
 
 describe('error taxonomy', () => {
   it('roots every error at GooglePlayError with its own name', () => {

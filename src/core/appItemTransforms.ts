@@ -1,4 +1,4 @@
-import { BASE_URL } from '../constants.js';
+import { BASE_URL } from '../constants.ts';
 
 const MICROS_PER_UNIT = 1_000_000;
 

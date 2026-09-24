@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { availability } from './availability.js';
-import { availabilityResultSchema } from './schema.js';
-import { createClient } from '../../client.js';
-import { memoized } from '../memoized/memoized.js';
-import { createCountryFetch } from '../../core/countryFetch.js';
-import { ValidationError } from '../../core/errors.js';
+import { availability } from './availability.ts';
+import { availabilityResultSchema } from './schema.ts';
+import { createClient } from '../../client.ts';
+import { memoized } from '../memoized/memoized.ts';
+import { createCountryFetch } from '../../core/countryFetch.ts';
+import { ValidationError } from '../../core/errors.ts';
 
 const urlOf = (input: string | URL | Request): string =>
   typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;

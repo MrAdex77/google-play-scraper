@@ -1,10 +1,10 @@
 import * as z from 'zod/mini';
-import { mapWithConcurrency } from '../../core/concurrency.js';
-import { GooglePlayError } from '../../core/errors.js';
-import type { GetApp } from '../../core/fullDetail.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { app } from '../app/app.js';
-import type { App } from '../app/schema.js';
+import { mapWithConcurrency } from '../../core/concurrency.ts';
+import { GooglePlayError } from '../../core/errors.ts';
+import type { GetApp } from '../../core/fullDetail.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { app } from '../app/app.ts';
+import type { App } from '../app/schema.ts';
 
 export const appsOptionsSchema = z.extend(baseOptionsSchema, {
   appIds: z.array(z.string().check(z.minLength(1))).check(z.minLength(1), z.maxLength(250)),

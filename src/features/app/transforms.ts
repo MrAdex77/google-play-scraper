@@ -1,7 +1,7 @@
-import { htmlToPlainText } from '../../core/htmlText.js';
-import { getPath } from '../../core/path.js';
-import { sanitizeText } from '../../core/text.js';
-import type { AppCategory } from './schema.js';
+import { htmlToPlainText } from '../../core/htmlText.ts';
+import { getPath } from '../../core/path.ts';
+import { sanitizeText } from '../../core/text.ts';
+import type { AppCategory } from './schema.ts';
 
 const MAX_COMMENTS = 5;
 

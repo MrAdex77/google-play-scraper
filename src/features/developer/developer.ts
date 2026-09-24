@@ -1,16 +1,16 @@
 import * as z from 'zod/mini';
-import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { getPath } from '../../core/path.js';
-import { clusterItemSpecs } from '../../core/clusterItem.js';
-import { fetchClusterApps } from '../../core/pagination.js';
-import { resolveFullDetail, type GetApp } from '../../core/fullDetail.js';
-import { parseScriptData } from '../../core/scriptData.js';
-import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.js';
-import { extract, type Extracted } from '../../core/spec.js';
-import { app } from '../app/app.js';
-import type { App } from '../app/schema.js';
-import { developerAppSchema, type DeveloperApp } from './schema.js';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { getPath } from '../../core/path.ts';
+import { clusterItemSpecs } from '../../core/clusterItem.ts';
+import { fetchClusterApps } from '../../core/pagination.ts';
+import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
+import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.ts';
+import { extract, type Extracted } from '../../core/spec.ts';
+import { app } from '../app/app.ts';
+import type { App } from '../app/schema.ts';
+import { developerAppSchema, type DeveloperApp } from './schema.ts';
 import {
   CLUSTER_MAPPINGS,
   developerScriptDataSelection,
@@ -22,7 +22,7 @@ import {
   NUMERIC_INITIAL_MAPPINGS,
   numericInitialRootSpec,
   numericItemSpecs,
-} from './specs.js';
+} from './specs.ts';
 
 export const developerOptionsSchema = z.extend(baseOptionsSchema, {
   devId: z.string().check(z.minLength(1)),

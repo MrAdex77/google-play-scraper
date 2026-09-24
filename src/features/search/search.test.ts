@@ -1,27 +1,27 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { createSearch, search, type SearchOptions } from './search.js';
+import { createSearch, search, type SearchOptions } from './search.ts';
 import {
   filterByPrice,
   isExactMatchCard,
   matchesPriceFilter,
   SEARCH_RPC_ID,
   searchScriptDataSelection,
-} from './specs.js';
-import { getPath } from '../../core/path.js';
-import { parseScriptData } from '../../core/scriptData.js';
+} from './specs.ts';
+import { getPath } from '../../core/path.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
 import {
   changeRoutingTableEntry,
   deletePath,
   replaceScriptBlockData,
-} from '../../../test/helpers/responseMutation.js';
-import { memoized } from '../memoized/memoized.js';
-import { searchResultSchema, type SearchResult } from './schema.js';
-import type { App } from '../app/schema.js';
-import type { DegradationEvent, OnDegradation } from '../../core/degradation.js';
-import { ParseError, ValidationError } from '../../core/errors.js';
-import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.js';
+} from '../../../test/helpers/responseMutation.ts';
+import { memoized } from '../memoized/memoized.ts';
+import { searchResultSchema, type SearchResult } from './schema.ts';
+import type { App } from '../app/schema.ts';
+import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
+import { ParseError, ValidationError } from '../../core/errors.ts';
+import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 
 const readFixture = (name: string): string =>
   readFileSync(

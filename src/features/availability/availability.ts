@@ -1,20 +1,20 @@
 import * as z from 'zod/mini';
-import { BASE_URL } from '../../constants.js';
-import { mapWithConcurrency } from '../../core/concurrency.js';
-import { NotFoundError } from '../../core/errors.js';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
+import { BASE_URL } from '../../constants.ts';
+import { mapWithConcurrency } from '../../core/concurrency.ts';
+import { NotFoundError } from '../../core/errors.ts';
+import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import {
   baseOptionsSchema,
   hasUniqueCountriesIgnoringCase,
   normalizeCountry,
   parseOptions,
   requestOptionsSchema,
-} from '../../core/options.js';
+} from '../../core/options.ts';
 import {
   availabilityResultSchema,
   type AvailabilityResult,
   type CountryAvailability,
-} from './schema.js';
+} from './schema.ts';
 
 const countryCodeSchema = z.string().check(z.regex(/^[a-z]{2}$/i));
 

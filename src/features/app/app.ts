@@ -1,18 +1,18 @@
 import * as z from 'zod/mini';
-import { BASE_URL } from '../../constants.js';
-import { clientFromOptions, type ResolveClient } from '../../core/http.js';
-import { baseOptionsSchema, parseOptions } from '../../core/options.js';
-import { parseScriptData } from '../../core/scriptData.js';
-import { resolveScriptRoot } from '../../core/scriptRoot.js';
-import { extract } from '../../core/spec.js';
-import { appSchema, type App } from './schema.js';
+import { BASE_URL } from '../../constants.ts';
+import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
+import { resolveScriptRoot } from '../../core/scriptRoot.ts';
+import { extract } from '../../core/spec.ts';
+import { appSchema, type App } from './schema.ts';
 import {
   appCommentsRootSpec,
   appDetailsRootSpec,
   appScriptDataSelection,
   appSpecs,
-} from './specs.js';
-import { extractComments } from './transforms.js';
+} from './specs.ts';
+import { extractComments } from './transforms.ts';
 
 export const appOptionsSchema = z.extend(baseOptionsSchema, {
   appId: z.string().check(z.minLength(1)),

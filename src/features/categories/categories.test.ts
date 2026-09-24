@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { categories } from './categories.js';
-import { category } from '../../constants.js';
-import { ValidationError } from '../../core/errors.js';
+import { categories } from './categories.ts';
+import { category } from '../../constants.ts';
+import { ValidationError } from '../../core/errors.ts';
 
 describe('categories', () => {
   it('returns the full Google Play category taxonomy', async () => {

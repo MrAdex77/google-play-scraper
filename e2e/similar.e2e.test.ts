@@ -1,10 +1,10 @@
 import { expect, it } from 'vitest';
-import { clientFromOptions } from '../src/core/http.js';
-import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/similar/similar.js';
-import { SIMILAR_MAX_APPS } from '../src/features/similar/specs.js';
-import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.js';
-import { expectAppItemsContract, expectContinuationContract } from './contracts.js';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.js';
+import { clientFromOptions } from '../src/core/http.ts';
+import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/similar/similar.ts';
+import { SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
+import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.ts';
+import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
+import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 
 const FLAGSHIP_APP_ID = 'com.google.android.apps.translate';
 const FLAGSHIP_QUERY: SimilarQuery = {

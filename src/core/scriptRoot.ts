@@ -1,10 +1,10 @@
 import { safeParse, type $ZodType } from 'zod/v4/core';
-import { ParseError } from './errors.js';
-import type { OnIntegrityEvent } from './integrity.js';
-import { getPath, type Path } from './path.js';
-import { parseRaw } from './raw.js';
-import { resolveDsKeys, type ScriptData } from './scriptData.js';
-import type { MissingPolicy } from './spec.js';
+import { ParseError } from './errors.ts';
+import type { OnIntegrityEvent } from './integrity.ts';
+import { getPath, type Path } from './path.ts';
+import { parseRaw } from './raw.ts';
+import { resolveDsKeys, type ScriptData } from './scriptData.ts';
+import type { MissingPolicy } from './spec.ts';
 
 export type UnparsableCandidatePolicy = 'reject' | 'skip';
 

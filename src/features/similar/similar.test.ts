@@ -1,14 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { createSimilar, similar, type SimilarOptions } from './similar.js';
-import { similarAppSchema, type SimilarApp } from './schema.js';
-import { findSimilarClusterPath } from './specs.js';
-import { parseScriptData } from '../../core/scriptData.js';
-import type { App } from '../app/schema.js';
-import type { OnIntegrityEvent } from '../../core/integrity.js';
-import type { OnDegradation } from '../../core/degradation.js';
-import { ParseError, ValidationError } from '../../core/errors.js';
+import { createSimilar, similar, type SimilarOptions } from './similar.ts';
+import { similarAppSchema, type SimilarApp } from './schema.ts';
+import { findSimilarClusterPath } from './specs.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
+import type { App } from '../app/schema.ts';
+import type { OnIntegrityEvent } from '../../core/integrity.ts';
+import type { OnDegradation } from '../../core/degradation.ts';
+import { ParseError, ValidationError } from '../../core/errors.ts';
 
 const SOURCE_APP_ID = 'com.google.android.apps.translate';
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
-import { ParseError } from './errors.js';
-import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.js';
+import { ParseError } from './errors.ts';
+import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.ts';
 
 describe('parseRaw', () => {
   it('returns validated values', () => {
