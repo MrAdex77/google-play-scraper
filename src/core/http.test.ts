@@ -28,6 +28,9 @@ const fakeResponse = (init: FakeResponseInit = {}): Response => {
   } as unknown as Response;
 };
 
+const CAPTCHA_URL =
+  'https://www.google.com/sorry/index?continue=https://play.google.com/store&q=token';
+
 const lastInit = (fetchImpl: ReturnType<typeof vi.fn>): RequestInit => {
   const call = fetchImpl.mock.calls[0] as [string, RequestInit];
   return call[1];
@@ -528,6 +531,66 @@ describe('createHttpClient', () => {
     expect(error).toBeInstanceOf(BlockedError);
     expect((error as BlockedError).message).toBe('Blocked by Google Play (consent wall)');
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws BlockedError after retrying a captcha redirect', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(fakeResponse({ status: 429, url: CAPTCHA_URL, body: 'unusual traffic' }));
+    const retries: RetryEvent[] = [];
+    const client = createHttpClient({ fetchImpl, onRetry: (event) => retries.push(event) });
+
+    const settled = client.request({ url: 'https://x' }).catch((error: unknown) => error);
+    await vi.runAllTimersAsync();
+    const error = await settled;
+
+    expect(error).toBeInstanceOf(BlockedError);
+    expect(error).not.toBeInstanceOf(RateLimitError);
+    expect((error as BlockedError).message).toBe('Blocked by Google Play (captcha challenge)');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(retries.map((event) => [event.reason, event.status])).toEqual([
+      ['status', 429],
+      ['status', 429],
+    ]);
+  });
+
+  it('recovers when a retried captcha redirect is served normally', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(fakeResponse({ status: 429, url: CAPTCHA_URL }))
+      .mockResolvedValueOnce(fakeResponse({ body: 'recovered' }));
+    const client = createHttpClient({ fetchImpl });
+
+    const pending = client.request({ url: 'https://x' });
+    await vi.runAllTimersAsync();
+
+    await expect(pending).resolves.toBe('recovered');
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats a captcha redirect as blocked whatever its status', async () => {
+    const text = vi.fn(() => Promise.resolve('challenge'));
+    const response = Object.assign(fakeResponse({ url: CAPTCHA_URL }), { text });
+    const fetchImpl = vi.fn().mockResolvedValue(response);
+    const client = createHttpClient({ fetchImpl, retries: 0 });
+
+    await expect(client.request({ url: 'https://x' })).rejects.toBeInstanceOf(BlockedError);
+    expect(text).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'https://example.com/sorry/index',
+    'https://notgoogle.com/sorry/index',
+    'https://play.google.com/store/search?q=/sorry/index',
+  ])('returns the body when %s only resembles a captcha url', async (url) => {
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse({ body: 'clean', url }));
+    const client = createHttpClient({ fetchImpl });
+
+    await expect(client.request({ url: 'https://x' })).resolves.toBe('clean');
   });
 
   it('returns a successful body that quotes block markers', async () => {
