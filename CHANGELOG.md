@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.3.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.2.0...v1.3.0) (2026-09-24)
+
+
+### Features
+
+* **client:** unify caching and shared client composition ([#131](https://github.com/MrAdex77/google-play-scraper/issues/131)) ([ef5c935](https://github.com/MrAdex77/google-play-scraper/commit/ef5c9350f1a86c298e1df340df4649a2ffa0b353))
+
+
+### Bug Fixes
+
+* **core:** bound and parse http-date retry-after values ([5f677dc](https://github.com/MrAdex77/google-play-scraper/commit/5f677dc2da98cc0923e9977ec3016a8ca2248137))
+* **core:** cancel unread bodies of error responses ([c24de81](https://github.com/MrAdex77/google-play-scraper/commit/c24de81b89333ec2d7a7908907dc1fc07afba4f8))
+* **core:** detect Google Play blocks from the final url ([#138](https://github.com/MrAdex77/google-play-scraper/issues/138)) ([734468f](https://github.com/MrAdex77/google-play-scraper/commit/734468f3412e51cc0cef6a4fc40ecfe7eca59a97))
+* **core:** make cancellation immediate across the request lifecycle ([98a8459](https://github.com/MrAdex77/google-play-scraper/commit/98a8459b319659e4ea52f95edbc4d2dda760837a))
+* **core:** make retry and throttle waits abortable ([c46b6e0](https://github.com/MrAdex77/google-play-scraper/commit/c46b6e0baf2899e9999c23eb1cf21f2c06223016))
+* **core:** observe aborts raised from lifecycle hooks and queue entry ([1fd0c8f](https://github.com/MrAdex77/google-play-scraper/commit/1fd0c8f2606be83350c6ec4c61620ba06a5003e2))
+* **core:** release the per attempt timeout signal ([47162ea](https://github.com/MrAdex77/google-play-scraper/commit/47162ea698c59b499c59cd034bf15452ed103933))
+* **e2e:** anchor review counts to the live first page ([2868f0e](https://github.com/MrAdex77/google-play-scraper/commit/2868f0eaff75fd275e8f71f9378b8982b41f3068))
+* **e2e:** derive the last pinned counts from live pages and constants ([76808da](https://github.com/MrAdex77/google-play-scraper/commit/76808da2f3b21070ae8e644a58e7dd127f3c2a75))
+* **e2e:** drop catalogue count floors from report surfaces ([d2beed6](https://github.com/MrAdex77/google-play-scraper/commit/d2beed610e1f602c7288651c925371d80628a26f))
+* **e2e:** stop live contracts failing on catalogue count drift ([59ed3b8](https://github.com/MrAdex77/google-play-scraper/commit/59ed3b8b30f947d4f9ae61bccc470cb56ffca1c1))
+* **e2e:** stop pinning search result counts ([cdab21b](https://github.com/MrAdex77/google-play-scraper/commit/cdab21b6bf617a2d72b69f0bc7b23cf71a90d5dd))
+* **e2e:** stop pinning top chart sizes in the list suite ([b6b10d4](https://github.com/MrAdex77/google-play-scraper/commit/b6b10d43fbd029a25dfaea018ffe3789596e9a45))
+* **e2e:** widen the histogram lag tolerance to measured drift ([988bc46](https://github.com/MrAdex77/google-play-scraper/commit/988bc46af5602dd83f5f9081c54f2aa2f6f10f4c))
+
 ## [1.2.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.1.0...v1.2.0) (2026-09-11)
 
 
