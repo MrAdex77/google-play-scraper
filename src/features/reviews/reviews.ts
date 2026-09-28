@@ -27,12 +27,15 @@ const sortSchema = z._default(
   sort.NEWEST,
 );
 
+export const reviewScoreSchema = z.literal([1, 2, 3, 4, 5]);
+
 export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
   appId: z.string().check(z.minLength(1)),
   sort: sortSchema,
   num: z._default(z.int().check(z.gte(1)), DEFAULT_REVIEWS_PAGE_SIZE),
   paginate: z._default(z.boolean(), false),
   nextPaginationToken: z.optional(z.string()),
+  score: z.optional(reviewScoreSchema),
   pageSize: z.optional(z.int().check(z.gte(1), z.lte(MAX_REVIEWS_PAGE_SIZE))),
 });
 
@@ -43,7 +46,14 @@ type ReviewItem = Extracted<typeof reviewItemSpecs>;
 
 export type ReviewPageQuery = Pick<
   ParsedReviewsOptions,
-  'appId' | 'sort' | 'lang' | 'country' | 'nextPaginationToken' | 'pageSize' | 'onIntegrityEvent'
+  | 'appId'
+  | 'sort'
+  | 'lang'
+  | 'country'
+  | 'nextPaginationToken'
+  | 'score'
+  | 'pageSize'
+  | 'onIntegrityEvent'
 >;
 
 export interface ReviewsPage {
@@ -65,6 +75,7 @@ async function fetchReviewsPage(
       sort: options.sort,
       count,
       token,
+      score: options.score,
     }),
   });
 

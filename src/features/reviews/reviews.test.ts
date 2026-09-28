@@ -552,3 +552,82 @@ describe('reviews request sizing', () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 });
+
+const filteredInitial = readFixture('translate-score5-size10-initial.txt');
+const filteredPage2 = readFixture('translate-score5-size10-page2.txt');
+const SCORE_THREE_FILTER =
+  '%5Bnull%2C3%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%5D%5D%2C%5B%5C%22';
+
+describe('reviews score filter', () => {
+  it('decodes the recorded score-filtered page into ten five star reviews with a token', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      pageSize: 10,
+      score: 5,
+      requestOptions: { fetchImpl: fetchReturning(filteredInitial) },
+    });
+
+    expect(result.data).toHaveLength(10);
+    expect(result.data.every((review) => review.score === 5)).toBe(true);
+    expect(typeof result.nextPaginationToken).toBe('string');
+  });
+
+  it('accumulates the recorded filtered pages into twenty distinct five star reviews', async () => {
+    const { fetchImpl, bodies } = recordingFetch([filteredInitial, filteredPage2]);
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      num: 20,
+      pageSize: 10,
+      score: 5,
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(2);
+    expect(result.data).toHaveLength(20);
+    expect(new Set(result.data.map((review) => review.id)).size).toBe(20);
+    expect(result.data.every((review) => review.score === 5)).toBe(true);
+  });
+
+  it('keeps the score filter on every continuation request', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(entries('a', 10), 'page-two'),
+      reviewsBatch(entries('b', 10), null),
+    ]);
+
+    await reviews({
+      appId: TRANSLATE,
+      num: 20,
+      pageSize: 10,
+      score: 3,
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]).toContain(SCORE_THREE_FILTER);
+    expect(bodies[1]).toContain(SCORE_THREE_FILTER);
+    expect(bodies[1]).toContain('page-two');
+  });
+
+  it('applies the supplied score next to an explicit token', async () => {
+    const { fetchImpl, bodies } = recordingFetch([reviewsBatch(entries('a', 1), null)]);
+
+    await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      nextPaginationToken: 'minted-elsewhere',
+      score: 3,
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies[0]).toContain('%5C%22minted-elsewhere%5C%22');
+    expect(bodies[0]).toContain(SCORE_THREE_FILTER);
+  });
+
+  it.each([0, 6, 2.5, '5'])('rejects score %j through validation', async (score) => {
+    await expect(
+      reviews({ appId: TRANSLATE, score } as unknown as ReviewsOptions),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+});
