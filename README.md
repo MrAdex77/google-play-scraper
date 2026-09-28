@@ -530,7 +530,7 @@ Retrieves reviews for an app. Reviews always come back inside a `{ data, nextPag
 | `nextPaginationToken` | `string`   | none          | Continue from a token returned by a previous call.                                             |
 | `score`               | `1` to `5` | none          | Server-side star filter. Only reviews with this score are served.                              |
 | `device`              | `Device`   | none          | Server-side device filter: `device.MOBILE`, `device.TABLET`, `device.CHROMEBOOK`, `device.TV`. |
-| `pageSize`            | `number`   | see below     | Reviews requested per RPC call, `1` to `4500`.                                                 |
+| `pageSize`            | `number`   | see below     | Maximum reviews per RPC call, `1` to `4500`.                                                   |
 
 ```typescript
 import { reviews, sort } from '@mradex77/google-play-scraper';
@@ -570,11 +570,12 @@ page or an open-ended `reviewsIterator`, it requests 150 reviews per page as bef
 and serves an empty payload above that, which is why larger values are rejected as a
 `ValidationError`.
 
-Automatic accumulation carries a request budget of twice the ideal request count, derived
-from `num` and the effective page size. If Google keeps serving tokens without filling
-pages, the call returns what it collected and emits `request-budget-exhausted` through
-`onIntegrityEvent` instead of paging indefinitely. A full page always leaves the budget
-untouched.
+Automatic accumulation, `reviews` with `num` and `reviewsAll` with `maxReviews`, carries a
+request budget of twice the ideal request count, derived from the requested count and the
+effective page size. If Google keeps serving tokens without filling pages, the call returns
+what it collected and emits `request-budget-exhausted` through `onIntegrityEvent`, with
+context `reviews`, instead of paging indefinitely. A walk of full pages never exhausts the
+budget.
 
 A pagination token is a position cursor. It encodes where the previous page ended, not the
 filters or page size that produced it. Whatever `score`, `device`, and `pageSize` you pass on
@@ -776,8 +777,9 @@ const resumed = reviewsIterator({
 
 Drains `reviewsIterator` into an array. Popular apps hold millions of reviews, so pass
 `maxReviews` to cap the read; the requests are sized to the remaining count, up to 4500 per
-request, so `maxReviews: 2000` costs one request. Combine it with a client `throttle` to
-stay within Google Play's rate limits.
+request, so `maxReviews: 2000` costs one request. A capped read carries the same request
+budget as `reviews` and reports `request-budget-exhausted` when it runs out. Combine it with
+a client `throttle` to stay within Google Play's rate limits.
 
 ```typescript
 import { createClient } from '@mradex77/google-play-scraper';
@@ -1115,14 +1117,14 @@ const details = await app({
 });
 ```
 
-| Callback           | Reason                     | Meaning                                                                                |
-| ------------------ | -------------------------- | -------------------------------------------------------------------------------------- |
-| `onDegradation`    | `cluster-page-parse`       | A cluster continuation failed to parse and collected results returned.                 |
-| `onIntegrityEvent` | `rpc-anchor-fallback`      | An RPC anchor used its validated absolute fallback.                                    |
-| `onIntegrityEvent` | `optional-section-parse`   | A present best-effort section failed to parse and was skipped.                         |
-| `onIntegrityEvent` | `pagination-token-cycle`   | A repeated token stopped pagination before a duplicate request.                        |
-| `onIntegrityEvent` | `request-budget-exhausted` | Automatic review accumulation reached its request budget and returned the partial set. |
-| `onIntegrityEvent` | `section-anchor-fallback`  | A best-effort section resolved outside its declared anchor.                            |
+| Callback           | Reason                     | Meaning                                                                        |
+| ------------------ | -------------------------- | ------------------------------------------------------------------------------ |
+| `onDegradation`    | `cluster-page-parse`       | A cluster continuation failed to parse and collected results returned.         |
+| `onIntegrityEvent` | `rpc-anchor-fallback`      | An RPC anchor used its validated absolute fallback.                            |
+| `onIntegrityEvent` | `optional-section-parse`   | A present best-effort section failed to parse and was skipped.                 |
+| `onIntegrityEvent` | `pagination-token-cycle`   | A repeated token stopped pagination before a duplicate request.                |
+| `onIntegrityEvent` | `request-budget-exhausted` | A bounded review read reached its request budget and returned the partial set. |
+| `onIntegrityEvent` | `section-anchor-fallback`  | A best-effort section resolved outside its declared anchor.                    |
 
 Two boundaries to know:
 
