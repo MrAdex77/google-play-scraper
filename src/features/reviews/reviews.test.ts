@@ -631,3 +631,61 @@ describe('reviews score filter', () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 });
+
+const tabletInitial = readFixture('translate-tablet-size10.txt');
+const TABLET_FILTER =
+  '%5Bnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C3%5D%5D%2C%5B%5C%22';
+const SCORE_ONE_TABLET_FILTER =
+  '%5Bnull%2C1%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C3%5D%5D%2C%5B%5C%22';
+
+describe('reviews device filter', () => {
+  it('decodes the recorded tablet page and validates every review', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      pageSize: 10,
+      device: 'tablet',
+      requestOptions: { fetchImpl: fetchReturning(tabletInitial) },
+    });
+
+    expect(result.data).toHaveLength(10);
+    for (const review of result.data) {
+      expect(() => reviewSchema.parse(review)).not.toThrow();
+    }
+  });
+
+  it('sends a device filter alone and combined with a score across pages', async () => {
+    const alone = recordingFetch([reviewsBatch(entries('a', 1), null)]);
+    await reviews({ appId: TRANSLATE, num: 1, device: 'tablet', requestOptions: alone });
+    expect(alone.bodies[0]).toContain(TABLET_FILTER);
+
+    const combined = recordingFetch([
+      reviewsBatch(entries('a', 1), 'page-two'),
+      reviewsBatch(entries('b', 1), null),
+    ]);
+    await reviews({
+      appId: TRANSLATE,
+      num: 2,
+      pageSize: 1,
+      score: 1,
+      device: 'tablet',
+      requestOptions: combined,
+    });
+    expect(combined.bodies).toHaveLength(2);
+    expect(combined.bodies[0]).toContain(SCORE_ONE_TABLET_FILTER);
+    expect(combined.bodies[1]).toContain(SCORE_ONE_TABLET_FILTER);
+  });
+
+  it('rejects an unknown device before any request', async () => {
+    const { fetchImpl, bodies } = recordingFetch([reviewsBatch(entries('a', 1), null)]);
+
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        device: 'phone',
+        requestOptions: { fetchImpl },
+      } as unknown as ReviewsOptions),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(bodies).toHaveLength(0);
+  });
+});

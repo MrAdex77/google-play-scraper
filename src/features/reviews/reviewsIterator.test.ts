@@ -220,3 +220,35 @@ describe('reviewsIterator request sizing', () => {
     expect(bodies).toHaveLength(1);
   });
 });
+
+describe('reviewsIterator filters', () => {
+  it('forwards the score and device filters on every request', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(['a'], 't2'),
+      reviewsBatch(['b'], null),
+    ]);
+
+    const ids: string[] = [];
+    for await (const review of reviewsIterator({
+      appId: TRANSLATE,
+      score: 4,
+      device: 'chromebook',
+      requestOptions: { fetchImpl },
+    })) {
+      ids.push(review.id);
+    }
+
+    expect(ids).toEqual(['a', 'b']);
+    for (const body of bodies) {
+      expect(body).toContain('%5Bnull%2C4%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C5%5D');
+    }
+  });
+
+  it('rejects an unknown device synchronously', () => {
+    expect(() =>
+      reviewsIterator({ appId: TRANSLATE, device: 'watch' } as unknown as Parameters<
+        typeof reviewsIterator
+      >[0]),
+    ).toThrow(ValidationError);
+  });
+});

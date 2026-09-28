@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { sort } from '../../constants.ts';
+import { device, sort } from '../../constants.ts';
 import { parseBatchResponse } from '../../core/batchexecute.ts';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
 import { detectPaginationTokenCycle } from '../../core/integrity.ts';
@@ -36,6 +36,7 @@ export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
   paginate: z._default(z.boolean(), false),
   nextPaginationToken: z.optional(z.string()),
   score: z.optional(reviewScoreSchema),
+  device: z.optional(z.enum(device)),
   pageSize: z.optional(z.int().check(z.gte(1), z.lte(MAX_REVIEWS_PAGE_SIZE))),
 });
 
@@ -52,6 +53,7 @@ export type ReviewPageQuery = Pick<
   | 'country'
   | 'nextPaginationToken'
   | 'score'
+  | 'device'
   | 'pageSize'
   | 'onIntegrityEvent'
 >;
@@ -76,6 +78,7 @@ async function fetchReviewsPage(
       count,
       token,
       score: options.score,
+      device: options.device,
     }),
   });
 
