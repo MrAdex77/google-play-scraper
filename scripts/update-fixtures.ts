@@ -6,7 +6,7 @@ import { buildBatchBody, parseBatchResponse } from '../src/core/batchexecute.ts'
 import { createHttpClient, type HttpClient } from '../src/core/http.ts';
 import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.ts';
 import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.ts';
-import { category, collection, sort } from '../src/constants.ts';
+import { category, collection, sort, type Device } from '../src/constants.ts';
 import { developerUrl } from '../src/features/developer/specs.ts';
 import {
   findSimilarClusterPath,
@@ -14,8 +14,7 @@ import {
   similarDetailsUrl,
 } from '../src/features/similar/specs.ts';
 import {
-  buildInitialReviewsBody,
-  buildPaginatedReviewsBody,
+  buildReviewsBody,
   REVIEWS_RESPONSE_PATHS,
   REVIEWS_RPC_ID,
   reviewsUrl,
@@ -154,29 +153,49 @@ function similarRecorder(appId: string, detailsFile: string, clusterFile: string
   };
 }
 
-function reviewsRecorder(appId: string, initialFile: string, page2File: string): Recorder {
+interface ReviewsRecording {
+  name: string;
+  appId: string;
+  count: number;
+  score?: number;
+  device?: Device;
+  initialFile: string;
+  page2File?: string;
+}
+
+function reviewsRecorder(recording: ReviewsRecording): Recorder {
+  const request = {
+    appId: recording.appId,
+    sort: sort.NEWEST,
+    count: recording.count,
+    score: recording.score,
+    device: recording.device,
+  };
   return {
-    name: 'reviews',
+    name: recording.name,
     async run(client) {
       const initialText = await client.request({
         url: reviewsUrl('en', 'us'),
         method: 'POST',
-        body: buildInitialReviewsBody(sort.NEWEST, appId),
+        body: buildReviewsBody(request),
       });
-      await writeFixture(initialFile, initialText);
+      await writeFixture(recording.initialFile, initialText);
+      if (recording.page2File === undefined) {
+        return;
+      }
 
       const payload = parseBatchResponse(initialText, REVIEWS_RPC_ID);
       const token = getPath(payload, REVIEWS_RESPONSE_PATHS.token);
       if (typeof token !== 'string') {
-        throw new Error(`no reviews pagination token for "${appId}"`);
+        throw new Error(`no reviews pagination token for "${recording.appId}"`);
       }
 
       const page2Text = await client.request({
         url: reviewsUrl('en', 'us'),
         method: 'POST',
-        body: buildPaginatedReviewsBody(sort.NEWEST, appId, token),
+        body: buildReviewsBody({ ...request, token }),
       });
-      await writeFixture(page2File, page2Text);
+      await writeFixture(recording.page2File, page2Text);
     },
   };
 }
@@ -255,11 +274,13 @@ const recorders: Recorder[] = [
     'similar/translate-details.html',
     'similar/translate-cluster.html',
   ),
-  reviewsRecorder(
-    'com.google.android.apps.translate',
-    'reviews/translate-initial.txt',
-    'reviews/translate-page2.txt',
-  ),
+  reviewsRecorder({
+    name: 'reviews',
+    appId: 'com.google.android.apps.translate',
+    count: 150,
+    initialFile: 'reviews/translate-initial.txt',
+    page2File: 'reviews/translate-page2.txt',
+  }),
   permissionsRecorder('com.google.android.apps.translate', 'permissions/translate.txt'),
   dataSafetyRecorder('com.google.android.apps.translate', 'datasafety/translate.html'),
   syntheticRecorder('synthetic/details-like.html', SYNTHETIC_DETAILS_LIKE_HTML),

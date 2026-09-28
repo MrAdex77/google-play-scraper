@@ -9,8 +9,8 @@ import { parseRaw } from '../../core/raw.ts';
 import { extract, type Extracted } from '../../core/spec.ts';
 import { reviewsResultSchema, type ReviewsResult } from './schema.ts';
 import {
-  buildInitialReviewsBody,
-  buildPaginatedReviewsBody,
+  buildReviewsBody,
+  DEFAULT_REVIEWS_PAGE_SIZE,
   REVIEWS_RESPONSE_PATHS,
   REVIEWS_RPC_ID,
   reviewItemSpecs,
@@ -29,7 +29,7 @@ const sortSchema = z._default(
 export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
   appId: z.string().check(z.minLength(1)),
   sort: sortSchema,
-  num: z._default(z.int().check(z.gte(1)), 150),
+  num: z._default(z.int().check(z.gte(1)), DEFAULT_REVIEWS_PAGE_SIZE),
   paginate: z._default(z.boolean(), false),
   nextPaginationToken: z.optional(z.string()),
 });
@@ -50,9 +50,12 @@ export interface ReviewsPage {
 }
 
 function reviewsBody(options: ReviewPageQuery, token: string | undefined): string {
-  return token === undefined
-    ? buildInitialReviewsBody(options.sort, options.appId)
-    : buildPaginatedReviewsBody(options.sort, options.appId, token);
+  return buildReviewsBody({
+    appId: options.appId,
+    sort: options.sort,
+    count: DEFAULT_REVIEWS_PAGE_SIZE,
+    token,
+  });
 }
 
 async function fetchReviewsPage(

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { age, category, clusters, collection, permission, sort } from './constants.ts';
+import { age, category, clusters, collection, device, permission, sort } from './constants.ts';
 
 describe('constants', () => {
   it('freezes every enum object', () => {
@@ -7,6 +7,7 @@ describe('constants', () => {
     expect(Object.isFrozen(category)).toBe(true);
     expect(Object.isFrozen(collection)).toBe(true);
     expect(Object.isFrozen(sort)).toBe(true);
+    expect(Object.isFrozen(device)).toBe(true);
     expect(Object.isFrozen(age)).toBe(true);
     expect(Object.isFrozen(permission)).toBe(true);
   });
@@ -19,6 +20,12 @@ describe('constants', () => {
       GROSSING: 'GROSSING',
     });
     expect(sort).toEqual({ NEWEST: 2, RATING: 3, HELPFULNESS: 1 });
+    expect(device).toEqual({
+      MOBILE: 'mobile',
+      TABLET: 'tablet',
+      CHROMEBOOK: 'chromebook',
+      TV: 'tv',
+    });
     expect(age).toEqual({
       FIVE_UNDER: 'AGE_RANGE1',
       SIX_EIGHT: 'AGE_RANGE2',
