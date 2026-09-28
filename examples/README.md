@@ -29,7 +29,7 @@ others still run.
 | `categories()`                       | The Google Play category taxonomy               |
 | `developer()`                        | Other apps by the same developer                |
 | `similar()`                          | Apps related to a given app                     |
-| `reviews()`                          | User reviews, sorted newest first               |
+| `reviews()`                          | User reviews, then a five star mobile filter    |
 | `reviewsIterator()` / `reviewsAll()` | Streaming and bulk review reads                 |
 | `searchIterator()`                   | Streaming search matches page by page           |
 | `developerIterator()`                | Streaming a developer catalog page by page      |
