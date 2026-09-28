@@ -10,7 +10,7 @@ importers:
     dependencies:
       lru-cache:
         specifier: ^11.5.2
-        version: 11.5.2
+        version: 11.5.3
       zod:
         specifier: ^4.4.3
         version: 4.6.5
@@ -1568,6 +1568,10 @@ packages:
 
   lru-cache@11.5.2:
     resolution: {integrity: sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g==}
+    engines: {node: 20 || >=22}
+
+  lru-cache@11.5.3:
+    resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
     engines: {node: 20 || >=22}
 
   lunr@2.3.9:
@@ -3473,6 +3477,8 @@ snapshots:
       p-locate: 5.0.0
 
   lru-cache@11.5.2: {}
+
+  lru-cache@11.5.3: {}
 
   lunr@2.3.9: {}
 
