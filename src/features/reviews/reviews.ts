@@ -118,9 +118,16 @@ function defaultPageSize(limit: number | undefined): number {
   return limit === undefined ? DEFAULT_REVIEWS_PAGE_SIZE : MAX_REVIEWS_PAGE_SIZE;
 }
 
-function reportExhaustedBudget(options: ReviewPageQuery, budget: number): void {
+interface BudgetExhaustion {
+  budget: number;
+  collected: number;
+  target: number;
+}
+
+function reportExhaustedBudget(options: ReviewPageQuery, exhaustion: BudgetExhaustion): void {
+  const { budget, collected, target } = exhaustion;
   const error = new ParseError(
-    `${REVIEWS_CONTEXT}: request budget of ${budget.toString()} exhausted before the requested reviews were collected`,
+    `${REVIEWS_CONTEXT}: request budget of ${budget.toString()} exhausted after collecting ${collected.toString()} of ${target.toString()} requested reviews`,
   );
   options.onIntegrityEvent?.({
     context: REVIEWS_CONTEXT,
@@ -162,7 +169,7 @@ export async function* reviewPages(
       return;
     }
     if (requests >= budget) {
-      reportExhaustedBudget(options, budget);
+      reportExhaustedBudget(options, { budget, collected, target });
       return;
     }
     token = page.token;

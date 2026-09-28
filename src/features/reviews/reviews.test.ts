@@ -716,6 +716,7 @@ describe('reviews request budget', () => {
     expect(events[0]?.reason).toBe('request-budget-exhausted');
     expect(events[0]?.error).toBeInstanceOf(ParseError);
     expect(events[0]?.error.message).toContain('budget of 2');
+    expect(events[0]?.error.message).toContain('after collecting 6 of 10 requested reviews');
     expect(events[0]?.error.message).not.toContain('secret-token');
   });
 
