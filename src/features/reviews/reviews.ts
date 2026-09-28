@@ -1,6 +1,7 @@
 import * as z from 'zod/mini';
 import { device, sort } from '../../constants.ts';
 import { parseBatchResponse } from '../../core/batchexecute.ts';
+import { ParseError } from '../../core/errors.ts';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
 import { detectPaginationTokenCycle } from '../../core/integrity.ts';
 import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
@@ -21,6 +22,7 @@ import {
 } from './specs.ts';
 
 const REVIEWS_CONTEXT = 'reviews';
+const REQUEST_BUDGET_FACTOR = 2;
 
 const sortSchema = z._default(
   z.union([z.literal(sort.NEWEST), z.literal(sort.RATING), z.literal(sort.HELPFULNESS)]),
@@ -116,6 +118,17 @@ function defaultPageSize(limit: number | undefined): number {
   return limit === undefined ? DEFAULT_REVIEWS_PAGE_SIZE : MAX_REVIEWS_PAGE_SIZE;
 }
 
+function reportExhaustedBudget(options: ReviewPageQuery, budget: number): void {
+  const error = new ParseError(
+    `${REVIEWS_CONTEXT}: request budget of ${budget.toString()} exhausted before the requested reviews were collected`,
+  );
+  options.onIntegrityEvent?.({
+    context: REVIEWS_CONTEXT,
+    reason: 'request-budget-exhausted',
+    error,
+  });
+}
+
 export async function* reviewPages(
   client: HttpClient,
   options: ReviewPageQuery,
@@ -123,9 +136,11 @@ export async function* reviewPages(
 ): AsyncGenerator<ReviewsPage, void, undefined> {
   const pageSize = options.pageSize ?? defaultPageSize(limit);
   const target = limit ?? Number.POSITIVE_INFINITY;
+  const budget = REQUEST_BUDGET_FACTOR * Math.ceil(target / pageSize);
   const seenTokens = new Set<string>();
   let token = options.nextPaginationToken;
   let collected = 0;
+  let requests = 0;
 
   for (;;) {
     const page = await fetchReviewsPage(
@@ -134,6 +149,7 @@ export async function* reviewPages(
       token,
       Math.min(pageSize, target - collected),
     );
+    requests += 1;
     collected += page.reviews.length;
     yield page;
 
@@ -143,6 +159,10 @@ export async function* reviewPages(
     if (
       detectPaginationTokenCycle(seenTokens, page.token, REVIEWS_CONTEXT, options.onIntegrityEvent)
     ) {
+      return;
+    }
+    if (requests >= budget) {
+      reportExhaustedBudget(options, budget);
       return;
     }
     token = page.token;

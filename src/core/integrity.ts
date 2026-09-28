@@ -4,6 +4,7 @@ export type IntegrityReason =
   | 'rpc-anchor-fallback'
   | 'optional-section-parse'
   | 'pagination-token-cycle'
+  | 'request-budget-exhausted'
   | 'section-anchor-fallback';
 
 export interface IntegrityEvent {

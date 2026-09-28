@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { reviewsAll } from './reviewsAll.ts';
 import { REVIEWS_RPC_ID } from './specs.ts';
 import { ValidationError } from '../../core/errors.ts';
+import type { IntegrityEvent } from '../../core/integrity.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -140,5 +141,30 @@ describe('reviewsAll request sizing', () => {
     expect(bodies).toHaveLength(2);
     expect(bodies[0]).toContain('%5B150%2Cnull%2Cnull%5D');
     expect(bodies[1]).toContain('%5B150%2Cnull%2C%5C%22t2%5C%22%5D');
+  });
+});
+
+describe('reviewsAll request budget', () => {
+  it('reports an exhausted request budget through onIntegrityEvent', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(['a'], 't2'),
+      reviewsBatch(['b'], 't3'),
+      reviewsBatch(['c'], 't4'),
+      reviewsBatch(['d'], 't5'),
+      reviewsBatch(['e'], 't6'),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const result = await reviewsAll({
+      appId: TRANSLATE,
+      maxReviews: 10,
+      pageSize: 5,
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(4);
+    expect(result.map((review) => review.id)).toEqual(['a', 'b', 'c', 'd']);
+    expect(events.map((event) => event.reason)).toEqual(['request-budget-exhausted']);
   });
 });

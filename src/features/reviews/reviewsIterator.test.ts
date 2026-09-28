@@ -6,6 +6,7 @@ import { reviews } from './reviews.ts';
 import { REVIEWS_RPC_ID } from './specs.ts';
 import { reviewSchema } from './schema.ts';
 import { ValidationError } from '../../core/errors.ts';
+import type { IntegrityEvent } from '../../core/integrity.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -218,6 +219,30 @@ describe('reviewsIterator request sizing', () => {
     }
 
     expect(bodies).toHaveLength(1);
+  });
+
+  it('never applies a request budget to an open-ended stream of short pages', async () => {
+    const pageIds = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const { fetchImpl, bodies } = recordingFetch(
+      pageIds.map((id, index) =>
+        reviewsBatch([id], index === pageIds.length - 1 ? null : `t${id}`),
+      ),
+    );
+    const events: IntegrityEvent[] = [];
+
+    const ids: string[] = [];
+    for await (const review of reviewsIterator({
+      appId: TRANSLATE,
+      pageSize: 5,
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: { fetchImpl },
+    })) {
+      ids.push(review.id);
+    }
+
+    expect(ids).toEqual(pageIds);
+    expect(bodies).toHaveLength(pageIds.length);
+    expect(events).toEqual([]);
   });
 });
 

@@ -689,3 +689,75 @@ describe('reviews device filter', () => {
     expect(bodies).toHaveLength(0);
   });
 });
+
+describe('reviews request budget', () => {
+  it('stops after twice the ideal request count and reports the exhausted budget', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(entries('a', 3), 'secret-token-one'),
+      reviewsBatch(entries('b', 3), 'secret-token-two'),
+      reviewsBatch(entries('c', 3), 'secret-token-three'),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      num: 10,
+      pageSize: 10,
+      score: 2,
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(2);
+    expect(result.data).toHaveLength(6);
+    expect(result.nextPaginationToken).toBeNull();
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('reviews');
+    expect(events[0]?.reason).toBe('request-budget-exhausted');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+    expect(events[0]?.error.message).toContain('budget of 2');
+    expect(events[0]?.error.message).not.toContain('secret-token');
+  });
+
+  it('keeps paging through an empty filtered page that carries a token', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch([], 't2'),
+      reviewsBatch(entries('a', 2), 't3'),
+      reviewsBatch([], 't4'),
+      reviewsBatch(entries('b', 2), 't5'),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      num: 4,
+      pageSize: 2,
+      score: 1,
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(4);
+    expect(result.data.map((review) => review.id)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    expect(events).toEqual([]);
+  });
+
+  it('lets a throwing budget callback surface to the consumer', async () => {
+    const { fetchImpl } = recordingFetch([
+      reviewsBatch(entries('a', 1), 't2'),
+      reviewsBatch(entries('b', 1), 't3'),
+    ]);
+
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        num: 5,
+        pageSize: 5,
+        onIntegrityEvent: () => {
+          throw new Error('budget handler bug');
+        },
+        requestOptions: { fetchImpl },
+      }),
+    ).rejects.toThrow('budget handler bug');
+  });
+});
