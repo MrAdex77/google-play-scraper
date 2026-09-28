@@ -11,6 +11,7 @@ import { reviewsResultSchema, type ReviewsResult } from './schema.ts';
 import {
   buildReviewsBody,
   DEFAULT_REVIEWS_PAGE_SIZE,
+  MAX_REVIEWS_PAGE_SIZE,
   REVIEWS_RESPONSE_PATHS,
   REVIEWS_RPC_ID,
   reviewItemSpecs,
@@ -32,6 +33,7 @@ export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
   num: z._default(z.int().check(z.gte(1)), DEFAULT_REVIEWS_PAGE_SIZE),
   paginate: z._default(z.boolean(), false),
   nextPaginationToken: z.optional(z.string()),
+  pageSize: z.optional(z.int().check(z.gte(1), z.lte(MAX_REVIEWS_PAGE_SIZE))),
 });
 
 export type ReviewsOptions = z.input<typeof reviewsOptionsSchema>;
@@ -41,7 +43,7 @@ type ReviewItem = Extracted<typeof reviewItemSpecs>;
 
 export type ReviewPageQuery = Pick<
   ParsedReviewsOptions,
-  'appId' | 'sort' | 'lang' | 'country' | 'nextPaginationToken' | 'onIntegrityEvent'
+  'appId' | 'sort' | 'lang' | 'country' | 'nextPaginationToken' | 'pageSize' | 'onIntegrityEvent'
 >;
 
 export interface ReviewsPage {
@@ -49,24 +51,21 @@ export interface ReviewsPage {
   token: string | undefined;
 }
 
-function reviewsBody(options: ReviewPageQuery, token: string | undefined): string {
-  return buildReviewsBody({
-    appId: options.appId,
-    sort: options.sort,
-    count: DEFAULT_REVIEWS_PAGE_SIZE,
-    token,
-  });
-}
-
 async function fetchReviewsPage(
   client: HttpClient,
   options: ReviewPageQuery,
   token: string | undefined,
+  count: number,
 ): Promise<ReviewsPage> {
   const text = await client.request({
     url: reviewsUrl(options.lang, options.country),
     method: 'POST',
-    body: reviewsBody(options, token),
+    body: buildReviewsBody({
+      appId: options.appId,
+      sort: options.sort,
+      count,
+      token,
+    }),
   });
 
   const payload = parseBatchResponse(text, REVIEWS_RPC_ID);
@@ -87,25 +86,44 @@ async function fetchSinglePage(
   client: HttpClient,
   options: ParsedReviewsOptions,
 ): Promise<ReviewsResult> {
-  const page = await fetchReviewsPage(client, options, options.nextPaginationToken);
+  const page = await fetchReviewsPage(
+    client,
+    options,
+    options.nextPaginationToken,
+    options.pageSize ?? DEFAULT_REVIEWS_PAGE_SIZE,
+  );
   return reviewsResultSchema.parse({
     data: page.reviews,
     nextPaginationToken: page.token ?? null,
   });
 }
 
+function defaultPageSize(limit: number | undefined): number {
+  return limit === undefined ? DEFAULT_REVIEWS_PAGE_SIZE : MAX_REVIEWS_PAGE_SIZE;
+}
+
 export async function* reviewPages(
   client: HttpClient,
   options: ReviewPageQuery,
+  limit?: number,
 ): AsyncGenerator<ReviewsPage, void, undefined> {
+  const pageSize = options.pageSize ?? defaultPageSize(limit);
+  const target = limit ?? Number.POSITIVE_INFINITY;
   const seenTokens = new Set<string>();
   let token = options.nextPaginationToken;
+  let collected = 0;
 
   for (;;) {
-    const page = await fetchReviewsPage(client, options, token);
+    const page = await fetchReviewsPage(
+      client,
+      options,
+      token,
+      Math.min(pageSize, target - collected),
+    );
+    collected += page.reviews.length;
     yield page;
 
-    if (page.token === undefined) {
+    if (page.token === undefined || collected >= target) {
       return;
     }
     if (
@@ -123,12 +141,9 @@ async function accumulateReviews(
 ): Promise<ReviewsResult> {
   const collected: ReviewItem[] = [];
 
-  for await (const page of reviewPages(client, options)) {
+  for await (const page of reviewPages(client, options, options.num)) {
     for (const review of page.reviews) {
       collected.push(review);
-    }
-    if (collected.length >= options.num) {
-      break;
     }
   }
 

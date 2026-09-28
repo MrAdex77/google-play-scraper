@@ -13,15 +13,16 @@ export const reviewsIteratorOptionsSchema = z.omit(reviewsOptionsSchema, {
 
 export type ReviewsIteratorOptions = z.input<typeof reviewsIteratorOptionsSchema>;
 
-type ParsedReviewsIteratorOptions = z.infer<typeof reviewsIteratorOptionsSchema>;
+export type ParsedReviewsIteratorOptions = z.infer<typeof reviewsIteratorOptionsSchema>;
 
 const reviewArraySchema = z.array(reviewSchema);
 
-async function* streamReviews(
+export async function* streamReviews(
   client: HttpClient,
   options: ParsedReviewsIteratorOptions,
+  limit?: number,
 ): AsyncGenerator<Review, void, undefined> {
-  for await (const page of reviewPages(client, options)) {
+  for await (const page of reviewPages(client, options, limit)) {
     for (const review of reviewArraySchema.parse(page.reviews)) {
       yield review;
     }

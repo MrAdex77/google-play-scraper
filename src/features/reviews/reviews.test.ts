@@ -444,3 +444,111 @@ describe('reviews options', () => {
     await expect(reviews({} as ReviewsOptions)).rejects.toBeInstanceOf(ValidationError);
   });
 });
+
+const recordingFetch = (responses: string[]): { fetchImpl: typeof fetch; bodies: string[] } => {
+  const bodies: string[] = [];
+  const impl: typeof fetch = (_input, init) => {
+    bodies.push(typeof init?.body === 'string' ? init.body : '');
+    const body = responses[Math.min(bodies.length - 1, responses.length - 1)] ?? '';
+    return Promise.resolve(new Response(body, { status: 200 }));
+  };
+  return { fetchImpl: impl, bodies };
+};
+
+const entries = (prefix: string, count: number): unknown[] =>
+  Array.from({ length: count }, (_, index) => reviewEntry(`${prefix}${index.toString()}`));
+
+const countSlot = (count: number): string => `%5B${count.toString()}%2Cnull%2C`;
+const EMPTY_FILTER = '%2Cnull%2C%5B%5D%5D%2C%5B%5C%22';
+
+describe('reviews request sizing', () => {
+  it('requests exactly num reviews in one request when num fits a page', async () => {
+    const { fetchImpl, bodies } = recordingFetch([reviewsBatch(entries('r', 10), 'next')]);
+
+    const result = await reviews({ appId: TRANSLATE, num: 10, requestOptions: { fetchImpl } });
+
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toContain(countSlot(10));
+    expect(bodies[0]).toContain(EMPTY_FILTER);
+    expect(result.data).toHaveLength(10);
+  });
+
+  it('caps every request at the maximum page size and sizes the last one to the remainder', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(entries('a', 4500), 'page-two'),
+      reviewsBatch(entries('b', 500), 'page-three'),
+    ]);
+
+    const result = await reviews({ appId: TRANSLATE, num: 5000, requestOptions: { fetchImpl } });
+
+    expect(bodies.map((body) => body.includes(countSlot(4500)))).toEqual([true, false]);
+    expect(bodies[1]).toContain(countSlot(500));
+    expect(bodies[1]).toContain('page-two');
+    expect(result.data).toHaveLength(5000);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
+  it('sizes continuation requests to the remaining count under an explicit pageSize', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(entries('a', 3), 't2'),
+      reviewsBatch(entries('b', 3), 't3'),
+      reviewsBatch(entries('c', 1), 't4'),
+    ]);
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      num: 7,
+      pageSize: 3,
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(3);
+    expect(bodies[0]).toContain(countSlot(3));
+    expect(bodies[1]).toContain(countSlot(3));
+    expect(bodies[2]).toContain(countSlot(1));
+    expect(result.data).toHaveLength(7);
+  });
+
+  it('slices to num when a page carries more reviews than requested', async () => {
+    const { fetchImpl } = recordingFetch([reviewsBatch(entries('a', 5), null)]);
+
+    const result = await reviews({ appId: TRANSLATE, num: 3, requestOptions: { fetchImpl } });
+
+    expect(result.data).toHaveLength(3);
+  });
+
+  it('defaults a manual page to 150 reviews and honours an explicit pageSize', async () => {
+    const defaulted = recordingFetch([reviewsBatch(entries('a', 1), null)]);
+    await reviews({ appId: TRANSLATE, paginate: true, requestOptions: defaulted });
+    expect(defaulted.bodies[0]).toContain(countSlot(150));
+
+    const explicit = recordingFetch([reviewsBatch(entries('a', 1), null)]);
+    await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      pageSize: 20,
+      requestOptions: explicit,
+    });
+    expect(explicit.bodies[0]).toContain(countSlot(20));
+  });
+
+  it('keeps sending pageSize on a manual page that resumes from a token', async () => {
+    const { fetchImpl, bodies } = recordingFetch([reviewsBatch(entries('a', 1), null)]);
+
+    await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      pageSize: 25,
+      nextPaginationToken: 'resume-me',
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies[0]).toContain(`${countSlot(25)}%5C%22resume-me%5C%22%5D`);
+  });
+
+  it.each([0, 4501, 1.5, '10'])('rejects pageSize %j through validation', async (pageSize) => {
+    await expect(
+      reviews({ appId: TRANSLATE, pageSize } as unknown as ReviewsOptions),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+});
