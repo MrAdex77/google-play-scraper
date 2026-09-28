@@ -190,6 +190,15 @@ describe('runCli usage errors', () => {
     expect(stderr()).toContain('sort must be one of newest, rating, helpfulness');
   });
 
+  it('returns 2 for a review score outside one to five', async () => {
+    const { api } = createStubApi();
+    const { io, stderr } = createIo();
+    const code = await runCli(['reviews', 'com.example', '--score', '9'], io, api);
+    expect(code).toBe(2);
+    expect(stderr()).toContain('score must be one of 1, 2, 3, 4, 5');
+    expect(stderr()).toContain('Usage: google-play-scraper reviews <appId>');
+  });
+
   it('returns 2 for a missing --countries and prints the usage line', async () => {
     const { api } = createStubApi();
     const { io, stderr } = createIo();

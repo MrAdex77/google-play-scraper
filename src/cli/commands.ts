@@ -1,7 +1,9 @@
+import { safeParse } from 'zod/v4/core';
 import type gplay from '../index.ts';
-import { age, category, collection, sort } from '../constants.ts';
+import { age, category, collection, device, sort } from '../constants.ts';
 import type { Sort } from '../constants.ts';
 import { ValidationError } from '../core/errors.ts';
+import { reviewScoreSchema, type ReviewsOptions } from '../features/reviews/reviews.ts';
 import type { SearchOptions } from '../features/search/search.ts';
 
 export type CliApi = Pick<
@@ -108,6 +110,19 @@ function sortValue(values: CliValues): Sort | undefined {
     .map((key) => key.toLowerCase())
     .join(', ');
   throw new ValidationError(`reviews: sort must be one of ${choices}`);
+}
+
+function scoreValue(values: CliValues): ReviewsOptions['score'] {
+  const value = stringValue(values, 'score');
+  if (value === undefined) {
+    return undefined;
+  }
+  const parsed = safeParse(reviewScoreSchema, Number(value));
+  if (!parsed.success) {
+    const choices = [...reviewScoreSchema.def.values].join(', ');
+    throw new ValidationError(`reviews: score must be one of ${choices}`);
+  }
+  return parsed.data;
 }
 
 function priceValue(values: CliValues): SearchOptions['price'] {
@@ -229,12 +244,15 @@ export const commands: readonly CliCommand[] = [
   {
     name: 'reviews',
     summary: 'user reviews for an app',
-    usage: `reviews <appId> [--num <n>] [--sort newest|rating|helpfulness] [--paginate] [--token <token>] ${BASE_FLAGS_USAGE}`,
+    usage: `reviews <appId> [--num <n>] [--sort newest|rating|helpfulness] [--score <1-5>] [--device mobile|tablet|chromebook|tv] [--page-size <n>] [--paginate] [--token <token>] ${BASE_FLAGS_USAGE}`,
     requiresPositional: true,
     options: {
       ...baseFlags,
       num: { type: 'string' },
       sort: { type: 'string' },
+      score: { type: 'string' },
+      device: { type: 'string' },
+      'page-size': { type: 'string' },
       paginate: { type: 'boolean' },
       token: { type: 'string' },
     },
@@ -243,6 +261,9 @@ export const commands: readonly CliCommand[] = [
         appId: positional,
         num: numberValue(values, 'num'),
         sort: sortValue(values),
+        score: scoreValue(values),
+        device: enumValue(values, 'device', device, 'reviews'),
+        pageSize: numberValue(values, 'page-size'),
         paginate: booleanValue(values, 'paginate'),
         nextPaginationToken: stringValue(values, 'token'),
         ...baseOptions(values),
