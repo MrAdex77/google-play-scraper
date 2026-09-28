@@ -293,12 +293,15 @@ describe('review filters', () => {
     expect(call.options).toMatchObject({ score: 4 });
   });
 
-  it.each(['0', '6', '2.5', 'abc'])('rejects --score %s listing the valid scores', (score) => {
-    const { api } = createStubApi();
-    expect(() => getCommand('reviews').execute('com.example', { score }, api)).toThrow(
-      'score must be one of 1, 2, 3, 4, 5',
-    );
-  });
+  it.each(['0', '6', '2.5', 'abc', '', ' 5 ', '5.0', '0x5', '5e0', '+5'])(
+    'rejects --score %j listing the valid scores',
+    (score) => {
+      const { api } = createStubApi();
+      expect(() => getCommand('reviews').execute('com.example', { score }, api)).toThrow(
+        'score must be one of 1, 2, 3, 4, 5',
+      );
+    },
+  );
 
   it('maps --device to the device name', async () => {
     const call = await run('reviews', 'com.example', { device: 'tablet' });

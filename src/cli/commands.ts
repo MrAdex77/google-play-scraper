@@ -118,7 +118,7 @@ function scoreValue(values: CliValues): ReviewsOptions['score'] {
     return undefined;
   }
   const parsed = safeParse(reviewScoreSchema, Number(value));
-  if (!parsed.success) {
+  if (!parsed.success || parsed.data.toString() !== value) {
     const choices = [...reviewScoreSchema.def.values].join(', ');
     throw new ValidationError(`reviews: score must be one of ${choices}`);
   }
