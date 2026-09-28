@@ -6,7 +6,7 @@ import { buildBatchBody, parseBatchResponse } from '../src/core/batchexecute.ts'
 import { createHttpClient, type HttpClient } from '../src/core/http.ts';
 import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.ts';
 import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.ts';
-import { category, collection, sort, type Device } from '../src/constants.ts';
+import { category, collection, device, sort, type Device } from '../src/constants.ts';
 import { developerUrl } from '../src/features/developer/specs.ts';
 import {
   findSimilarClusterPath,
@@ -280,6 +280,21 @@ const recorders: Recorder[] = [
     count: 150,
     initialFile: 'reviews/translate-initial.txt',
     page2File: 'reviews/translate-page2.txt',
+  }),
+  reviewsRecorder({
+    name: 'reviews-filtered',
+    appId: 'com.google.android.apps.translate',
+    count: 10,
+    score: 5,
+    initialFile: 'reviews/translate-score5-size10-initial.txt',
+    page2File: 'reviews/translate-score5-size10-page2.txt',
+  }),
+  reviewsRecorder({
+    name: 'reviews-filtered',
+    appId: 'com.google.android.apps.translate',
+    count: 10,
+    device: device.TABLET,
+    initialFile: 'reviews/translate-tablet-size10.txt',
   }),
   permissionsRecorder('com.google.android.apps.translate', 'permissions/translate.txt'),
   dataSafetyRecorder('com.google.android.apps.translate', 'datasafety/translate.html'),
