@@ -6,6 +6,10 @@ import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 const TRANSLATE = 'com.google.android.apps.translate';
 const GEO_GAME = 'com.adex77.WhereAmI';
 const WHATSAPP = 'com.whatsapp';
+const STRAVA = 'com.strava';
+const MAPS = 'com.google.android.apps.maps';
+const LEGACY_PROBE = 9000;
+const WEAR_OS_LAUNCH = Date.parse('2014-06-25T00:00:00Z');
 const EXHAUSTION_PROBE = 5000;
 const LOCALIZED_OVERLAP_RATIO = 0.1;
 const SMALL_PAGE = 10;
@@ -21,7 +25,10 @@ const MINORITY_DEVICES: readonly Device[] = [
   device.CHROMEBOOK,
   device.TV,
 ];
-const SECONDARY_DEVICES: readonly Device[] = [device.TABLET, device.WATCH];
+const SECONDARY_DEVICES: readonly { deviceName: Device; appId: string }[] = [
+  { deviceName: device.TABLET, appId: WHATSAPP },
+  { deviceName: device.WATCH, appId: STRAVA },
+];
 
 function requestCounter(): { onRequest: () => void; count: () => number } {
   let requests = 0;
@@ -278,43 +285,64 @@ liveDescribe('reviews live contract', () => {
   );
 
   it.each(SECONDARY_DEVICES)(
-    'excludes %s reviews from the mobile filter inside an overlapping time window',
-    async (deviceName) => {
-      const label = `${deviceName} filter`;
+    'excludes $deviceName reviews from the mobile filter inside the unfiltered window of $appId',
+    async ({ deviceName, appId }) => {
+      const label = `${appId} ${deviceName} filter`;
       const unfiltered = await liveClient.reviews({
-        appId: WHATSAPP,
+        appId,
         paginate: true,
         pageSize: FULL_WINDOW_PAGE_SIZE,
       });
       const mobile = await liveClient.reviews({
-        appId: WHATSAPP,
+        appId,
         paginate: true,
         device: device.MOBILE,
         pageSize: FULL_WINDOW_PAGE_SIZE,
       });
       const secondary = await liveClient.reviews({
-        appId: WHATSAPP,
+        appId,
         paginate: true,
         device: deviceName,
         pageSize: SECONDARY_WINDOW_PAGE_SIZE,
       });
+      const windowStart = Math.max(oldestDate(unfiltered.data), oldestDate(mobile.data));
+      const insideWindow = secondary.data.filter(
+        (review) => Date.parse(review.date) >= windowStart,
+      );
 
-      expect(secondary.data.length, `${label}: no reviews served`).toBeGreaterThan(0);
       expectReviewsContract(secondary.data, label);
       expect(
-        newestDate(secondary.data),
-        `${label}: the newest review must fall inside the mobile window for the exclusion to mean anything`,
-      ).toBeGreaterThanOrEqual(oldestDate(mobile.data));
+        insideWindow.length,
+        `${label}: no review falls inside the unfiltered and mobile windows, so neither check means anything`,
+      ).toBeGreaterThan(0);
       expect(
-        sharedIds(secondary.data, unfiltered.data),
-        `${label}: its reviews must be part of the unfiltered stream`,
-      ).toBeGreaterThanOrEqual(secondary.data.length * SUBSET_RATIO);
+        sharedIds(insideWindow, unfiltered.data),
+        `${label}: its reviews inside the window must be part of the unfiltered stream`,
+      ).toBeGreaterThanOrEqual(insideWindow.length * SUBSET_RATIO);
       expect(
         sharedIds(secondary.data, mobile.data),
         `mobile filter: a ${deviceName} review leaked into the mobile stream`,
       ).toBe(0);
     },
   );
+
+  it('keeps unrated legacy reviews behind the watch filter as score zero', async () => {
+    const watch = await liveClient.reviews({
+      appId: MAPS,
+      device: device.WATCH,
+      num: LEGACY_PROBE,
+    });
+    const unrated = watch.data.filter((review) => review.score === 0);
+
+    expectReviewsContract(watch.data, 'maps watch filter');
+    expect(unrated.length, 'maps watch filter: no unrated legacy review served').toBeGreaterThan(0);
+    for (const review of unrated) {
+      expect(
+        Date.parse(review.date),
+        `maps watch filter: unrated review ${review.id} is not a pre Wear OS legacy review`,
+      ).toBeLessThan(WEAR_OS_LAUNCH);
+    }
+  });
 
   it.each(MINORITY_DEVICES)(
     'reaches further back than the unfiltered stream for %s and keeps the filter on page two',
