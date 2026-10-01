@@ -13,9 +13,15 @@ const SIZED_CONTINUATION_NUM = 25;
 const MANUAL_PAGE_SIZE = 20;
 const FILTER_PAGE_SIZE = 40;
 const FULL_WINDOW_PAGE_SIZE = 4500;
-const TABLET_WINDOW_PAGE_SIZE = 20;
+const SECONDARY_WINDOW_PAGE_SIZE = 20;
 const SUBSET_RATIO = 0.9;
-const MINORITY_DEVICES: readonly Device[] = [device.TABLET, device.CHROMEBOOK, device.TV];
+const MINORITY_DEVICES: readonly Device[] = [
+  device.TABLET,
+  device.WATCH,
+  device.CHROMEBOOK,
+  device.TV,
+];
+const SECONDARY_DEVICES: readonly Device[] = [device.TABLET, device.WATCH];
 
 function requestCounter(): { onRequest: () => void; count: () => number } {
   let requests = 0;
@@ -271,40 +277,44 @@ liveDescribe('reviews live contract', () => {
     },
   );
 
-  it('excludes tablet reviews from the mobile filter inside an overlapping time window', async () => {
-    const unfiltered = await liveClient.reviews({
-      appId: WHATSAPP,
-      paginate: true,
-      pageSize: FULL_WINDOW_PAGE_SIZE,
-    });
-    const mobile = await liveClient.reviews({
-      appId: WHATSAPP,
-      paginate: true,
-      device: device.MOBILE,
-      pageSize: FULL_WINDOW_PAGE_SIZE,
-    });
-    const tablet = await liveClient.reviews({
-      appId: WHATSAPP,
-      paginate: true,
-      device: device.TABLET,
-      pageSize: TABLET_WINDOW_PAGE_SIZE,
-    });
+  it.each(SECONDARY_DEVICES)(
+    'excludes %s reviews from the mobile filter inside an overlapping time window',
+    async (deviceName) => {
+      const label = `${deviceName} filter`;
+      const unfiltered = await liveClient.reviews({
+        appId: WHATSAPP,
+        paginate: true,
+        pageSize: FULL_WINDOW_PAGE_SIZE,
+      });
+      const mobile = await liveClient.reviews({
+        appId: WHATSAPP,
+        paginate: true,
+        device: device.MOBILE,
+        pageSize: FULL_WINDOW_PAGE_SIZE,
+      });
+      const secondary = await liveClient.reviews({
+        appId: WHATSAPP,
+        paginate: true,
+        device: deviceName,
+        pageSize: SECONDARY_WINDOW_PAGE_SIZE,
+      });
 
-    expect(tablet.data.length, 'tablet filter: no tablet reviews served').toBeGreaterThan(0);
-    expectReviewsContract(tablet.data, 'tablet filter');
-    expect(
-      newestDate(tablet.data),
-      'tablet filter: the newest tablet review must fall inside the mobile window for the exclusion to mean anything',
-    ).toBeGreaterThanOrEqual(oldestDate(mobile.data));
-    expect(
-      sharedIds(tablet.data, unfiltered.data),
-      'tablet filter: tablet reviews must be part of the unfiltered stream',
-    ).toBeGreaterThanOrEqual(tablet.data.length * SUBSET_RATIO);
-    expect(
-      sharedIds(tablet.data, mobile.data),
-      'mobile filter: a tablet review leaked into the mobile stream',
-    ).toBe(0);
-  });
+      expect(secondary.data.length, `${label}: no reviews served`).toBeGreaterThan(0);
+      expectReviewsContract(secondary.data, label);
+      expect(
+        newestDate(secondary.data),
+        `${label}: the newest review must fall inside the mobile window for the exclusion to mean anything`,
+      ).toBeGreaterThanOrEqual(oldestDate(mobile.data));
+      expect(
+        sharedIds(secondary.data, unfiltered.data),
+        `${label}: its reviews must be part of the unfiltered stream`,
+      ).toBeGreaterThanOrEqual(secondary.data.length * SUBSET_RATIO);
+      expect(
+        sharedIds(secondary.data, mobile.data),
+        `mobile filter: a ${deviceName} review leaked into the mobile stream`,
+      ).toBe(0);
+    },
+  );
 
   it.each(MINORITY_DEVICES)(
     'reaches further back than the unfiltered stream for %s and keeps the filter on page two',
