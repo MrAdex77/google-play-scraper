@@ -91,6 +91,7 @@ export type Sort = (typeof sort)[keyof typeof sort];
 export const device = {
   MOBILE: 'mobile',
   TABLET: 'tablet',
+  WATCH: 'watch',
   CHROMEBOOK: 'chromebook',
   TV: 'tv',
 } as const;

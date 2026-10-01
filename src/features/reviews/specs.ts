@@ -13,6 +13,7 @@ export const MAX_REVIEWS_PAGE_SIZE = 4500;
 export const DEVICE_IDS: Record<Device, number> = {
   mobile: 2,
   tablet: 3,
+  watch: 4,
   chromebook: 5,
   tv: 6,
 };

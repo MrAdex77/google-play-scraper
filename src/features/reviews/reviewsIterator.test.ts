@@ -271,7 +271,7 @@ describe('reviewsIterator filters', () => {
 
   it('rejects an unknown device synchronously', () => {
     expect(() =>
-      reviewsIterator({ appId: TRANSLATE, device: 'watch' } as unknown as Parameters<
+      reviewsIterator({ appId: TRANSLATE, device: 'phone' } as unknown as Parameters<
         typeof reviewsIterator
       >[0]),
     ).toThrow(ValidationError);

@@ -66,6 +66,18 @@ describe('buildReviewsBody', () => {
     );
   });
 
+  it('encodes the wear os watch device as id four', () => {
+    const body = buildReviewsBody({
+      appId: TRANSLATE,
+      sort: sort.RATING,
+      count: 25,
+      device: device.WATCH,
+    });
+    expect(body).toContain(
+      '%2Cnull%2C%5Bnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C4%5D%5D%2C%5B%5C%22',
+    );
+  });
+
   it('encodes a score and a device in one filter array next to a token', () => {
     const body = buildReviewsBody({
       appId: TRANSLATE,
@@ -80,7 +92,7 @@ describe('buildReviewsBody', () => {
   });
 
   it('maps every device name to the google play device id', () => {
-    expect(DEVICE_IDS).toEqual({ mobile: 2, tablet: 3, chromebook: 5, tv: 6 });
+    expect(DEVICE_IDS).toEqual({ mobile: 2, tablet: 3, watch: 4, chromebook: 5, tv: 6 });
     expect(Object.keys(DEVICE_IDS).sort()).toEqual(Object.values(device).sort());
   });
 

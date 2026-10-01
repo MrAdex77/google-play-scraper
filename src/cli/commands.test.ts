@@ -308,10 +308,15 @@ describe('review filters', () => {
     expect(call.options).toMatchObject({ device: 'tablet' });
   });
 
+  it('maps --device watch to the wear os device name', async () => {
+    const call = await run('reviews', 'com.example', { device: 'watch' });
+    expect(call.options).toMatchObject({ device: 'watch' });
+  });
+
   it('rejects an unknown --device listing the valid names', () => {
     const { api } = createStubApi();
     expect(() => getCommand('reviews').execute('com.example', { device: 'phone' }, api)).toThrow(
-      'device must be one of mobile, tablet, chromebook, tv',
+      'device must be one of mobile, tablet, watch, chromebook, tv',
     );
   });
 

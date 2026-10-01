@@ -244,7 +244,7 @@ export const commands: readonly CliCommand[] = [
   {
     name: 'reviews',
     summary: 'user reviews for an app',
-    usage: `reviews <appId> [--num <n>] [--sort newest|rating|helpfulness] [--score <1-5>] [--device mobile|tablet|chromebook|tv] [--page-size <n>] [--paginate] [--token <token>] ${BASE_FLAGS_USAGE}`,
+    usage: `reviews <appId> [--num <n>] [--sort newest|rating|helpfulness] [--score <1-5>] [--device mobile|tablet|watch|chromebook|tv] [--page-size <n>] [--paginate] [--token <token>] ${BASE_FLAGS_USAGE}`,
     requiresPositional: true,
     options: {
       ...baseFlags,

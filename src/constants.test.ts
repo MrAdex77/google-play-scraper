@@ -23,6 +23,7 @@ describe('constants', () => {
     expect(device).toEqual({
       MOBILE: 'mobile',
       TABLET: 'tablet',
+      WATCH: 'watch',
       CHROMEBOOK: 'chromebook',
       TV: 'tv',
     });

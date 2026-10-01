@@ -635,6 +635,8 @@ describe('reviews score filter', () => {
 const tabletInitial = readFixture('translate-tablet-size10.txt');
 const TABLET_FILTER =
   '%5Bnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C3%5D%5D%2C%5B%5C%22';
+const WATCH_FILTER =
+  '%5Bnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C4%5D%5D%2C%5B%5C%22';
 const SCORE_ONE_TABLET_FILTER =
   '%5Bnull%2C1%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C3%5D%5D%2C%5B%5C%22';
 
@@ -674,6 +676,25 @@ describe('reviews device filter', () => {
     expect(combined.bodies).toHaveLength(2);
     expect(combined.bodies[0]).toContain(SCORE_ONE_TABLET_FILTER);
     expect(combined.bodies[1]).toContain(SCORE_ONE_TABLET_FILTER);
+  });
+
+  it('keeps the watch filter on every continuation request', async () => {
+    const watch = recordingFetch([
+      reviewsBatch(entries('a', 1), 'page-two'),
+      reviewsBatch(entries('b', 1), null),
+    ]);
+    const result = await reviews({
+      appId: TRANSLATE,
+      num: 2,
+      pageSize: 1,
+      device: 'watch',
+      requestOptions: watch,
+    });
+
+    expect(result.data).toHaveLength(2);
+    expect(watch.bodies).toHaveLength(2);
+    expect(watch.bodies[0]).toContain(WATCH_FILTER);
+    expect(watch.bodies[1]).toContain(WATCH_FILTER);
   });
 
   it('rejects an unknown device before any request', async () => {
