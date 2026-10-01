@@ -521,30 +521,38 @@ Returns `SimilarApp[]` (or `App[]` when `fullDetail` is `true`), each shaped lik
 
 Retrieves reviews for an app. Reviews always come back inside a `{ data, nextPaginationToken }` envelope so paging is uniform.
 
-| Option                | Type       | Default       | Description                                                                                    |
-| --------------------- | ---------- | ------------- | ---------------------------------------------------------------------------------------------- |
-| `appId`               | `string`   | required      | The Google Play id of the app.                                                                 |
-| `sort`                | `Sort`     | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`.                                       |
-| `num`                 | `number`   | `150`         | Number of reviews to fetch.                                                                    |
-| `paginate`            | `boolean`  | `false`       | When `true`, fetch a single page and return its token.                                         |
-| `nextPaginationToken` | `string`   | none          | Continue from a token returned by a previous call.                                             |
-| `score`               | `1` to `5` | none          | Server-side star filter. Only reviews with this score are served.                              |
-| `device`              | `Device`   | none          | Server-side device filter: `device.MOBILE`, `device.TABLET`, `device.CHROMEBOOK`, `device.TV`. |
-| `pageSize`            | `number`   | see below     | Maximum reviews per RPC call, `1` to `4500`.                                                   |
+| Option                | Type       | Default       | Description                                                                                                    |
+| --------------------- | ---------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
+| `appId`               | `string`   | required      | The Google Play id of the app.                                                                                 |
+| `sort`                | `Sort`     | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`.                                                       |
+| `num`                 | `number`   | `150`         | Number of reviews to fetch.                                                                                    |
+| `paginate`            | `boolean`  | `false`       | When `true`, fetch a single page and return its token.                                                         |
+| `nextPaginationToken` | `string`   | none          | Continue from a token returned by a previous call.                                                             |
+| `score`               | `1` to `5` | none          | Server-side star filter. Only reviews with this score are served.                                              |
+| `device`              | `Device`   | none          | Server-side device filter: `device.MOBILE`, `device.TABLET`, `device.WATCH`, `device.CHROMEBOOK`, `device.TV`. |
+| `pageSize`            | `number`   | see below     | Maximum reviews per RPC call, `1` to `4500`.                                                                   |
 
 ```typescript
 import { reviews, sort } from '@mradex77/google-play-scraper';
 
-const first = await reviews({ appId: 'com.google.android.apps.translate', sort: sort.NEWEST });
+const first = await reviews({
+  appId: 'com.google.android.apps.translate',
+  sort: sort.NEWEST,
+  paginate: true,
+});
 
 if (first.nextPaginationToken) {
   const next = await reviews({
     appId: 'com.google.android.apps.translate',
+    sort: sort.NEWEST,
     paginate: true,
     nextPaginationToken: first.nextPaginationToken,
   });
 }
 ```
+
+Without `paginate`, `reviews` keeps requesting until it holds `num` reviews and always returns
+`nextPaginationToken: null`, so only a `paginate: true` call hands back a token to continue from.
 
 Filters are applied by Google Play, not by this library, so a filtered call downloads only
 the reviews it returns. Both filters can be combined and both are kept on every continuation
@@ -560,6 +568,13 @@ const angryTabletUsers = await reviews({
   num: 50,
 });
 ```
+
+The device filter selects the form factor the review was written on. `device.WATCH` reaches
+Wear OS reviews, which can be a large share of a watch face or fitness listing. Google does not
+always split a listing cleanly: on apps built for a single form factor, such as an Android TV
+launcher, every device value returns the same set. A review from a form factor without a
+`device` value only appears in the unfiltered stream, so the device sets are not guaranteed to
+add up to the unfiltered total.
 
 Request sizing follows two rules. When the library knows how many reviews you want, it asks
 Google for exactly that many, up to 4500 per request, so `num: 10` costs one request of ten
@@ -818,14 +833,14 @@ for await (const item of developerIterator({ devId: 'Google LLC' })) {
 
 The library exports the same constant sets as the original, frozen and typed.
 
-| Constant     | Values                                                                                                                |
-| ------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `category`   | All app and game categories plus the `FAMILY` set (e.g. `APPLICATION`, `TOOLS`, `GAME`, `GAME_PUZZLE`, `FAMILY`).     |
-| `collection` | `TOP_FREE`, `TOP_PAID`, `GROSSING`.                                                                                   |
-| `sort`       | `NEWEST` (`2`), `RATING` (`3`), `HELPFULNESS` (`1`).                                                                  |
-| `device`     | `MOBILE` (`'mobile'`), `TABLET` (`'tablet'`), `CHROMEBOOK` (`'chromebook'`), `TV` (`'tv'`), the review device filter. |
-| `age`        | `FIVE_UNDER` (`'AGE_RANGE1'`), `SIX_EIGHT` (`'AGE_RANGE2'`), `NINE_UP` (`'AGE_RANGE3'`).                              |
-| `permission` | `COMMON` (`0`), `OTHER` (`1`).                                                                                        |
+| Constant     | Values                                                                                                                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `category`   | All app and game categories plus the `FAMILY` set (e.g. `APPLICATION`, `TOOLS`, `GAME`, `GAME_PUZZLE`, `FAMILY`).                          |
+| `collection` | `TOP_FREE`, `TOP_PAID`, `GROSSING`.                                                                                                        |
+| `sort`       | `NEWEST` (`2`), `RATING` (`3`), `HELPFULNESS` (`1`).                                                                                       |
+| `device`     | `MOBILE` (`'mobile'`), `TABLET` (`'tablet'`), `WATCH` (`'watch'`), `CHROMEBOOK` (`'chromebook'`), `TV` (`'tv'`), the review device filter. |
+| `age`        | `FIVE_UNDER` (`'AGE_RANGE1'`), `SIX_EIGHT` (`'AGE_RANGE2'`), `NINE_UP` (`'AGE_RANGE3'`).                                                   |
+| `permission` | `COMMON` (`0`), `OTHER` (`1`).                                                                                                             |
 
 ```typescript
 import { category, collection, sort, age, permission } from '@mradex77/google-play-scraper';
