@@ -570,7 +570,9 @@ const angryTabletUsers = await reviews({
 ```
 
 The device filter selects the form factor the review was written on. `device.WATCH` reaches
-Wear OS reviews, which can be a large share of a watch face or fitness listing. Google does not
+Wear OS reviews, which can be a large share of a watch face or fitness listing. Google also
+files some legacy reviews from before Wear OS existed under the watch value, so on older apps
+the watch stream ends with reviews from 2011 to 2013. Google does not
 always split a listing cleanly: on apps built for a single form factor, such as an Android TV
 launcher, every device value returns the same set. A review from a form factor without a
 `device` value only appears in the unfiltered stream, so the device sets are not guaranteed to
@@ -619,6 +621,10 @@ Returns `ReviewsResult`. Trimmed:
   nextPaginationToken: 'CqYBCqMB...'
 }
 ```
+
+`score` is the star rating from `1` to `5`. A few legacy reviews from the early years of
+Google Play carry no star rating, and those come back with `score: 0` rather than failing the
+page, matching the original `google-play-scraper`. The `score` filter never serves them.
 
 ### permissions
 
