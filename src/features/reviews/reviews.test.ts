@@ -209,6 +209,36 @@ describe('reviews degraded payloads', () => {
     expect(result.nextPaginationToken).toBeNull();
   });
 
+  it('keeps a legacy review without a star rating as score zero', async () => {
+    const unrated = reviewEntry('legacy');
+    unrated[2] = 0;
+    unrated[5] = [1362564316, 637000000];
+
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: {
+        fetchImpl: fetchReturning(reviewsBatch([reviewEntry('r1'), unrated], null)),
+      },
+    });
+
+    expect(result.data.map((review) => review.score)).toEqual([5, 0]);
+    expect(result.data[1]?.date).toBe('2013-03-06T10:05:16.637Z');
+  });
+
+  it.each([-1, 6])('rejects a review score of %d outside the zero to five range', async (score) => {
+    const outOfRange = reviewEntry('broken');
+    outOfRange[2] = score;
+
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        requestOptions: { fetchImpl: fetchReturning(reviewsBatch([outOfRange], null)) },
+      }),
+    ).rejects.toThrow('score');
+  });
+
   it('maps criteria entries and empty replies through their fallbacks', async () => {
     const entry = reviewEntry('r1');
     entry[7] = [null, '', [1700000100, 0]];
