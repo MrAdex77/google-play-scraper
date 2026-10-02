@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { BASE_URL } from '../../constants.ts';
+import { BASE_URL, type Device } from '../../constants.ts';
 import type { Path } from '../../core/path.ts';
 import { rawArrayPathSchema, rawOptionalArrayPathSchema } from '../../core/raw.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
@@ -7,7 +7,16 @@ import { sanitizeText } from '../../core/text.ts';
 import { reviewSchema } from './schema.ts';
 
 export const REVIEWS_RPC_ID = 'UsvDTd';
-export const REVIEWS_PER_REQUEST = 150;
+export const DEFAULT_REVIEWS_PAGE_SIZE = 150;
+export const MAX_REVIEWS_PAGE_SIZE = 4500;
+
+export const DEVICE_IDS: Record<Device, number> = {
+  mobile: 2,
+  tablet: 3,
+  watch: 4,
+  chromebook: 5,
+  tv: 6,
+};
 
 const REVIEWS_STATIC_QUERY =
   'rpcids=qnKhOb&f.sid=-697906427155521722&bl=boq_playuiserver_20190903.08_p0';
@@ -17,12 +26,35 @@ export function reviewsUrl(lang: string, country: string): string {
   return `${BASE_URL}/_/PlayStoreUi/data/batchexecute?${REVIEWS_STATIC_QUERY}&hl=${lang}&gl=${country}&${REVIEWS_TRAILING_QUERY}`;
 }
 
-export function buildInitialReviewsBody(sort: number, appId: string): string {
-  return `f.req=%5B%5B%5B%22UsvDTd%22%2C%22%5Bnull%2Cnull%2C%5B2%2C${sort.toString()}%2C%5B${REVIEWS_PER_REQUEST.toString()}%2Cnull%2Cnull%5D%2Cnull%2C%5B%5D%5D%2C%5B%5C%22${appId}%5C%22%2C7%5D%5D%22%2Cnull%2C%22generic%22%5D%5D%5D`;
+export interface ReviewsRequest {
+  appId: string;
+  sort: number;
+  count: number;
+  token?: string;
+  score?: number;
+  device?: Device;
 }
 
-export function buildPaginatedReviewsBody(sort: number, appId: string, withToken: string): string {
-  return `f.req=%5B%5B%5B%22UsvDTd%22%2C%22%5Bnull%2Cnull%2C%5B2%2C${sort.toString()}%2C%5B${REVIEWS_PER_REQUEST.toString()}%2Cnull%2C%5C%22${withToken}%5C%22%5D%2Cnull%2C%5B%5D%5D%2C%5B%5C%22${appId}%5C%22%2C7%5D%5D%22%2Cnull%2C%22generic%22%5D%5D%5D`;
+function filterSlot(score: number | undefined, deviceName: Device | undefined): readonly unknown[] {
+  if (score === undefined && deviceName === undefined) {
+    return [];
+  }
+  const deviceId = deviceName === undefined ? null : DEVICE_IDS[deviceName];
+  return [null, score ?? null, null, null, null, null, null, null, deviceId];
+}
+
+function encodeSlot(value: unknown): string {
+  return encodeURIComponent(JSON.stringify(value));
+}
+
+function tokenSlot(token: string | undefined): string {
+  return token === undefined ? 'null' : `%5C%22${token}%5C%22`;
+}
+
+export function buildReviewsBody(request: ReviewsRequest): string {
+  const page = `%5B${request.count.toString()}%2Cnull%2C${tokenSlot(request.token)}%5D`;
+  const filters = encodeSlot(filterSlot(request.score, request.device));
+  return `f.req=%5B%5B%5B%22UsvDTd%22%2C%22%5Bnull%2Cnull%2C%5B2%2C${request.sort.toString()}%2C${page}%2Cnull%2C${filters}%5D%2C%5B%5C%22${request.appId}%5C%22%2C7%5D%5D%22%2Cnull%2C%22generic%22%5D%5D%5D`;
 }
 
 export const REVIEWS_RESPONSE_PATHS = {

@@ -175,7 +175,10 @@ export function expectReviewContract(review: Review, label: string): void {
 
   expect(review.id.length, `${label}: review id must not be empty`).toBeGreaterThan(0);
   expect(review.userName.length, `${scoped}: userName must not be empty`).toBeGreaterThan(0);
-  expect(review.score, `${scoped}: score must be at least one star`).toBeGreaterThanOrEqual(1);
+  expect(
+    review.score,
+    `${scoped}: score must be a star rating or zero for an unrated legacy review`,
+  ).toBeGreaterThanOrEqual(0);
   expect(
     review.score,
     `${scoped}: score must not exceed ${MAX_SCORE.toString()}`,

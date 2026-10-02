@@ -286,3 +286,50 @@ describe('availability countries', () => {
     );
   });
 });
+
+describe('review filters', () => {
+  it('maps --score to the numeric score literal', async () => {
+    const call = await run('reviews', 'com.example', { score: '4' });
+    expect(call.options).toMatchObject({ score: 4 });
+  });
+
+  it.each(['0', '6', '2.5', 'abc', '', ' 5 ', '5.0', '0x5', '5e0', '+5'])(
+    'rejects --score %j listing the valid scores',
+    (score) => {
+      const { api } = createStubApi();
+      expect(() => getCommand('reviews').execute('com.example', { score }, api)).toThrow(
+        'score must be one of 1, 2, 3, 4, 5',
+      );
+    },
+  );
+
+  it('maps --device to the device name', async () => {
+    const call = await run('reviews', 'com.example', { device: 'tablet' });
+    expect(call.options).toMatchObject({ device: 'tablet' });
+  });
+
+  it('maps --device watch to the wear os device name', async () => {
+    const call = await run('reviews', 'com.example', { device: 'watch' });
+    expect(call.options).toMatchObject({ device: 'watch' });
+  });
+
+  it('rejects an unknown --device listing the valid names', () => {
+    const { api } = createStubApi();
+    expect(() => getCommand('reviews').execute('com.example', { device: 'phone' }, api)).toThrow(
+      'device must be one of mobile, tablet, watch, chromebook, tv',
+    );
+  });
+
+  it('coerces --page-size to pageSize', async () => {
+    const call = await run('reviews', 'com.example', { 'page-size': '25' });
+    expect(call.options).toMatchObject({ pageSize: 25 });
+  });
+
+  it('leaves unset filters undefined so the feature defaults apply', async () => {
+    const call = await run('reviews', 'com.example');
+    const options = call.options as { score?: number; device?: string; pageSize?: number };
+    expect(options.score).toBeUndefined();
+    expect(options.device).toBeUndefined();
+    expect(options.pageSize).toBeUndefined();
+  });
+});

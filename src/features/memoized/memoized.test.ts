@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { memoized } from './memoized.ts';
-import { category } from '../../constants.ts';
+import { category, device } from '../../constants.ts';
 import type { DegradationEvent } from '../../core/degradation.ts';
 import { NotFoundError, ValidationError } from '../../core/errors.ts';
 import type { RequestOptions } from '../../core/options.ts';
@@ -270,6 +270,27 @@ describe('memoized', () => {
     expect(fetch.urls).toHaveLength(2);
     expect(fetch.urls[0]).toContain('hl=pl');
     expect(fetch.urls[0]).toContain('gl=pl');
+  });
+
+  it('keys review entries by score, device, and page size', async () => {
+    const fetch = recordingFetch(() => reviewsInitial);
+    const client = memoized({ requestOptions: { fetchImpl: fetch.fetchImpl } });
+    const variants = [
+      { appId: 'com.a', paginate: true },
+      { appId: 'com.a', paginate: true, score: 5 },
+      { appId: 'com.a', paginate: true, score: 4 },
+      { appId: 'com.a', paginate: true, device: device.TABLET },
+      { appId: 'com.a', paginate: true, pageSize: 10 },
+    ] as const;
+
+    for (const options of variants) {
+      await client.reviews(options);
+    }
+    await client.reviews({ appId: 'com.a', paginate: true, pageSize: 10 });
+    await client.reviews({ appId: 'com.a', paginate: true, device: device.TABLET });
+
+    expect(fetch.urls).toHaveLength(variants.length);
+    expect(client.cache.size).toBe(variants.length);
   });
 
   it('treats omitted defaults, country casing, and property order as one entry', async () => {

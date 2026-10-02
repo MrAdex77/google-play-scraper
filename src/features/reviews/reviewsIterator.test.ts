@@ -6,6 +6,7 @@ import { reviews } from './reviews.ts';
 import { REVIEWS_RPC_ID } from './specs.ts';
 import { reviewSchema } from './schema.ts';
 import { ValidationError } from '../../core/errors.ts';
+import type { IntegrityEvent } from '../../core/integrity.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -153,5 +154,126 @@ describe('reviewsIterator validation', () => {
     }
 
     expect(ids).toEqual(['a']);
+  });
+});
+
+const recordingFetch = (responses: string[]): { fetchImpl: typeof fetch; bodies: string[] } => {
+  const bodies: string[] = [];
+  const impl: typeof fetch = (_input, init) => {
+    bodies.push(typeof init?.body === 'string' ? init.body : '');
+    const body = responses[Math.min(bodies.length - 1, responses.length - 1)] ?? '';
+    return Promise.resolve(new Response(body, { status: 200 }));
+  };
+  return { fetchImpl: impl, bodies };
+};
+
+describe('reviewsIterator request sizing', () => {
+  it('requests the default page size when no pageSize is given', async () => {
+    const { fetchImpl, bodies } = recordingFetch([reviewsBatch(['a'], null)]);
+
+    for await (const review of reviewsIterator({
+      appId: TRANSLATE,
+      requestOptions: { fetchImpl },
+    })) {
+      expect(review.id).toBe('a');
+    }
+
+    expect(bodies[0]).toContain('%5B150%2Cnull%2Cnull%5D');
+  });
+
+  it('uses the configured pageSize on every request', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(['a', 'b'], 't2'),
+      reviewsBatch(['c', 'd'], null),
+    ]);
+
+    const ids: string[] = [];
+    for await (const review of reviewsIterator({
+      appId: TRANSLATE,
+      pageSize: 2,
+      requestOptions: { fetchImpl },
+    })) {
+      ids.push(review.id);
+    }
+
+    expect(ids).toEqual(['a', 'b', 'c', 'd']);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]).toContain('%5B2%2Cnull%2Cnull%5D');
+    expect(bodies[1]).toContain('%5B2%2Cnull%2C%5C%22t2%5C%22%5D');
+  });
+
+  it('issues no further request when the consumer stops inside a small page', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(['a', 'b', 'c'], 't2'),
+      reviewsBatch(['d'], null),
+    ]);
+
+    for await (const review of reviewsIterator({
+      appId: TRANSLATE,
+      pageSize: 3,
+      requestOptions: { fetchImpl },
+    })) {
+      if (review.id === 'a') {
+        break;
+      }
+    }
+
+    expect(bodies).toHaveLength(1);
+  });
+
+  it('never applies a request budget to an open-ended stream of short pages', async () => {
+    const pageIds = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const { fetchImpl, bodies } = recordingFetch(
+      pageIds.map((id, index) =>
+        reviewsBatch([id], index === pageIds.length - 1 ? null : `t${id}`),
+      ),
+    );
+    const events: IntegrityEvent[] = [];
+
+    const ids: string[] = [];
+    for await (const review of reviewsIterator({
+      appId: TRANSLATE,
+      pageSize: 5,
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: { fetchImpl },
+    })) {
+      ids.push(review.id);
+    }
+
+    expect(ids).toEqual(pageIds);
+    expect(bodies).toHaveLength(pageIds.length);
+    expect(events).toEqual([]);
+  });
+});
+
+describe('reviewsIterator filters', () => {
+  it('forwards the score and device filters on every request', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(['a'], 't2'),
+      reviewsBatch(['b'], null),
+    ]);
+
+    const ids: string[] = [];
+    for await (const review of reviewsIterator({
+      appId: TRANSLATE,
+      score: 4,
+      device: 'chromebook',
+      requestOptions: { fetchImpl },
+    })) {
+      ids.push(review.id);
+    }
+
+    expect(ids).toEqual(['a', 'b']);
+    for (const body of bodies) {
+      expect(body).toContain('%5Bnull%2C4%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C5%5D');
+    }
+  });
+
+  it('rejects an unknown device synchronously', () => {
+    expect(() =>
+      reviewsIterator({ appId: TRANSLATE, device: 'phone' } as unknown as Parameters<
+        typeof reviewsIterator
+      >[0]),
+    ).toThrow(ValidationError);
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { reviewsAll } from './reviewsAll.ts';
 import { REVIEWS_RPC_ID } from './specs.ts';
 import { ValidationError } from '../../core/errors.ts';
+import type { IntegrityEvent } from '../../core/integrity.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -82,5 +83,88 @@ describe('reviewsAll', () => {
     await expect(reviewsAll({ appId: TRANSLATE, maxReviews: 0 })).rejects.toBeInstanceOf(
       ValidationError,
     );
+  });
+});
+
+const recordingFetch = (responses: string[]): { fetchImpl: typeof fetch; bodies: string[] } => {
+  const bodies: string[] = [];
+  const impl: typeof fetch = (_input, init) => {
+    bodies.push(typeof init?.body === 'string' ? init.body : '');
+    const body = responses[Math.min(bodies.length - 1, responses.length - 1)] ?? '';
+    return Promise.resolve(new Response(body, { status: 200 }));
+  };
+  return { fetchImpl: impl, bodies };
+};
+
+describe('reviewsAll request sizing', () => {
+  it('sizes a single request to maxReviews when it fits one page', async () => {
+    const { fetchImpl, bodies } = recordingFetch([reviewsBatch(['a', 'b'], 't2')]);
+
+    const result = await reviewsAll({
+      appId: TRANSLATE,
+      maxReviews: 2,
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toContain('%5B2%2Cnull%2Cnull%5D');
+    expect(result.map((review) => review.id)).toEqual(['a', 'b']);
+  });
+
+  it('sizes the continuation to the remaining count under an explicit pageSize', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(['a', 'b'], 't2'),
+      reviewsBatch(['c'], 't3'),
+    ]);
+
+    const result = await reviewsAll({
+      appId: TRANSLATE,
+      maxReviews: 3,
+      pageSize: 2,
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]).toContain('%5B2%2Cnull%2Cnull%5D');
+    expect(bodies[1]).toContain('%5B1%2Cnull%2C%5C%22t2%5C%22%5D');
+    expect(result.map((review) => review.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('walks the stream in default pages when maxReviews is not set', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(['a'], 't2'),
+      reviewsBatch(['b'], null),
+    ]);
+
+    await reviewsAll({ appId: TRANSLATE, requestOptions: { fetchImpl } });
+
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]).toContain('%5B150%2Cnull%2Cnull%5D');
+    expect(bodies[1]).toContain('%5B150%2Cnull%2C%5C%22t2%5C%22%5D');
+  });
+});
+
+describe('reviewsAll request budget', () => {
+  it('reports an exhausted request budget through onIntegrityEvent', async () => {
+    const { fetchImpl, bodies } = recordingFetch([
+      reviewsBatch(['a'], 't2'),
+      reviewsBatch(['b'], 't3'),
+      reviewsBatch(['c'], 't4'),
+      reviewsBatch(['d'], 't5'),
+      reviewsBatch(['e'], 't6'),
+    ]);
+    const events: IntegrityEvent[] = [];
+
+    const result = await reviewsAll({
+      appId: TRANSLATE,
+      maxReviews: 10,
+      pageSize: 5,
+      onIntegrityEvent: (event) => events.push(event),
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies).toHaveLength(4);
+    expect(result.map((review) => review.id)).toEqual(['a', 'b', 'c', 'd']);
+    expect(events.map((event) => event.reason)).toEqual(['request-budget-exhausted']);
   });
 });

@@ -1,5 +1,14 @@
-export { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.ts';
-export type { Age, Category, Cluster, Collection, Permission, Sort } from './constants.ts';
+export {
+  BASE_URL,
+  age,
+  category,
+  clusters,
+  collection,
+  device,
+  permission,
+  sort,
+} from './constants.ts';
+export type { Age, Category, Cluster, Collection, Device, Permission, Sort } from './constants.ts';
 
 export {
   BlockedError,
@@ -113,7 +122,16 @@ export { createClient, clientOptionsSchema } from './client.ts';
 export type { ClientOptions } from './client.ts';
 export type { CachedMethodName, GooglePlayClient, GooglePlayIterators } from './clientSurface.ts';
 
-import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.ts';
+import {
+  BASE_URL,
+  age,
+  category,
+  clusters,
+  collection,
+  device,
+  permission,
+  sort,
+} from './constants.ts';
 import { app } from './features/app/app.ts';
 import { apps } from './features/apps/apps.ts';
 import { availability } from './features/availability/availability.ts';
@@ -144,6 +162,7 @@ const gplay: GooglePlayClient &
   category,
   clusters,
   collection,
+  device,
   permission,
   sort,
   app,

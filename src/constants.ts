@@ -88,6 +88,16 @@ export const sort = {
 
 export type Sort = (typeof sort)[keyof typeof sort];
 
+export const device = {
+  MOBILE: 'mobile',
+  TABLET: 'tablet',
+  WATCH: 'watch',
+  CHROMEBOOK: 'chromebook',
+  TV: 'tv',
+} as const;
+
+export type Device = (typeof device)[keyof typeof device];
+
 export const age = {
   FIVE_UNDER: 'AGE_RANGE1',
   SIX_EIGHT: 'AGE_RANGE2',
@@ -107,5 +117,6 @@ Object.freeze(clusters);
 Object.freeze(category);
 Object.freeze(collection);
 Object.freeze(sort);
+Object.freeze(device);
 Object.freeze(age);
 Object.freeze(permission);

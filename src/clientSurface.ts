@@ -1,4 +1,13 @@
-import { BASE_URL, age, category, clusters, collection, permission, sort } from './constants.ts';
+import {
+  BASE_URL,
+  age,
+  category,
+  clusters,
+  collection,
+  device,
+  permission,
+  sort,
+} from './constants.ts';
 import type { ResolveClient } from './core/http.ts';
 import type { MethodWrapper } from './core/options.ts';
 import type { app } from './features/app/app.ts';
@@ -46,6 +55,7 @@ export interface GooglePlayClient {
   category: typeof category;
   clusters: typeof clusters;
   collection: typeof collection;
+  device: typeof device;
   permission: typeof permission;
   sort: typeof sort;
   app: typeof app;
@@ -105,6 +115,7 @@ export function buildClientSurface(
     category,
     clusters,
     collection,
+    device,
     permission,
     sort,
     app: cachedApp,

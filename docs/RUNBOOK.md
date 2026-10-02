@@ -348,7 +348,11 @@ on 2026-09-10 the numeric developer first page served 10 apps and a token, the
 similar cluster's first page 50 apps and a token, an English search first page
 30 results for "geography quiz" and 20 for "panda", and a reviews page 150
 reviews. On 2026-09-17 TOP_FREE APPLICATION served 199 apps at `num` 250 and
-500, GAME_TRIVIA 200, and every chart honoured a smaller `num` exactly.
+500, GAME_TRIVIA 200, and every chart honoured a smaller `num` exactly. On 2026-09-22 the
+reviews RPC honoured every page size from 1 to 4500 exactly, served an empty payload with no
+token for 4501 and above, applied the score filter on all three sorts and the device filter
+for the four exposed device ids across two pages, and treated a continuation token as a
+position cursor independent of the filters and page size that minted it.
 
 A tripwire failure means Google changed the serving regime, not that the code
 broke. Re-port the affected contract before touching the assertion.

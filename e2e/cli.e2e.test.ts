@@ -183,6 +183,42 @@ liveDescribe('cli commands against live google play', () => {
     expect(second.data[0]?.id).not.toBe(first.data[0]?.id);
   });
 
+  it('reviews --score returns only reviews with that score', async () => {
+    const parsed = await runCliJson(['reviews', TRANSLATE_ID, '--score', '5', '--num', '5']);
+    const result = parsed as { data: { score: number }[] };
+    expect(result.data).toHaveLength(5);
+    for (const review of result.data) {
+      expect(review.score).toBe(5);
+    }
+  });
+
+  it('reviews --device and --page-size shape a manual page', async () => {
+    const parsed = await runCliJson([
+      'reviews',
+      TRANSLATE_ID,
+      '--device',
+      'tablet',
+      '--page-size',
+      '3',
+      '--paginate',
+    ]);
+    const result = parsed as { data: { id: string }[]; nextPaginationToken: string | null };
+    expect(result.data).toHaveLength(3);
+    expect(typeof result.nextPaginationToken).toBe('string');
+  });
+
+  it('reviews rejects an out of range --score with usage code 2', async () => {
+    const { exitCode, stdout, stderr } = await runCliProcess([
+      'reviews',
+      TRANSLATE_ID,
+      '--score',
+      '9',
+    ]);
+    expect(exitCode).toBe(2);
+    expect(stdout).toBe('');
+    expect(stderr).toContain('score must be one of 1, 2, 3, 4, 5');
+  });
+
   it('permissions --short prints plain permission strings', async () => {
     const parsed = await runCliJson(['permissions', TRANSLATE_ID, '--short']);
     const names = parsed as string[];

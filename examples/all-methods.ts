@@ -5,6 +5,7 @@ import {
   collection,
   createClient,
   createCountryFetch,
+  device,
   GooglePlayError,
   HttpError,
   memoized,
@@ -190,6 +191,14 @@ async function showReviews(client: Client): Promise<void> {
   result.data.slice(0, 3).forEach((review, index) => {
     field(`#${String(index + 1)}`, `${String(review.score)}★ by ${review.userName}`);
   });
+
+  const filtered = await client.reviews({
+    appId: TEST_APP_ID,
+    score: 5,
+    device: device.MOBILE,
+    num: 5,
+  });
+  field('Five star mobile reviews', `${String(filtered.data.length)} in one request`);
 }
 
 async function showReviewStreaming(client: Client): Promise<void> {

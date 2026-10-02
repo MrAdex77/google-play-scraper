@@ -83,23 +83,24 @@ Every method with a JSON-friendly surface is also available from the command lin
 npx @mradex77/google-play-scraper app com.spotify.music
 npx @mradex77/google-play-scraper search "sleep tracker" --num 5 --country de
 npx @mradex77/google-play-scraper reviews com.mojang.minecraftpe --sort rating --num 20
+npx @mradex77/google-play-scraper reviews com.whatsapp --score 1 --device tablet --num 50
 npx @mradex77/google-play-scraper availability com.adex77.WhereAmI --countries us,pl,de
 ```
 
-| Command                | Positional              | Own flags                                                       |
-| ---------------------- | ----------------------- | --------------------------------------------------------------- |
-| `app <appId>`          | app id                  |                                                                 |
-| `apps <appIds>`        | comma-separated app ids | `--concurrency`                                                 |
-| `search <term>`        | search term             | `--num`, `--price`, `--full-detail`                             |
-| `suggest <term>`       | search term             |                                                                 |
-| `list`                 |                         | `--collection`, `--category`, `--age`, `--num`, `--full-detail` |
-| `developer <devId>`    | developer id            | `--num`, `--full-detail`                                        |
-| `similar <appId>`      | app id                  | `--full-detail`                                                 |
-| `reviews <appId>`      | app id                  | `--num`, `--sort`, `--paginate`, `--token`                      |
-| `permissions <appId>`  | app id                  | `--short`                                                       |
-| `data-safety <appId>`  | app id                  |                                                                 |
-| `categories`           |                         |                                                                 |
-| `availability <appId>` | app id                  | `--countries` (comma-separated, required), `--concurrency`      |
+| Command                | Positional              | Own flags                                                                        |
+| ---------------------- | ----------------------- | -------------------------------------------------------------------------------- |
+| `app <appId>`          | app id                  |                                                                                  |
+| `apps <appIds>`        | comma-separated app ids | `--concurrency`                                                                  |
+| `search <term>`        | search term             | `--num`, `--price`, `--full-detail`                                              |
+| `suggest <term>`       | search term             |                                                                                  |
+| `list`                 |                         | `--collection`, `--category`, `--age`, `--num`, `--full-detail`                  |
+| `developer <devId>`    | developer id            | `--num`, `--full-detail`                                                         |
+| `similar <appId>`      | app id                  | `--full-detail`                                                                  |
+| `reviews <appId>`      | app id                  | `--num`, `--sort`, `--score`, `--device`, `--page-size`, `--paginate`, `--token` |
+| `permissions <appId>`  | app id                  | `--short`                                                                        |
+| `data-safety <appId>`  | app id                  |                                                                                  |
+| `categories`           |                         |                                                                                  |
+| `availability <appId>` | app id                  | `--countries` (comma-separated, required), `--concurrency`                       |
 
 Every command also accepts `--lang <code>`, `--country <code>` and `--throttle <requestsPerSecond>`, plus `--help`/`-h` (global or per command) and the global `--version`.
 
@@ -520,27 +521,84 @@ Returns `SimilarApp[]` (or `App[]` when `fullDetail` is `true`), each shaped lik
 
 Retrieves reviews for an app. Reviews always come back inside a `{ data, nextPaginationToken }` envelope so paging is uniform.
 
-| Option                | Type      | Default       | Description                                              |
-| --------------------- | --------- | ------------- | -------------------------------------------------------- |
-| `appId`               | `string`  | required      | The Google Play id of the app.                           |
-| `sort`                | `Sort`    | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`. |
-| `num`                 | `number`  | `150`         | Number of reviews to fetch.                              |
-| `paginate`            | `boolean` | `false`       | When `true`, fetch a single page and return its token.   |
-| `nextPaginationToken` | `string`  | none          | Continue from a token returned by a previous call.       |
+| Option                | Type       | Default       | Description                                                                                                    |
+| --------------------- | ---------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
+| `appId`               | `string`   | required      | The Google Play id of the app.                                                                                 |
+| `sort`                | `Sort`     | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`.                                                       |
+| `num`                 | `number`   | `150`         | Number of reviews to fetch.                                                                                    |
+| `paginate`            | `boolean`  | `false`       | When `true`, fetch a single page and return its token.                                                         |
+| `nextPaginationToken` | `string`   | none          | Continue from a token returned by a previous call.                                                             |
+| `score`               | `1` to `5` | none          | Server-side star filter. Only reviews with this score are served.                                              |
+| `device`              | `Device`   | none          | Server-side device filter: `device.MOBILE`, `device.TABLET`, `device.WATCH`, `device.CHROMEBOOK`, `device.TV`. |
+| `pageSize`            | `number`   | see below     | Maximum reviews per RPC call, `1` to `4500`.                                                                   |
 
 ```typescript
 import { reviews, sort } from '@mradex77/google-play-scraper';
 
-const first = await reviews({ appId: 'com.google.android.apps.translate', sort: sort.NEWEST });
+const first = await reviews({
+  appId: 'com.google.android.apps.translate',
+  sort: sort.NEWEST,
+  paginate: true,
+});
 
 if (first.nextPaginationToken) {
   const next = await reviews({
     appId: 'com.google.android.apps.translate',
+    sort: sort.NEWEST,
     paginate: true,
     nextPaginationToken: first.nextPaginationToken,
   });
 }
 ```
+
+Without `paginate`, `reviews` keeps requesting until it holds `num` reviews and always returns
+`nextPaginationToken: null`, so only a `paginate: true` call hands back a token to continue from.
+
+Filters are applied by Google Play, not by this library, so a filtered call downloads only
+the reviews it returns. Both filters can be combined and both are kept on every continuation
+request:
+
+```typescript
+import { device, reviews } from '@mradex77/google-play-scraper';
+
+const angryTabletUsers = await reviews({
+  appId: 'com.whatsapp',
+  score: 1,
+  device: device.TABLET,
+  num: 50,
+});
+```
+
+The device filter selects the form factor the review was written on. `device.WATCH` reaches
+Wear OS reviews, which can be a large share of a watch face or fitness listing. Google also
+files some legacy reviews from before Wear OS existed under the watch value, so on older apps
+the watch stream ends with reviews from 2011 to 2013. Google does not
+always split a listing cleanly: on apps built for a single form factor, such as an Android TV
+launcher, every device value returns the same set. A review from a form factor without a
+`device` value only appears in the unfiltered stream, so the device sets are not guaranteed to
+add up to the unfiltered total.
+
+Request sizing follows two rules. When the library knows how many reviews you want, it asks
+Google for exactly that many, up to 4500 per request, so `num: 10` costs one request of ten
+reviews rather than a 150-review page that is mostly discarded, and `num: 5000` costs two
+requests instead of thirty-four. When it does not know, which is a manual `paginate: true`
+page or an open-ended `reviewsIterator`, it requests 150 reviews per page as before. Pass
+`pageSize` to override either default; Google honours any value from `1` to `4500` exactly
+and serves an empty payload above that, which is why larger values are rejected as a
+`ValidationError`.
+
+Automatic accumulation, `reviews` with `num` and `reviewsAll` with `maxReviews`, carries a
+request budget of twice the ideal request count, derived from the requested count and the
+effective page size. If Google keeps serving tokens without filling pages, the call returns
+what it collected and emits `request-budget-exhausted` through `onIntegrityEvent`, with
+context `reviews`, instead of paging indefinitely. A walk of full pages never exhausts the
+budget.
+
+A pagination token is a position cursor. It encodes where the previous page ended, not the
+filters or page size that produced it. Whatever `score`, `device`, and `pageSize` you pass on
+the continuation call are applied from that position, and a mismatch cannot be detected, so
+pass the same filters on every page of one walk. Replaying a token under a different `sort`
+restarts from the first page of that sort.
 
 Returns `ReviewsResult`. Trimmed:
 
@@ -563,6 +621,10 @@ Returns `ReviewsResult`. Trimmed:
   nextPaginationToken: 'CqYBCqMB...'
 }
 ```
+
+`score` is the star rating from `1` to `5`. A few legacy reviews from the early years of
+Google Play carry no star rating, and those come back with `score: 0` rather than failing the
+page, matching the original `google-play-scraper`. The `score` filter never serves them.
 
 ### permissions
 
@@ -699,7 +761,8 @@ client.cache.clear();
 resolve. When you want to walk results lazily and stop exactly when you have seen enough,
 use the async iterators. They fetch nothing until the first `for await`, and they stop
 fetching the moment the consumer `break`s, so "first ten reviews then stop" costs exactly
-one page request.
+one page request. Open-ended streams request 150 reviews per page unless you pass `pageSize`,
+and `score` and `device` filters are honoured on every page.
 
 The iterators are available both as standalone functions and as methods on
 [`createClient`](#shared-client), where they share the client's limiter and defaults.
@@ -734,9 +797,10 @@ const resumed = reviewsIterator({
 ### reviewsAll
 
 Drains `reviewsIterator` into an array. Popular apps hold millions of reviews, so pass
-`maxReviews` to cap the read; the generator never fetches a page beyond the one that
-contains the last item you asked for. Combine it with a client `throttle` to stay within
-Google Play's rate limits.
+`maxReviews` to cap the read; the requests are sized to the remaining count, up to 4500 per
+request, so `maxReviews: 2000` costs one request. A capped read carries the same request
+budget as `reviews` and reports `request-budget-exhausted` when it runs out. Combine it with
+a client `throttle` to stay within Google Play's rate limits.
 
 ```typescript
 import { createClient } from '@mradex77/google-play-scraper';
@@ -775,13 +839,14 @@ for await (const item of developerIterator({ devId: 'Google LLC' })) {
 
 The library exports the same constant sets as the original, frozen and typed.
 
-| Constant     | Values                                                                                                            |
-| ------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `category`   | All app and game categories plus the `FAMILY` set (e.g. `APPLICATION`, `TOOLS`, `GAME`, `GAME_PUZZLE`, `FAMILY`). |
-| `collection` | `TOP_FREE`, `TOP_PAID`, `GROSSING`.                                                                               |
-| `sort`       | `NEWEST` (`2`), `RATING` (`3`), `HELPFULNESS` (`1`).                                                              |
-| `age`        | `FIVE_UNDER` (`'AGE_RANGE1'`), `SIX_EIGHT` (`'AGE_RANGE2'`), `NINE_UP` (`'AGE_RANGE3'`).                          |
-| `permission` | `COMMON` (`0`), `OTHER` (`1`).                                                                                    |
+| Constant     | Values                                                                                                                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `category`   | All app and game categories plus the `FAMILY` set (e.g. `APPLICATION`, `TOOLS`, `GAME`, `GAME_PUZZLE`, `FAMILY`).                          |
+| `collection` | `TOP_FREE`, `TOP_PAID`, `GROSSING`.                                                                                                        |
+| `sort`       | `NEWEST` (`2`), `RATING` (`3`), `HELPFULNESS` (`1`).                                                                                       |
+| `device`     | `MOBILE` (`'mobile'`), `TABLET` (`'tablet'`), `WATCH` (`'watch'`), `CHROMEBOOK` (`'chromebook'`), `TV` (`'tv'`), the review device filter. |
+| `age`        | `FIVE_UNDER` (`'AGE_RANGE1'`), `SIX_EIGHT` (`'AGE_RANGE2'`), `NINE_UP` (`'AGE_RANGE3'`).                                                   |
+| `permission` | `COMMON` (`0`), `OTHER` (`1`).                                                                                                             |
 
 ```typescript
 import { category, collection, sort, age, permission } from '@mradex77/google-play-scraper';
@@ -1073,19 +1138,20 @@ const details = await app({
 });
 ```
 
-| Callback           | Reason                    | Meaning                                                                |
-| ------------------ | ------------------------- | ---------------------------------------------------------------------- |
-| `onDegradation`    | `cluster-page-parse`      | A cluster continuation failed to parse and collected results returned. |
-| `onIntegrityEvent` | `rpc-anchor-fallback`     | An RPC anchor used its validated absolute fallback.                    |
-| `onIntegrityEvent` | `optional-section-parse`  | A present best-effort section failed to parse and was skipped.         |
-| `onIntegrityEvent` | `pagination-token-cycle`  | A repeated token stopped pagination before a duplicate request.        |
-| `onIntegrityEvent` | `section-anchor-fallback` | A best-effort section resolved outside its declared anchor.            |
+| Callback           | Reason                     | Meaning                                                                        |
+| ------------------ | -------------------------- | ------------------------------------------------------------------------------ |
+| `onDegradation`    | `cluster-page-parse`       | A cluster continuation failed to parse and collected results returned.         |
+| `onIntegrityEvent` | `rpc-anchor-fallback`      | An RPC anchor used its validated absolute fallback.                            |
+| `onIntegrityEvent` | `optional-section-parse`   | A present best-effort section failed to parse and was skipped.                 |
+| `onIntegrityEvent` | `pagination-token-cycle`   | A repeated token stopped pagination before a duplicate request.                |
+| `onIntegrityEvent` | `request-budget-exhausted` | A bounded review read reached its request budget and returned the partial set. |
+| `onIntegrityEvent` | `section-anchor-fallback`  | A best-effort section resolved outside its declared anchor.                    |
 
 Two boundaries to know:
 
 - An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion.
 - `app` emits `optional-section-parse` with context `app comments` when the available comment roots are structurally invalid. A valid empty comment root returns an empty list without an event. Treat a rising event rate as a signal, not each event.
-- `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`.
+- `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`, and an accumulation that runs out of request budget returns its partial set and emits `request-budget-exhausted`.
 
 With `memoized()`, callbacks never affect which entry a call hits. Degradation and integrity events are recorded with the entry and replayed, in order, to the callbacks of every call that hits it, so a cached degraded result is reported as degraded to each caller. Lifecycle hooks are not replayed, because a hit performs no request. See [memoized](#memoized).
 
