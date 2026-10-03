@@ -1,24 +1,13 @@
 import { BASE_URL } from '../constants.ts';
 import { appItemSchema } from './appItem.ts';
+import { isFreeMicros, microsToUnits } from './appItemTransforms.ts';
 import { defaulted, optional, required, type SpecMap } from './spec.ts';
 
 const shape = appItemSchema.shape;
-const PRICE_NUMBER = /([0-9.,]+)/;
+const OFFER_MICROS_PATH = [7, 0, 3, 2, 1, 0, 0];
 
 function resolveUrl(value: unknown): string | undefined {
   return typeof value === 'string' ? new URL(value, BASE_URL).toString() : undefined;
-}
-
-function priceFromText(value: unknown): number {
-  if (typeof value !== 'string') {
-    return 0;
-  }
-  const match = PRICE_NUMBER.exec(value);
-  return match === null ? 0 : Number.parseFloat(match[0]);
-}
-
-function isFreeText(value: unknown): boolean {
-  return value === undefined || value === null;
 }
 
 export const clusterItemSpecs = {
@@ -29,16 +18,16 @@ export const clusterItemSpecs = {
   developer: { paths: [[4, 0, 0, 0]], missing: required(), schema: shape.developer },
   currency: { paths: [[7, 0, 3, 2, 1, 0, 1]], missing: optional(), schema: shape.currency },
   price: {
-    paths: [[7, 0, 3, 2, 1, 0, 2]],
+    paths: [OFFER_MICROS_PATH],
     missing: defaulted(() => 0),
     schema: shape.price,
-    transform: priceFromText,
+    transform: microsToUnits,
   },
   free: {
-    paths: [[7, 0, 3, 2, 1, 0, 2]],
+    paths: [OFFER_MICROS_PATH],
     missing: defaulted(() => true),
     schema: shape.free,
-    transform: isFreeText,
+    transform: isFreeMicros,
   },
   summary: { paths: [[4, 1, 1, 1, 1]], missing: optional(), schema: shape.summary },
   scoreText: { paths: [[6, 0, 2, 1, 0]], missing: optional(), schema: shape.scoreText },
