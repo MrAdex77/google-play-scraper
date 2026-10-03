@@ -403,7 +403,7 @@ Retrieves apps that match a search term.
 | Option       | Type                        | Default  | Description                                                                  |
 | ------------ | --------------------------- | -------- | ---------------------------------------------------------------------------- |
 | `term`       | `string`                    | required | The search query.                                                            |
-| `num`        | `number`                    | `20`     | Number of results, up to `250`. Best-effort above the Google cap, see below. |
+| `num`        | `number`                    | `20`     | Number of results, up to `250`. Best-effort above the first page, see below. |
 | `price`      | `'all' \| 'free' \| 'paid'` | `'all'`  | Filter results by price.                                                     |
 | `fullDetail` | `boolean`                   | `false`  | When `true`, fetch and return the full `App` for each result.                |
 
@@ -434,7 +434,7 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
 ];
 ```
 
-Google Play currently serves only the first result page, roughly 30 apps and fewer for narrow terms, and provides no continuation token (verified July 2026). A `num` above that cap is best-effort: the returned array may be shorter than requested.
+Google Play serves a first result page of roughly 20 to 30 apps (50 for single character terms), and fewer for narrow terms. For a minority of queries it also serves a continuation token (verified October 2026: single character terms and digits, and some app names such as `minecraft` or `reddit`), and `search()` and `searchIterator()` follow it for up to 250 results in total. Continuation results are looser matches than the first page, and they carry `currency` only for paid apps. For every other term the first page is all Google serves, so a `num` above it is best-effort: the returned array may be shorter than requested, never longer, and never repeats an app.
 
 ### suggest
 
