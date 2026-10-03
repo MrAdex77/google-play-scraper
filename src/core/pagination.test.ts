@@ -21,22 +21,22 @@ const itemSpecs = {
 const APPS_PATH = [0, 0, 0];
 const TOKEN_PATH = [0, 0, 7, 1];
 
-const batchResponse = (apps: unknown[], token: string | null): string => {
-  const inner: unknown[] = [];
-  inner[0] = apps;
-  inner[7] = [null, token];
-  const payload = [[inner]];
+const framedBatchResponse = (payload: unknown): string => {
   const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
   return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
 };
 
-const batchResponseWithoutToken = (apps: unknown[]): string => {
+const batchResponseWithTokenNode = (apps: unknown[], tokenNode: unknown): string => {
   const inner: unknown[] = [];
   inner[0] = apps;
-  const payload = [[inner]];
-  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
-  return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
+  inner[7] = tokenNode;
+  return framedBatchResponse([[inner]]);
 };
+
+const batchResponse = (apps: unknown[], token: string | null): string =>
+  batchResponseWithTokenNode(apps, [null, token]);
+
+const batchResponseWithoutToken = (apps: unknown[]): string => framedBatchResponse([[[apps]]]);
 
 const queuedClient = (responses: string[]): { client: HttpClient; requests: HttpRequest[] } => {
   const requests: HttpRequest[] = [];
@@ -168,6 +168,58 @@ describe('clusterPages', () => {
 
     expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
     expect(requests).toHaveLength(1);
+  });
+
+  it('keeps the final page when its continuation token node is null', async () => {
+    const { client, requests } = queuedClient([
+      batchResponse([['a']], 't2'),
+      batchResponseWithTokenNode([['b'], ['c']], null),
+    ]);
+    const events: DegradationEvent[] = [];
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [{ id: 'seed' }],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+        onDegradation: (event) => events.push(event),
+      }),
+    );
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed'], ['a'], ['b', 'c']]);
+    expect(requests).toHaveLength(2);
+    expect(events).toEqual([]);
+  });
+
+  it('still degrades when the continuation token node has the wrong type', async () => {
+    const { client } = queuedClient([batchResponseWithTokenNode([['a']], 'not-a-token-node')]);
+    const events: DegradationEvent[] = [];
+
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [{ id: 'seed' }],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        context: 'test',
+        onDegradation: (event) => events.push(event),
+      }),
+    );
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed']]);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.reason).toBe('cluster-page-parse');
+    expect(events[0]?.error.message).toContain('0.0.7');
   });
 
   it('rejects a response path containing a non-array segment', async () => {

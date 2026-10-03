@@ -1120,6 +1120,8 @@ const results = await search({ term: 'panda', num: 100, onDegradation });
 
 A degraded call still resolves with the pages that parsed, so wire the callback to a metrics counter or log sink rather than treating it as an error path. If the callback itself throws, the error surfaces to the caller unchanged.
 
+An event means a continuation page could not be parsed, usually because the layout drifted and occasionally because Google served a malformed response. It never marks a normal end of results. Google marks the last continuation page by serving its token node as `null` (or leaving it out), and the library reads either as the end of the list and keeps every app on that page, so reaching the natural end of a cluster never emits an event.
+
 Integrity events use the same shape but a separate type and callback:
 
 ```typescript

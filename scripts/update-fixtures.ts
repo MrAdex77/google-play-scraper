@@ -8,8 +8,10 @@ import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features
 import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.ts';
 import { category, collection, device, sort, type Device } from '../src/constants.ts';
 import { developerUrl } from '../src/features/developer/specs.ts';
+import { fetchSimilarFirstPage } from '../src/features/similar/similar.ts';
 import {
   findSimilarClusterPath,
+  PAGINATION_MAPPINGS,
   similarClusterUrl,
   similarDetailsUrl,
 } from '../src/features/similar/specs.ts';
@@ -21,6 +23,12 @@ import {
 } from '../src/features/reviews/specs.ts';
 import { buildPermissionsBody, permissionsUrl } from '../src/features/permissions/specs.ts';
 import { getPath } from '../src/core/path.ts';
+import {
+  buildClusterBody,
+  CLUSTER_PAGE_SIZE,
+  CLUSTER_RPC_ID,
+  clusterUrl,
+} from '../src/core/pagination.ts';
 import { parseScriptData } from '../src/core/scriptData.ts';
 
 interface Recorder {
@@ -153,6 +161,47 @@ function similarRecorder(appId: string, detailsFile: string, clusterFile: string
   };
 }
 
+const SIMILAR_CONTINUATION_REQUEST_LIMIT = 10;
+const SIMILAR_TOKEN_NODE_PATH = PAGINATION_MAPPINGS.token.slice(0, -1);
+
+function endsOnNullTokenNode(payload: unknown): boolean {
+  const apps = getPath(payload, PAGINATION_MAPPINGS.apps);
+  return (
+    getPath(payload, SIMILAR_TOKEN_NODE_PATH) === null && Array.isArray(apps) && apps.length > 0
+  );
+}
+
+function similarContinuationRecorder(appId: string, file: string): Recorder {
+  return {
+    name: 'similar-continuation',
+    async run(client) {
+      const query = { appId, lang: 'en', country: 'us' };
+      let { token } = await fetchSimilarFirstPage(query, () => client);
+      for (let request = 0; request < SIMILAR_CONTINUATION_REQUEST_LIMIT; request += 1) {
+        if (token === undefined) {
+          break;
+        }
+        const text = await client.request({
+          url: clusterUrl('en', 'us'),
+          method: 'POST',
+          body: buildClusterBody(CLUSTER_PAGE_SIZE, token),
+        });
+        const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
+        const next = getPath(payload, PAGINATION_MAPPINGS.token);
+        if (typeof next !== 'string') {
+          if (!endsOnNullTokenNode(payload)) {
+            throw new Error(`the final page for "${appId}" has no null token node, re-anchor it`);
+          }
+          await writeFixture(file, text);
+          return;
+        }
+        token = next;
+      }
+      throw new Error(`no final continuation page for "${appId}"`);
+    },
+  };
+}
+
 interface ReviewsRecording {
   name: string;
   appId: string;
@@ -274,6 +323,7 @@ const recorders: Recorder[] = [
     'similar/translate-details.html',
     'similar/translate-cluster.html',
   ),
+  similarContinuationRecorder('com.tencent.mhadv', 'similar/mhadv-continuation-last.txt'),
   reviewsRecorder({
     name: 'reviews',
     appId: 'com.google.android.apps.translate',

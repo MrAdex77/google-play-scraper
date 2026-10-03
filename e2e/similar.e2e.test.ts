@@ -1,7 +1,15 @@
 import { expect, it } from 'vitest';
+import { parseBatchResponse } from '../src/core/batchexecute.ts';
 import { clientFromOptions } from '../src/core/http.ts';
+import {
+  buildClusterBody,
+  CLUSTER_PAGE_SIZE,
+  CLUSTER_RPC_ID,
+  clusterUrl,
+} from '../src/core/pagination.ts';
+import { getPath } from '../src/core/path.ts';
 import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/similar/similar.ts';
-import { SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
+import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
 import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.ts';
 import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
@@ -13,6 +21,25 @@ const FLAGSHIP_QUERY: SimilarQuery = {
   country: 'us',
   throttle: 1,
 };
+
+const SPARSE_APP_ID = 'com.tencent.mhadv';
+const SPARSE_QUERY: SimilarQuery = {
+  appId: SPARSE_APP_ID,
+  lang: 'en',
+  country: 'us',
+  throttle: 1,
+};
+const TOKEN_NODE_PATH = PAGINATION_MAPPINGS.token.slice(0, -1);
+
+function describeTokenNode(tokenNode: unknown): string {
+  if (tokenNode === null) {
+    return 'ends on a null token node';
+  }
+  if (tokenNode === undefined) {
+    return 'ends without a token node';
+  }
+  return 'carries a token node to a further page';
+}
 
 liveDescribe('similar live contract', () => {
   it('returns a well formed cluster for the Where Am I geography game', async ({ annotate }) => {
@@ -53,6 +80,43 @@ liveDescribe('similar live contract', () => {
       summary: 0.8,
     });
     expect(events).toEqual([]);
+  });
+
+  it('follows a sparse cluster to its end without a degradation event', async ({ annotate }) => {
+    const events: DegradationEvent[] = [];
+    const { client, apps, token } = await fetchSimilarFirstPage(SPARSE_QUERY, clientFromOptions);
+    expect(
+      token,
+      'the sparse anchor must still carry a continuation token on its first page',
+    ).toBeDefined();
+
+    const continuationPage = parseBatchResponse(
+      await client.request({
+        url: clusterUrl(SPARSE_QUERY.lang, SPARSE_QUERY.country),
+        method: 'POST',
+        body: buildClusterBody(CLUSTER_PAGE_SIZE, token ?? ''),
+      }),
+      CLUSTER_RPC_ID,
+    );
+    await annotate(
+      `${SPARSE_APP_ID} continuation page ${describeTokenNode(getPath(continuationPage, TOKEN_NODE_PATH))}`,
+      'notice',
+    );
+
+    const items = (await liveClient.similar({
+      appId: SPARSE_APP_ID,
+      onDegradation: (event) => events.push(event),
+    })) as SimilarApp[];
+
+    expect(events).toEqual([]);
+    expectContinuationContract(
+      { firstPageCount: apps.length, token },
+      items.length,
+      SIMILAR_MAX_APPS,
+      'sparse similar cluster',
+    );
+    expect(items.some((item) => item.appId === SPARSE_APP_ID)).toBe(false);
+    expectAppItemsContract(items, 'sparse similar cluster');
   });
 
   it('rejects a nonexistent source app with a NotFoundError', async () => {

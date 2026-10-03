@@ -331,6 +331,19 @@ describe('reviews degraded payloads', () => {
     expect(result.nextPaginationToken).toBeNull();
   });
 
+  it('ends pagination when the token holder is null', async () => {
+    const result = await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: {
+        fetchImpl: fetchReturning(reviewsPayloadBatch([[reviewEntry('r1')], null])),
+      },
+    });
+
+    expect(result.data.map((review) => review.id)).toEqual(['r1']);
+    expect(result.nextPaginationToken).toBeNull();
+  });
+
   it('rejects a response whose reviews block is not an array or null', async () => {
     await expect(
       reviews({

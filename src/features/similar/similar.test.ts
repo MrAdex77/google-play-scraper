@@ -7,7 +7,7 @@ import { findSimilarClusterPath } from './specs.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
-import type { OnDegradation } from '../../core/degradation.ts';
+import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 
 const SOURCE_APP_ID = 'com.google.android.apps.translate';
@@ -20,6 +20,8 @@ const readFixture = (name: string): string =>
 
 const detailsHtml = readFixture('translate-details.html');
 const clusterHtml = readFixture('translate-cluster.html');
+const lastContinuation = readFixture('mhadv-continuation-last.txt');
+const LAST_CONTINUATION_APP_COUNT = 20;
 
 const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () => number } => {
   let index = 0;
@@ -78,6 +80,31 @@ describe('similar fixture parsing', () => {
     })) as SimilarApp[];
 
     expect(items.some((item) => item.appId === SOURCE_APP_ID)).toBe(false);
+  });
+
+  it('keeps the final continuation page whose token node is null', async () => {
+    const firstPage = sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]);
+    const baseline = (await similar({
+      appId: SOURCE_APP_ID,
+      requestOptions: { fetchImpl: firstPage.fetchImpl },
+    })) as SimilarApp[];
+    const { fetchImpl, count } = sequenceFetch([detailsHtml, clusterHtml, lastContinuation]);
+    const events: DegradationEvent[] = [];
+
+    const items = (await similar({
+      appId: SOURCE_APP_ID,
+      requestOptions: { fetchImpl },
+      onDegradation: (event) => events.push(event),
+    })) as SimilarApp[];
+
+    expect(events).toEqual([]);
+    expect(count()).toBe(3);
+    expect(items).toHaveLength(baseline.length + LAST_CONTINUATION_APP_COUNT);
+    expect(items.slice(0, baseline.length)).toEqual(baseline);
+    for (const item of items) {
+      expect(() => similarAppSchema.parse(item)).not.toThrow();
+    }
+    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
   });
 
   it('returns an empty list when the details page has no similar cluster', async () => {
