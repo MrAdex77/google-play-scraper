@@ -141,6 +141,18 @@ describe('searchIterator streaming', () => {
     expect(ids).toEqual(['paid1']);
   });
 
+  it('yields an app once even when later pages repeat it', async () => {
+    const { fetchImpl } = sequenceFetch([
+      searchPageHtml(['a'], 'next'),
+      clusterBatch([{ id: 'b' }, { id: 'c' }], 'last'),
+      clusterBatch([{ id: 'c' }, { id: 'a' }, { id: 'd' }], null),
+    ]);
+
+    const ids = await collect(searchIterator({ term: 'panda', requestOptions: { fetchImpl } }));
+
+    expect(ids).toEqual(['a', 'b', 'c', 'd']);
+  });
+
   it('prepends the exact match exactly once across pages', async () => {
     const { fetchImpl } = sequenceFetch([
       searchPageHtml(['a', 'b'], 'next', 'exact'),

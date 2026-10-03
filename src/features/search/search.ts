@@ -6,7 +6,7 @@ import { parseOptionalSection, type OnIntegrityEvent } from '../../core/integrit
 import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
-import { fetchClusterApps } from '../../core/pagination.ts';
+import { clusterPages } from '../../core/pagination.ts';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { resolveScriptRoot } from '../../core/scriptRoot.ts';
@@ -46,7 +46,14 @@ type SearchItem = Extracted<typeof searchItemSpecs>;
 
 export type SearchQuery = Pick<
   ParsedSearchOptions,
-  'term' | 'lang' | 'country' | 'price' | 'throttle' | 'requestOptions' | 'onIntegrityEvent'
+  | 'term'
+  | 'lang'
+  | 'country'
+  | 'price'
+  | 'throttle'
+  | 'requestOptions'
+  | 'onDegradation'
+  | 'onIntegrityEvent'
 >;
 
 interface FirstPage {
@@ -186,36 +193,65 @@ function firstPage(root: unknown, onIntegrityEvent?: OnIntegrityEvent): FirstPag
   return { apps: prependExactMatch(sections, [], onIntegrityEvent), token: undefined };
 }
 
+export async function* streamSearchItems(
+  query: SearchQuery,
+  resolveClient: ResolveClient,
+): AsyncGenerator<SearchItem, void, undefined> {
+  const { client, page } = await fetchSearchFirstPage(query, resolveClient);
+
+  const pages = clusterPages({
+    client,
+    lang: query.lang,
+    country: query.country,
+    initialApps: page.apps,
+    initialToken: page.token,
+    itemSpecs: clusterItemSpecs,
+    appsPath: CLUSTER_MAPPINGS.apps,
+    tokenPath: CLUSTER_MAPPINGS.token,
+    context: SEARCH_CONTEXT,
+    onDegradation: query.onDegradation,
+    onIntegrityEvent: query.onIntegrityEvent,
+  });
+
+  const seenAppIds = new Set<string>();
+  for await (const clusterPage of pages) {
+    for (const item of filterByPrice(clusterPage, query.price)) {
+      if (!seenAppIds.has(item.appId)) {
+        seenAppIds.add(item.appId);
+        yield item;
+      }
+    }
+  }
+}
+
+async function collectSearchItems(
+  query: SearchQuery,
+  num: number,
+  resolveClient: ResolveClient,
+): Promise<SearchItem[]> {
+  const collected: SearchItem[] = [];
+  for await (const item of streamSearchItems(query, resolveClient)) {
+    collected.push(item);
+    if (collected.length >= num) {
+      break;
+    }
+  }
+  return collected;
+}
+
 export function createSearch(
   getApp: GetApp<App>,
   resolveClient: ResolveClient = clientFromOptions,
 ) {
   return async function search(options: SearchOptions): Promise<SearchResult[] | App[]> {
     const parsed = parseOptions(searchOptionsSchema, options, SEARCH_CONTEXT);
-    const { client, page } = await fetchSearchFirstPage(parsed, resolveClient);
-
-    const items = await fetchClusterApps({
-      client,
-      lang: parsed.lang,
-      country: parsed.country,
-      num: parsed.num,
-      initialApps: page.apps,
-      initialToken: page.token,
-      itemSpecs: clusterItemSpecs,
-      appsPath: CLUSTER_MAPPINGS.apps,
-      tokenPath: CLUSTER_MAPPINGS.token,
-      context: SEARCH_CONTEXT,
-      onDegradation: parsed.onDegradation,
-      onIntegrityEvent: parsed.onIntegrityEvent,
-    });
-
-    const sliced = filterByPrice(items, parsed.price).slice(0, parsed.num);
+    const items = await collectSearchItems(parsed, parsed.num, resolveClient);
 
     if (parsed.fullDetail) {
-      return resolveFullDetail(sliced, parsed, getApp);
+      return resolveFullDetail(items, parsed, getApp);
     }
 
-    return z.array(searchResultSchema).parse(sliced);
+    return z.array(searchResultSchema).parse(items);
   };
 }
 

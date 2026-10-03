@@ -190,6 +190,42 @@ describe('search pagination', () => {
     expect(events[0]?.error).toBeInstanceOf(ParseError);
   });
 
+  it('drops a continuation item that repeats an app already returned', async () => {
+    const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
+    const secondPage = clusterBatch(['c', 'd', 'e'], null);
+
+    const results = (await search({
+      term: 'panda',
+      num: 5,
+      requestOptions: { fetchImpl: sequenceFetch([firstPage, secondPage]) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+
+  it('keeps paging until num apps pass the price filter', async () => {
+    const firstPage = searchPageHtml(['free1'], 'page-2-token');
+    const secondPage = clusterBatchResponse(
+      [
+        clusterItem('paid1', 990000),
+        clusterItem('free2'),
+        clusterItem('paid2', 1990000),
+        clusterItem('paid3', 2990000),
+      ],
+      null,
+    );
+
+    const results = (await search({
+      term: 'panda',
+      price: 'paid',
+      num: 3,
+      requestOptions: { fetchImpl: sequenceFetch([firstPage, secondPage]) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['paid1', 'paid2', 'paid3']);
+    expect(results.every((item) => !item.free && item.price > 0)).toBe(true);
+  });
+
   it('returns only the first page when it already satisfies num', async () => {
     const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
 

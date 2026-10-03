@@ -1,11 +1,8 @@
 import * as z from 'zod/mini';
-import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import { parseOptions } from '../../core/options.ts';
-import { clusterPages } from '../../core/pagination.ts';
-import { searchOptionsSchema, SEARCH_CONTEXT, fetchSearchFirstPage } from './search.ts';
+import { searchOptionsSchema, streamSearchItems } from './search.ts';
 import { searchResultSchema, type SearchResult } from './schema.ts';
-import { CLUSTER_MAPPINGS, filterByPrice } from './specs.ts';
 
 const SEARCH_ITERATOR_CONTEXT = 'searchIterator';
 
@@ -22,26 +19,8 @@ async function* streamSearch(
   options: ParsedSearchIteratorOptions,
   resolveClient: ResolveClient,
 ): AsyncGenerator<SearchResult, void, undefined> {
-  const { client, page } = await fetchSearchFirstPage(options, resolveClient);
-
-  const pages = clusterPages({
-    client,
-    lang: options.lang,
-    country: options.country,
-    initialApps: page.apps,
-    initialToken: page.token,
-    itemSpecs: clusterItemSpecs,
-    appsPath: CLUSTER_MAPPINGS.apps,
-    tokenPath: CLUSTER_MAPPINGS.token,
-    context: SEARCH_CONTEXT,
-    onDegradation: options.onDegradation,
-    onIntegrityEvent: options.onIntegrityEvent,
-  });
-
-  for await (const clusterPage of pages) {
-    for (const item of filterByPrice(clusterPage, options.price)) {
-      yield searchResultSchema.parse(item);
-    }
+  for await (const item of streamSearchItems(options, resolveClient)) {
+    yield searchResultSchema.parse(item);
   }
 }
 
