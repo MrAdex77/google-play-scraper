@@ -5,6 +5,7 @@ import { BASE_URL } from '../src/constants.ts';
 import { buildBatchBody, parseBatchResponse } from '../src/core/batchexecute.ts';
 import { createHttpClient, type HttpClient } from '../src/core/http.ts';
 import { fetchDeveloperFirstPage } from '../src/features/developer/developer.ts';
+import { fetchSearchFirstPage } from '../src/features/search/search.ts';
 import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.ts';
 import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.ts';
 import { category, collection, device, sort, type Device } from '../src/constants.ts';
@@ -90,6 +91,36 @@ function searchHtmlRecorder(
     async run(client) {
       const html = await client.request({ url: searchUrl(term, storefront) });
       await writeFixture(file, html);
+    },
+  };
+}
+
+function searchContinuationRecorder(
+  term: string,
+  htmlFile: string,
+  continuationFile: string,
+): Recorder {
+  return {
+    name: 'search-continuation',
+    async run(client) {
+      const html = await client.request({ url: searchUrl(term, DEFAULT_STOREFRONT) });
+      await writeFixture(htmlFile, html);
+
+      const replay: HttpClient = { request: () => Promise.resolve(html) };
+      const { page } = await fetchSearchFirstPage(
+        { term, ...DEFAULT_STOREFRONT, price: 'all' },
+        () => replay,
+      );
+      if (page.token === undefined) {
+        throw new Error(`no search continuation token for "${term}"`);
+      }
+
+      const continuation = await client.request({
+        url: clusterUrl(DEFAULT_STOREFRONT.lang, DEFAULT_STOREFRONT.country),
+        method: 'POST',
+        body: buildClusterBody(CLUSTER_PAGE_SIZE, page.token),
+      });
+      await writeFixture(continuationFile, continuation);
     },
   };
 }
@@ -350,6 +381,11 @@ const recorders: Recorder[] = [
   searchHtmlRecorder('panda', 'search/panda.html'),
   searchHtmlRecorder('where am i', 'search/where-am-i.html'),
   searchHtmlRecorder('biedronka', 'search/biedronka-pl.html', { country: 'pl', lang: 'pl' }),
+  searchContinuationRecorder(
+    'FL Studio Mobile',
+    'search/fl-studio-mobile.html',
+    'search/fl-studio-mobile-continuation.txt',
+  ),
   suggestRecorder('pand', 'suggest/pand.txt'),
   listRecorder('TOP_FREE', 'GAME', 100, 'list/topfree-game.txt'),
   developerRecorder('5700313618786177705', 'developer/google.html'),
