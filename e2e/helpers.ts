@@ -52,3 +52,8 @@ export function expectFieldCoverage(
     expect.soft(ratio, message).toBeGreaterThanOrEqual(minimum);
   }
 }
+
+export function evenlySpaced<T>(items: readonly T[], count: number): T[] {
+  const step = Math.max(1, Math.floor(items.length / count));
+  return items.filter((_, index) => index % step === 0).slice(0, count);
+}

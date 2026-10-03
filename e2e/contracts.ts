@@ -170,6 +170,25 @@ export function expectSearchListingAgreement(item: AppItem, listing: App, label:
   );
 }
 
+export function expectOfferAgreement(item: AppItem, listing: App, label: string): void {
+  const scoped = `${label} ${item.appId}`;
+
+  expect(item.appId, `${scoped}: the surfaces must resolve the same appId`).toBe(listing.appId);
+  if (listing.currency === undefined) {
+    expect(item.price, `${scoped}: an offerless listing must read as costing zero`).toBe(0);
+    return;
+  }
+  expect(item.price, `${scoped}: the item price must equal the listing price`).toBe(listing.price);
+  expect(item.free, `${scoped}: the item free flag must equal the listing free flag`).toBe(
+    listing.free,
+  );
+  if (item.currency !== undefined) {
+    expect(item.currency, `${scoped}: the item currency must equal the listing currency`).toBe(
+      listing.currency,
+    );
+  }
+}
+
 export function expectReviewContract(review: Review, label: string): void {
   const scoped = `${label} ${review.id}`;
 
