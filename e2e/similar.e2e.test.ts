@@ -12,7 +12,13 @@ import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/simila
 import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
 import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.ts';
 import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
+import {
+  expectFieldCoverage,
+  expectListingOffersAgree,
+  liveClient,
+  liveDescribe,
+  type Storefront,
+} from './helpers.ts';
 
 const FLAGSHIP_APP_ID = 'com.google.android.apps.translate';
 const FLAGSHIP_QUERY: SimilarQuery = {
@@ -30,6 +36,11 @@ const SPARSE_QUERY: SimilarQuery = {
   throttle: 1,
 };
 const TOKEN_NODE_PATH = PAGINATION_MAPPINGS.token.slice(0, -1);
+
+const GAME_APP_ID = 'com.mojang.minecraftpe';
+const GERMAN_STOREFRONT: Storefront = { country: 'de', lang: 'de' };
+const PRICED_SAMPLE_SIZE = 4;
+const FREE_SAMPLE_SIZE = 2;
 
 function describeTokenNode(tokenNode: unknown): string {
   if (tokenNode === null) {
@@ -117,6 +128,32 @@ liveDescribe('similar live contract', () => {
     );
     expect(items.some((item) => item.appId === SPARSE_APP_ID)).toBe(false);
     expectAppItemsContract(items, 'sparse similar cluster');
+  });
+
+  it('agrees with the app details on continuation offers in a comma decimal storefront', async () => {
+    const events: DegradationEvent[] = [];
+    const { apps } = await fetchSimilarFirstPage(
+      { appId: GAME_APP_ID, ...GERMAN_STOREFRONT, throttle: 1 },
+      clientFromOptions,
+    );
+
+    const items = (await liveClient.similar({
+      appId: GAME_APP_ID,
+      ...GERMAN_STOREFRONT,
+      onDegradation: (event) => events.push(event),
+    })) as SimilarApp[];
+
+    expect(events, 'the german game cluster degraded').toEqual([]);
+    expect(items.length, 'the german game cluster lost its continuation page').toBeGreaterThan(
+      apps.length,
+    );
+    expectAppItemsContract(items, 'german game similar cluster');
+
+    const continuation = items.slice(apps.length);
+    const priced = continuation.filter((item) => item.currency !== undefined);
+    const free = continuation.filter((item) => item.currency === undefined);
+    const sample = [...priced.slice(0, PRICED_SAMPLE_SIZE), ...free.slice(0, FREE_SAMPLE_SIZE)];
+    await expectListingOffersAgree(sample, GERMAN_STOREFRONT, 'german game similar continuation');
   });
 
   it('rejects a nonexistent source app with a NotFoundError', async () => {

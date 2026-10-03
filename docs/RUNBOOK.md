@@ -23,6 +23,11 @@ This runbook turns that break into a fifteen minute patch.
    the re-record task. Re-record it from a query that still serves a card outside
    the first section rather than deleting the gate.
 
+   `cluster/offer-items.json` is a frozen live snapshot that `pnpm fixtures:update`
+   never touches: it holds 16 raw continuation items captured on 2026-10-02,
+   including a sale to zero that no longer exists to record. Keep it as is, and
+   add a new entry beside it when a fresh offer shape needs pinning.
+
 3. **Repair the paths.** Open the matching `src/features/<name>/specs.ts`, inspect
    the refreshed fixture (search the expected value in the raw HTML or batch
    payload to find its new indexes), and update only the paths. Prefer appending
@@ -254,6 +259,11 @@ turns up:
   first page it continued from.
 - `expectSearchListingAgreement` for a search item measured against the same
   app's listing, which catches drift on either surface.
+- `expectOfferAgreement` for a cluster item measured against the same app's
+  listing within one run. `expectListingOffersAgree` in `e2e/helpers.ts` runs it
+  over a sample and requires an item priced above zero in that sample, so a
+  surface that reads the price from anything but the offer micros cannot pass
+  on free apps or sales to zero alone.
 
 The offer fields deserve their own note, because they are the one place where
 absence carries meaning. `price`, `currency` and `priceText` are three sibling
@@ -268,6 +278,18 @@ what it costs.
 A consequence worth stating plainly: `free` false is not the claim "this app
 costs money", because an offerless listing also reads as `free` false with
 `price` 0. Read `currency` first when deciding which state a listing is in.
+
+Continuation items (`similar` and `developer` past their first page) read
+`price` and `free` from the offer micros like first page items do, never from
+the display text, because the text is
+locale formatted: `4,69 €` and `R$ 19,99` carry a decimal comma, `￥1,300` a
+thousands comma, and an Arabic storefront serves Eastern Arabic digits. A
+listing on sale to zero is `price` 0 and `free` true on every surface, the same
+as its `app()` result. A continuation item with no offer node at all reads
+`free` true, because Google drops the node for free apps on those pages, while
+a first page item with no offer node reads `free` false like a search row. So
+an undefined `currency` on a continuation item does not separate a free app
+from an offerless listing; call `app()` when that distinction matters.
 
 Three thresholds in the suite are measured, not guessed, on 2026-08-26 unless
 a bullet says otherwise:

@@ -8,8 +8,8 @@
 | cluster item | `icon`                      | required                                      | established test | cluster item builders always provide the icon spine                                       |
 | cluster item | `developer`                 | required                                      | established test | cluster item builders always provide the developer spine                                  |
 | cluster item | `currency`                  | optional                                      | established test | missing price cell yields `currency: undefined`                                           |
-| cluster item | `price`                     | default `0`                                   | established test | missing price cell yields `price: 0`                                                      |
-| cluster item | `free`                      | default `true`                                | established test | missing price cell yields `free: true`                                                    |
+| cluster item | `price`                     | default `0`                                   | established test | missing price cell yields `price: 0`, recorded micros read as units                       |
+| cluster item | `free`                      | default `true`                                | established test | missing price cell yields `free: true`, zero micros yield `free: true`                    |
 | cluster item | `summary`                   | optional                                      | pinned reference | absent optional item metadata remains undefined                                           |
 | cluster item | `scoreText`                 | optional                                      | pinned reference | absent optional item metadata remains undefined                                           |
 | cluster item | `score`                     | optional                                      | pinned reference | absent optional item metadata remains undefined                                           |

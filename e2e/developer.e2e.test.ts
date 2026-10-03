@@ -15,7 +15,14 @@ import {
   expectContinuationContract,
   type ContinuationAnchor,
 } from './contracts.ts';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
+import {
+  evenlySpaced,
+  expectFieldCoverage,
+  expectListingOffersAgree,
+  liveClient,
+  liveDescribe,
+  type Storefront,
+} from './helpers.ts';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
 const GOOGLE_QUERY: DeveloperQuery = {
@@ -34,12 +41,39 @@ const GOOGLE_NAME_QUERY: DeveloperQuery = {
 const NETFLIX_NAME = 'Netflix, Inc.';
 const MULTI_PAGE_NUM = 100;
 const CATALOG_PROBE = 500;
+const PAID_CATALOGUE_DEV_ID = '8792077038568095073';
+const PAID_CATALOGUE_NUM = 60;
+const OFFER_SAMPLE_SIZE = 4;
 
 async function firstPageOf(query: DeveloperQuery): Promise<ContinuationAnchor> {
   const { apps, token } = await fetchDeveloperFirstPage(query, clientFromOptions);
 
   expect(apps.length, `the ${query.devId} developer page serves no apps at all`).toBeGreaterThan(0);
   return { firstPageCount: apps.length, token };
+}
+
+async function continuationOffersAgreeing(storefront: Storefront): Promise<DeveloperApp[]> {
+  const label = `${storefront.country} paid catalogue`;
+  const events: DegradationEvent[] = [];
+  const { firstPageCount } = await firstPageOf({
+    devId: PAID_CATALOGUE_DEV_ID,
+    ...storefront,
+    throttle: 1,
+  });
+
+  const items = (await liveClient.developer({
+    devId: PAID_CATALOGUE_DEV_ID,
+    num: PAID_CATALOGUE_NUM,
+    ...storefront,
+    onDegradation: (event) => events.push(event),
+  })) as DeveloperApp[];
+
+  expect(events, `${label} degraded`).toEqual([]);
+  expect(items.length, `${label} lost its continuation pages`).toBeGreaterThan(firstPageCount);
+  expectAppItemsContract(items, label);
+  const continuation = items.slice(firstPageCount);
+  await expectListingOffersAgree(evenlySpaced(continuation, OFFER_SAMPLE_SIZE), storefront, label);
+  return continuation;
 }
 
 async function googleFirstPage(): Promise<ContinuationAnchor> {
@@ -174,6 +208,18 @@ liveDescribe('developer live contract', () => {
     await expect(
       liveClient.developer({ devId: 'DefinitelyNotARealDeveloper8317' }),
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('prices continuation items exactly in a comma decimal storefront', async () => {
+    const continuation = await continuationOffersAgreeing({ country: 'de', lang: 'de' });
+
+    expect(new Set(continuation.flatMap((item) => item.currency ?? []))).toEqual(new Set(['EUR']));
+  });
+
+  it('keeps the continuation pages of an arabic digit storefront', async () => {
+    const continuation = await continuationOffersAgreeing({ country: 'sa', lang: 'ar' });
+
+    expect(new Set(continuation.flatMap((item) => item.currency ?? []))).toEqual(new Set(['SAR']));
   });
 
   it('returns the full catalog and stops when num exceeds it', async () => {
