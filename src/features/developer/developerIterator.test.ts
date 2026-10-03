@@ -7,6 +7,7 @@ import { developerAppSchema } from './schema.ts';
 import type { DegradationEvent } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 import type { IntegrityEvent } from '../../core/integrity.ts';
+import { clusterOfferItems } from '../../../test/helpers/clusterOfferItems.ts';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -267,6 +268,39 @@ describe('developerIterator laziness', () => {
 
     expect(ids).toEqual(['n0']);
     expect(count()).toBe(1);
+  });
+});
+
+describe('developerIterator continuation offers', () => {
+  it('streams a sale to zero as free and a paid item at its exact price', async () => {
+    const { fetchImpl } = sequenceFetch([
+      numericPageHtml(['n0'], 'next'),
+      clusterBatchOf(
+        [
+          clusterOfferItems['de:com.zigzagame.evertale'],
+          clusterOfferItems['de:com.robtopx.geometryjump'],
+          clusterOfferItems['de:com.chucklefish.stardewvalley'],
+        ],
+        null,
+      ),
+    ]);
+
+    const offers: unknown[][] = [];
+    for await (const item of developerIterator({
+      devId: GOOGLE_NUMERIC_ID,
+      country: 'de',
+      lang: 'de',
+      requestOptions: { fetchImpl },
+    })) {
+      offers.push([item.appId, item.price, item.free, item.currency]);
+    }
+
+    expect(offers).toEqual([
+      ['n0', 0, true, 'USD'],
+      ['com.zigzagame.evertale', 0, true, 'EUR'],
+      ['com.robtopx.geometryjump', 3.99, false, 'EUR'],
+      ['com.chucklefish.stardewvalley', 4.69, false, 'EUR'],
+    ]);
   });
 });
 

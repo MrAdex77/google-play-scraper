@@ -9,6 +9,7 @@ import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
+import { clusterOfferItems } from '../../../test/helpers/clusterOfferItems.ts';
 
 const SOURCE_APP_ID = 'com.google.android.apps.translate';
 
@@ -33,15 +34,17 @@ const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () =
   return { fetchImpl: impl, count: () => index };
 };
 
-const emptyClusterBatch = (): string => {
+const continuationBatch = (apps: unknown[]): string => {
   const clusterNode: unknown[] = [];
-  clusterNode[0] = [];
+  clusterNode[0] = apps;
   clusterNode[7] = [null, null];
   const payload = [[clusterNode]];
   const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
   const json = JSON.stringify(frame);
   return `)]}'\n\n${json.length.toString()}\n${json}`;
 };
+
+const emptyClusterBatch = (): string => continuationBatch([]);
 
 const noClusterDetails =
   "<script>AF_initDataCallback({key: 'ds:5', hash: '1', data:[[]], sideChannel: {}});</script>";
@@ -294,5 +297,83 @@ describe('similar fullDetail', () => {
     expect(apps).toEqual([]);
     expect(requested).toEqual([]);
     expect(count()).toBe(1);
+  });
+});
+
+const firstPageCore = (appId: string, offer: unknown): unknown[] => {
+  const core: unknown[] = [];
+  core[0] = [appId];
+  core[1] = [null, null, null, [null, null, `https://icon.example/${appId}`]];
+  core[3] = `App ${appId}`;
+  core[8] = offer;
+  core[10] = [null, null, null, null, [null, null, `/store/apps/details?id=${appId}`]];
+  core[14] = `Dev ${appId}`;
+  return core;
+};
+
+const firstPageWithToken = (core: unknown[], token: string): string => {
+  const cluster: unknown[] = [];
+  cluster[21] = [[core], [null, null, null, [null, token]]];
+  return `<script>AF_initDataCallback({key: 'ds:3', hash: '1', data:${JSON.stringify([[null, [cluster]]])}, sideChannel: {}});</script>`;
+};
+
+const similarDetails = (): string =>
+  detailsWithClusters([clusterEntry('Similar apps', '/store/apps/collection/cluster?gsr=apps')]);
+
+describe('similar continuation offers', () => {
+  it('keeps a sale to zero free and reads comma decimal prices exactly', async () => {
+    const { fetchImpl } = sequenceFetch([
+      similarDetails(),
+      firstPageWithToken(
+        firstPageCore('com.first.page', [null, [[4_690_000, 'EUR', '4,69 €']]]),
+        'next-token',
+      ),
+      continuationBatch([
+        clusterOfferItems['de:com.zigzagame.evertale'],
+        clusterOfferItems['de:com.mojang.minecraftpe'],
+        clusterOfferItems['de:com.chucklefish.stardewvalley'],
+      ]),
+    ]);
+
+    const result = (await similar({
+      appId: SOURCE_APP_ID,
+      country: 'de',
+      lang: 'de',
+      requestOptions: { fetchImpl },
+    })) as SimilarApp[];
+
+    expect(result.map((item) => [item.appId, item.price, item.free, item.currency])).toEqual([
+      ['com.first.page', 4.69, false, 'EUR'],
+      ['com.zigzagame.evertale', 0, true, 'EUR'],
+      ['com.mojang.minecraftpe', 6.99, false, 'EUR'],
+      ['com.chucklefish.stardewvalley', 4.69, false, 'EUR'],
+    ]);
+  });
+
+  it('keeps an arabic digit continuation page instead of dropping it', async () => {
+    const { fetchImpl } = sequenceFetch([
+      similarDetails(),
+      firstPageWithToken(firstPageCore('com.first.page', undefined), 'next-token'),
+      continuationBatch([
+        clusterOfferItems['sa:com.mojang.minecraftpe'],
+        clusterOfferItems['sa:com.chucklefish.stardewvalley'],
+      ]),
+    ]);
+    const events: DegradationEvent[] = [];
+
+    const result = (await similar({
+      appId: SOURCE_APP_ID,
+      country: 'sa',
+      lang: 'ar',
+      onDegradation: (event) => events.push(event),
+      requestOptions: { fetchImpl },
+    })) as SimilarApp[];
+
+    expect(events).toEqual([]);
+    expect(result.map((item) => [item.appId, item.price, item.currency])).toEqual([
+      ['com.first.page', 0, undefined],
+      ['com.mojang.minecraftpe', 29.99, 'SAR'],
+      ['com.chucklefish.stardewvalley', 20.99, 'SAR'],
+    ]);
   });
 });
