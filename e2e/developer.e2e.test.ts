@@ -4,7 +4,12 @@ import {
   fetchDeveloperFirstPage,
   type DeveloperQuery,
 } from '../src/features/developer/developer.ts';
-import { NotFoundError, type DegradationEvent, type DeveloperApp } from '../src/index.ts';
+import {
+  NotFoundError,
+  type DegradationEvent,
+  type DeveloperApp,
+  type IntegrityEvent,
+} from '../src/index.ts';
 import {
   expectAppItemsContract,
   expectContinuationContract,
@@ -19,14 +24,26 @@ const GOOGLE_QUERY: DeveloperQuery = {
   country: 'us',
   throttle: 1,
 };
+const GOOGLE_NAME = 'Google LLC';
+const GOOGLE_NAME_QUERY: DeveloperQuery = {
+  devId: GOOGLE_NAME,
+  lang: 'en',
+  country: 'us',
+  throttle: 1,
+};
+const NETFLIX_NAME = 'Netflix, Inc.';
 const MULTI_PAGE_NUM = 100;
 const CATALOG_PROBE = 500;
 
-async function googleFirstPage(): Promise<ContinuationAnchor> {
-  const { apps, token } = await fetchDeveloperFirstPage(GOOGLE_QUERY, clientFromOptions);
+async function firstPageOf(query: DeveloperQuery): Promise<ContinuationAnchor> {
+  const { apps, token } = await fetchDeveloperFirstPage(query, clientFromOptions);
 
-  expect(apps.length, 'the google developer page serves no apps at all').toBeGreaterThan(0);
+  expect(apps.length, `the ${query.devId} developer page serves no apps at all`).toBeGreaterThan(0);
   return { firstPageCount: apps.length, token };
+}
+
+async function googleFirstPage(): Promise<ContinuationAnchor> {
+  return firstPageOf(GOOGLE_QUERY);
 }
 
 liveDescribe('developer live contract', () => {
@@ -60,12 +77,14 @@ liveDescribe('developer live contract', () => {
 
   it('crosses the cluster boundary for the google numeric id', async () => {
     const events: DegradationEvent[] = [];
+    const integrity: IntegrityEvent[] = [];
     const anchor = await googleFirstPage();
 
     const items = (await liveClient.developer({
       devId: GOOGLE_DEV_ID,
       num: MULTI_PAGE_NUM,
       onDegradation: (event) => events.push(event),
+      onIntegrityEvent: (event) => integrity.push(event),
     })) as DeveloperApp[];
 
     expectContinuationContract(anchor, items.length, MULTI_PAGE_NUM, 'google developer');
@@ -80,6 +99,28 @@ liveDescribe('developer live contract', () => {
       summary: 0.8,
     });
     expect(events).toEqual([]);
+    expect(integrity).toEqual([]);
+  });
+
+  it('crosses the cluster boundary for the google name id', async () => {
+    const events: DegradationEvent[] = [];
+    const integrity: IntegrityEvent[] = [];
+    const anchor = await firstPageOf(GOOGLE_NAME_QUERY);
+
+    const items = (await liveClient.developer({
+      devId: GOOGLE_NAME,
+      num: CATALOG_PROBE,
+      onDegradation: (event) => events.push(event),
+      onIntegrityEvent: (event) => integrity.push(event),
+    })) as DeveloperApp[];
+
+    expectContinuationContract(anchor, items.length, CATALOG_PROBE, 'google name developer');
+    expectAppItemsContract(items, 'google name developer continuation');
+    for (const item of items) {
+      expect(item.developer).toBe(GOOGLE_NAME);
+    }
+    expect(events, 'a name developer continuation must parse without degrading').toEqual([]);
+    expect(integrity, 'a name developer continuation must resolve at its own anchor').toEqual([]);
   });
 
   it('confirms the numeric first page still requires a continuation', async () => {
@@ -108,13 +149,19 @@ liveDescribe('developer live contract', () => {
   });
 
   it('resolves a developer name containing a comma and space', async () => {
-    const items = (await liveClient.developer({ devId: 'Netflix, Inc.' })) as DeveloperApp[];
+    const events: DegradationEvent[] = [];
+
+    const items = (await liveClient.developer({
+      devId: NETFLIX_NAME,
+      onDegradation: (event) => events.push(event),
+    })) as DeveloperApp[];
 
     expect(items.map((item) => item.appId)).toContain('com.netflix.mediaclient');
     expectAppItemsContract(items, 'comma developer page');
     for (const item of items) {
-      expect(item.developer).toBe('Netflix, Inc.');
+      expect(item.developer).toBe(NETFLIX_NAME);
     }
+    expect(events).toEqual([]);
   });
 
   it('rejects an unknown numeric developer id with a NotFoundError', async () => {
