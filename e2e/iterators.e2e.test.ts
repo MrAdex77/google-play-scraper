@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.ts';
+import { CLUSTER_PAGE_SIZE } from '../src/core/pagination.ts';
 import { app } from '../src/features/app/app.ts';
 import {
   createDeveloper,
@@ -8,6 +9,7 @@ import {
 } from '../src/features/developer/developer.ts';
 import { createDeveloperIterator } from '../src/features/developer/developerIterator.ts';
 import { fetchSearchFirstPage, type SearchQuery } from '../src/features/search/search.ts';
+import { createSearchIterator } from '../src/features/search/searchIterator.ts';
 import { type DegradationEvent, type IntegrityEvent, type Review } from '../src/index.ts';
 import {
   expectAppItemContract,
@@ -17,6 +19,7 @@ import {
   reviewsAnchor,
 } from './contracts.ts';
 import { liveClient, liveDescribe, memoizingResolveClient } from './helpers.ts';
+import { findSearchContinuationAnchor } from './searchAnchors.ts';
 
 const WHATSAPP = 'com.whatsapp';
 const GEO_GAME = 'com.adex77.WhereAmI';
@@ -160,7 +163,60 @@ liveDescribe('iterators live contract', () => {
     expect(integrity).toEqual([]);
   });
 
-  it('drains the search stream without hanging when google stops paginating', async () => {
+  it('streams search results across the first page boundary', async () => {
+    const resolveClient = memoizingResolveClient();
+    const streamSearch = createSearchIterator(resolveClient);
+    const { query, page } = await findSearchContinuationAnchor(resolveClient);
+    const limit = page.apps.length + 1;
+    const collected: string[] = [];
+    const events: DegradationEvent[] = [];
+    for await (const result of streamSearch({
+      term: query.term,
+      onDegradation: (event) => events.push(event),
+    })) {
+      expectAppItemContract(result, 'streamed search result');
+      collected.push(result.appId);
+      if (collected.length === limit) {
+        break;
+      }
+    }
+
+    expectContinuationContract(
+      { firstPageCount: page.apps.length, token: page.token },
+      collected.length,
+      limit,
+      'search stream',
+    );
+    expect(
+      collected.slice(0, page.apps.length),
+      'the stream must yield the first page before its continuation',
+    ).toEqual(page.apps.map((item) => item.appId));
+    expect(new Set(collected).size).toBe(collected.length);
+    expect(events).toEqual([]);
+  });
+
+  it('drains a continued search stream through every continuation page', async () => {
+    const resolveClient = memoizingResolveClient();
+    const streamSearch = createSearchIterator(resolveClient);
+    const { query, page } = await findSearchContinuationAnchor(resolveClient);
+    const collected: string[] = [];
+    const events: DegradationEvent[] = [];
+    for await (const result of streamSearch({
+      term: query.term,
+      onDegradation: (event) => events.push(event),
+    })) {
+      collected.push(result.appId);
+    }
+
+    expect(
+      collected.length,
+      `${query.term}: a drained stream must follow a second continuation page past the ${CLUSTER_PAGE_SIZE.toString()} items of the first`,
+    ).toBeGreaterThan(page.apps.length + CLUSTER_PAGE_SIZE);
+    expect(new Set(collected).size).toBe(collected.length);
+    expect(events).toEqual([]);
+  });
+
+  it('drains a search stream without a token and without hanging', async () => {
     const collected: string[] = [];
     for await (const result of liveClient.searchIterator({ term: 'panda' })) {
       expect(result.appId.length).toBeGreaterThan(0);

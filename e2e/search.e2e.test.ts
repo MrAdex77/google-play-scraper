@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.ts';
 import { app } from '../src/features/app/app.ts';
 import { createSearch, fetchSearchFirstPage } from '../src/features/search/search.ts';
+import { CLUSTER_PAGE_SIZE } from '../src/core/pagination.ts';
 import {
   type App,
   type DegradationEvent,
@@ -10,6 +11,7 @@ import {
 } from '../src/index.ts';
 import {
   expectAppItemsContract,
+  expectContinuationContract,
   expectRequestedCountContract,
   expectSearchListingAgreement,
 } from './contracts.ts';
@@ -19,6 +21,11 @@ import {
   liveDescribe,
   memoizingResolveClient,
 } from './helpers.ts';
+import {
+  findSearchContinuationAnchor,
+  SEARCH_CONTINUATION_ANCHORS,
+  surfacedSearchAnchors,
+} from './searchAnchors.ts';
 
 const GEO_GAME = 'com.adex77.WhereAmI';
 const BLOCK_MARKER_TERM = 'unusual traffic';
@@ -133,7 +140,7 @@ liveDescribe('search live contract', () => {
     expectAppItemsContract(results, 'german search');
   });
 
-  it('serves the full first page without truncation when num exceeds the google cap', async () => {
+  it('returns exactly the first page when num exceeds a first page without a token', async () => {
     const events: DegradationEvent[] = [];
     const resolveClient = memoizingResolveClient();
     const search = createSearch(app, resolveClient);
@@ -143,7 +150,10 @@ liveDescribe('search live contract', () => {
       resolveClient,
     );
 
-    expect(page.token).toBeUndefined();
+    expect(
+      page.token,
+      'the term "game" now serves a continuation token: re-anchor this tokenless probe to a term that serves none, the continuation itself is pinned by the continuation tests below',
+    ).toBeUndefined();
     expect(page.apps.length, 'first page search: the live page must serve results').toBeGreaterThan(
       0,
     );
@@ -201,17 +211,135 @@ liveDescribe('search live contract', () => {
     );
   });
 
-  it('confirms google still serves no search continuation token', async () => {
-    const { page } = await fetchSearchFirstPage(
-      { term: 'game', lang: 'en', country: 'us', price: 'all', throttle: 1 },
-      clientFromOptions,
-    );
+  it('confirms google still serves a search continuation token for a short term', async ({
+    annotate,
+  }) => {
+    const surfaced: string[] = [];
+    for await (const anchor of surfacedSearchAnchors(clientFromOptions)) {
+      expect(
+        anchor.page.apps.length,
+        `${anchor.query.term}: a first page that serves a token must serve results`,
+      ).toBeGreaterThan(0);
+      surfaced.push(anchor.query.term);
+    }
 
     expect(
-      page.apps.length,
-      'an empty search page cannot prove that google stopped serving a continuation token',
+      surfaced.length,
+      'no search continuation anchor serves a token any more: google changed the serving regime, re-measure the continuation and re-anchor SEARCH_CONTINUATION_ANCHORS in e2e/searchAnchors.ts',
     ).toBeGreaterThan(0);
-    expect(page.token).toBeUndefined();
+    await annotate(
+      `${surfaced.length.toString()} of ${SEARCH_CONTINUATION_ANCHORS.length.toString()} anchors served a token: ${surfaced.join(', ')}`,
+    );
+  });
+
+  it('follows the search continuation past the first page', async () => {
+    const events: DegradationEvent[] = [];
+    const resolveClient = memoizingResolveClient();
+    const search = createSearch(app, resolveClient);
+    const { query, page } = await findSearchContinuationAnchor(resolveClient);
+    const num = page.apps.length + 30;
+
+    const results = (await search({
+      term: query.term,
+      num,
+      onDegradation: (event) => events.push(event),
+    })) as SearchResult[];
+
+    expectContinuationContract(
+      { firstPageCount: page.apps.length, token: page.token },
+      results.length,
+      num,
+      `${query.term} search continuation`,
+    );
+    expectAppItemsContract(results, `${query.term} search continuation`);
+    expect(
+      results.slice(0, page.apps.length).map((item) => item.appId),
+      'the continuation must append to the first page, never reorder it',
+    ).toEqual(page.apps.map((item) => item.appId));
+    expect(events).toEqual([]);
+  });
+
+  it('chains a second search continuation page from the token of the first', async () => {
+    const events: DegradationEvent[] = [];
+    const resolveClient = memoizingResolveClient();
+    const search = createSearch(app, resolveClient);
+    const { query, page } = await findSearchContinuationAnchor(resolveClient);
+    const num = 250;
+
+    const results = (await search({
+      term: query.term,
+      num,
+      onDegradation: (event) => events.push(event),
+    })) as SearchResult[];
+
+    expectContinuationContract(
+      { firstPageCount: page.apps.length, token: page.token },
+      results.length,
+      num,
+      `${query.term} chained search continuation`,
+    );
+    expect(
+      results.length,
+      `${query.term}: a second continuation page must follow the ${CLUSTER_PAGE_SIZE.toString()} items of the first`,
+    ).toBeGreaterThan(page.apps.length + CLUSTER_PAGE_SIZE);
+    expectAppItemsContract(results, `${query.term} chained search continuation`);
+    expect(events).toEqual([]);
+  });
+
+  it('keeps paging a paid search until the requested number of paid apps', async () => {
+    const events: DegradationEvent[] = [];
+    const resolveClient = memoizingResolveClient();
+    const search = createSearch(app, resolveClient);
+    const { query, page } = await findSearchContinuationAnchor(resolveClient, { price: 'paid' });
+    const paidOnFirstPage = page.apps.filter((item) => !item.free).length;
+    const num = paidOnFirstPage + 10;
+
+    const results = (await search({
+      term: query.term,
+      price: 'paid',
+      num,
+      onDegradation: (event) => events.push(event),
+    })) as SearchResult[];
+
+    expectRequestedCountContract(results.length, num, `${query.term} paid continuation`);
+    expect(
+      results.length,
+      `${query.term}: the paid filter must keep paging past the paid apps of the first page`,
+    ).toBeGreaterThan(paidOnFirstPage);
+    expectAppItemsContract(results, `${query.term} paid continuation`);
+    for (const item of results) {
+      expect(item.free).toBe(false);
+    }
+    expect(events).toEqual([]);
+  });
+
+  it('prices continuation apps exactly in a comma decimal storefront', async () => {
+    const storefront = { lang: 'de', country: 'de', price: 'paid' } as const;
+    const events: DegradationEvent[] = [];
+    const resolveClient = memoizingResolveClient();
+    const search = createSearch(app, resolveClient);
+    const { query, page } = await findSearchContinuationAnchor(resolveClient, storefront);
+    const firstPageIds = new Set(page.apps.map((item) => item.appId));
+
+    const results = (await search({
+      term: query.term,
+      ...storefront,
+      num: page.apps.length + 40,
+      onDegradation: (event) => events.push(event),
+    })) as SearchResult[];
+
+    const continued = results.filter((item) => !firstPageIds.has(item.appId));
+    expectAppItemsContract(results, `${query.term} german paid continuation`);
+    expect(
+      continued.length,
+      `${query.term}: the german continuation must add apps past the first page`,
+    ).toBeGreaterThan(0);
+    expect(
+      continued.some((item) => !Number.isInteger(item.price)),
+      `${query.term}: a german continuation price such as 4,99 must keep its decimals`,
+    ).toBe(true);
+    expect(new Set(continued.flatMap((item) => item.currency ?? []))).toEqual(new Set(['EUR']));
+    expect(events).toEqual([]);
   });
 
   it('resolves full app details for exactly the results of the same page', async () => {
