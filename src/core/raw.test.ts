@@ -75,7 +75,15 @@ describe('rawArrayPathSchema', () => {
     expect(() => parseRaw(clusterTokenSchema, withTokenNode([null, 5]), 'token')).toThrow(
       'token: 0.0.7.1',
     );
+    expect(() => parseRaw(clusterTokenSchema, [['text']], 'token')).toThrow('token: 0.0');
     expect(() => parseRaw(clusterTokenSchema, ['text'], 'token')).toThrow('token: 0');
+  });
+
+  it('accepts a null leaf even when the leaf schema itself is not nullable', () => {
+    const schema = rawOptionalArrayPathSchema([0], z.string());
+
+    expect(() => parseRaw(schema, [null], 'leaf')).not.toThrow();
+    expect(() => parseRaw(schema, [5], 'leaf')).toThrow('leaf: 0');
   });
 
   it('still requires an array at the root of an optional path', () => {

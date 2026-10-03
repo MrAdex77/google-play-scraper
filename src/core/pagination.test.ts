@@ -21,25 +21,22 @@ const itemSpecs = {
 const APPS_PATH = [0, 0, 0];
 const TOKEN_PATH = [0, 0, 7, 1];
 
+const framedBatchResponse = (payload: unknown): string => {
+  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
+  return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
+};
+
 const batchResponseWithTokenNode = (apps: unknown[], tokenNode: unknown): string => {
   const inner: unknown[] = [];
   inner[0] = apps;
   inner[7] = tokenNode;
-  const payload = [[inner]];
-  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
-  return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
+  return framedBatchResponse([[inner]]);
 };
 
 const batchResponse = (apps: unknown[], token: string | null): string =>
   batchResponseWithTokenNode(apps, [null, token]);
 
-const batchResponseWithoutToken = (apps: unknown[]): string => {
-  const inner: unknown[] = [];
-  inner[0] = apps;
-  const payload = [[inner]];
-  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
-  return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
-};
+const batchResponseWithoutToken = (apps: unknown[]): string => framedBatchResponse([[[apps]]]);
 
 const queuedClient = (responses: string[]): { client: HttpClient; requests: HttpRequest[] } => {
   const requests: HttpRequest[] = [];
