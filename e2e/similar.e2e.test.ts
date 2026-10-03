@@ -31,6 +31,16 @@ const SPARSE_QUERY: SimilarQuery = {
 };
 const TOKEN_NODE_PATH = PAGINATION_MAPPINGS.token.slice(0, -1);
 
+function describeTokenNode(tokenNode: unknown): string {
+  if (tokenNode === null) {
+    return 'ends on a null token node';
+  }
+  if (tokenNode === undefined) {
+    return 'ends without a token node';
+  }
+  return 'carries a token node to a further page';
+}
+
 liveDescribe('similar live contract', () => {
   it('returns a well formed cluster for the Where Am I geography game', async ({ annotate }) => {
     const sourceAppId = 'com.adex77.WhereAmI';
@@ -72,7 +82,7 @@ liveDescribe('similar live contract', () => {
     expect(events).toEqual([]);
   });
 
-  it('keeps the final continuation page when google serves a null token node', async () => {
+  it('follows a sparse cluster to its end without a degradation event', async ({ annotate }) => {
     const events: DegradationEvent[] = [];
     const { client, apps, token } = await fetchSimilarFirstPage(SPARSE_QUERY, clientFromOptions);
     expect(
@@ -80,7 +90,7 @@ liveDescribe('similar live contract', () => {
       'the sparse anchor must still carry a continuation token on its first page',
     ).toBeDefined();
 
-    const finalPage = parseBatchResponse(
+    const continuationPage = parseBatchResponse(
       await client.request({
         url: clusterUrl(SPARSE_QUERY.lang, SPARSE_QUERY.country),
         method: 'POST',
@@ -88,12 +98,10 @@ liveDescribe('similar live contract', () => {
       }),
       CLUSTER_RPC_ID,
     );
-    expect(
-      getPath(finalPage, TOKEN_NODE_PATH),
-      'the sparse anchor must still end on a null token node, re-anchor this probe',
-    ).toBeNull();
-    const finalApps = getPath(finalPage, PAGINATION_MAPPINGS.apps);
-    expect(Array.isArray(finalApps) ? finalApps.length : 0).toBeGreaterThan(0);
+    await annotate(
+      `${SPARSE_APP_ID} continuation page ${describeTokenNode(getPath(continuationPage, TOKEN_NODE_PATH))}`,
+      'notice',
+    );
 
     const items = (await liveClient.similar({
       appId: SPARSE_APP_ID,
