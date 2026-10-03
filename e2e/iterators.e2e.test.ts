@@ -1,9 +1,12 @@
 import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.ts';
+import { app } from '../src/features/app/app.ts';
 import {
+  createDeveloper,
   fetchDeveloperFirstPage,
   type DeveloperQuery,
 } from '../src/features/developer/developer.ts';
+import { createDeveloperIterator } from '../src/features/developer/developerIterator.ts';
 import { fetchSearchFirstPage, type SearchQuery } from '../src/features/search/search.ts';
 import { type DegradationEvent, type IntegrityEvent, type Review } from '../src/index.ts';
 import {
@@ -13,7 +16,7 @@ import {
   expectReviewsContract,
   reviewsAnchor,
 } from './contracts.ts';
-import { liveClient, liveDescribe } from './helpers.ts';
+import { liveClient, liveDescribe, memoizingResolveClient } from './helpers.ts';
 
 const WHATSAPP = 'com.whatsapp';
 const GEO_GAME = 'com.adex77.WhereAmI';
@@ -25,6 +28,14 @@ const DEVELOPER_QUERY: DeveloperQuery = {
   country: 'us',
   throttle: 1,
 };
+const GOOGLE_NAME = 'Google LLC';
+const NAME_QUERY: DeveloperQuery = {
+  devId: GOOGLE_NAME,
+  lang: 'en',
+  country: 'us',
+  throttle: 1,
+};
+const NAME_CATALOG_PROBE = 500;
 const SEARCH_QUERY: SearchQuery = {
   term: SEARCH_STREAM_TERM,
   lang: 'en',
@@ -110,6 +121,43 @@ liveDescribe('iterators live contract', () => {
     );
     expect(new Set(collected).size).toBe(collected.length);
     expect(events).toEqual([]);
+  });
+
+  it('streams a name developer across the first page and agrees with developer()', async () => {
+    const resolveClient = memoizingResolveClient();
+    const listDeveloper = createDeveloper(app, resolveClient);
+    const streamDeveloper = createDeveloperIterator(resolveClient);
+    const { apps, token } = await fetchDeveloperFirstPage(NAME_QUERY, resolveClient);
+    const degradations: DegradationEvent[] = [];
+    const integrity: IntegrityEvent[] = [];
+    const callbacks = {
+      onDegradation: (event: DegradationEvent) => degradations.push(event),
+      onIntegrityEvent: (event: IntegrityEvent) => integrity.push(event),
+    };
+
+    const streamed: string[] = [];
+    for await (const item of streamDeveloper({ devId: GOOGLE_NAME, ...callbacks })) {
+      expectAppItemContract(item, 'streamed name developer app');
+      streamed.push(item.appId);
+    }
+    const listed = await listDeveloper({
+      devId: GOOGLE_NAME,
+      num: NAME_CATALOG_PROBE,
+      ...callbacks,
+    });
+
+    expectContinuationContract(
+      { firstPageCount: apps.length, token },
+      streamed.length,
+      NAME_CATALOG_PROBE,
+      'name developer stream',
+    );
+    expect(streamed, 'the stream and the list must read the same catalogue').toEqual(
+      listed.map((item) => item.appId),
+    );
+    expect(new Set(streamed).size).toBe(streamed.length);
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
   });
 
   it('drains the search stream without hanging when google stops paginating', async () => {

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { clientFromOptions, type HttpClient, type ResolveClient } from '../src/core/http.ts';
+import { clientFromOptions } from '../src/core/http.ts';
 import { app } from '../src/features/app/app.ts';
 import { createSearch, fetchSearchFirstPage } from '../src/features/search/search.ts';
 import {
@@ -13,7 +13,12 @@ import {
   expectRequestedCountContract,
   expectSearchListingAgreement,
 } from './contracts.ts';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
+import {
+  expectFieldCoverage,
+  liveClient,
+  liveDescribe,
+  memoizingResolveClient,
+} from './helpers.ts';
 
 const GEO_GAME = 'com.adex77.WhereAmI';
 const BLOCK_MARKER_TERM = 'unusual traffic';
@@ -23,24 +28,6 @@ const EXACT_MATCH_CARD_CANDIDATES = [
   'com.duolingo',
   'com.pandaexpress.app',
 ];
-
-function memoizingResolveClient(): ResolveClient {
-  const underlying = clientFromOptions({ throttle: 1 });
-  const cache = new Map<string, Promise<string>>();
-  const client: HttpClient = {
-    request(req) {
-      const key = `${req.method ?? 'GET'} ${req.url} ${req.body ?? ''}`;
-      const cached = cache.get(key);
-      if (cached !== undefined) {
-        return cached;
-      }
-      const pending = underlying.request(req);
-      cache.set(key, pending);
-      return pending;
-    },
-  };
-  return () => client;
-}
 
 liveDescribe('search live contract', () => {
   it('returns unique valid apps for a broad term', async () => {

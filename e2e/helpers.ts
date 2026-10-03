@@ -1,4 +1,5 @@
 import { describe, expect } from 'vitest';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../src/core/http.ts';
 import { createClient } from '../src/index.ts';
 import { fieldCoverage } from './coverage.ts';
 
@@ -9,6 +10,24 @@ const REQUESTS_PER_SECOND = 1;
 export const liveDescribe = describe.skipIf(LIVE_TESTS_DISABLED);
 
 export const liveClient = createClient({ throttle: REQUESTS_PER_SECOND });
+
+export function memoizingResolveClient(): ResolveClient {
+  const underlying = clientFromOptions({ throttle: REQUESTS_PER_SECOND });
+  const cache = new Map<string, Promise<string>>();
+  const client: HttpClient = {
+    request(req) {
+      const key = `${req.method ?? 'GET'} ${req.url} ${req.body ?? ''}`;
+      const cached = cache.get(key);
+      if (cached !== undefined) {
+        return cached;
+      }
+      const pending = underlying.request(req);
+      cache.set(key, pending);
+      return pending;
+    },
+  };
+  return () => client;
+}
 
 export function expectFieldFilledSomewhere(
   context: string,

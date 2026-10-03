@@ -8,6 +8,7 @@ export const BATCH_URL = `${BASE_URL}/_/PlayStoreUi/data/batchexecute`;
 const DEFAULT_ENVELOPE_TAIL: readonly unknown[] = [null, 'generic'];
 const WRB_FRAME_MARKER = 'wrb.fr';
 const SNIPPET_LENGTH = 200;
+const STATUS_SLOT = 5;
 const targetFrameSchema = z.tuple(
   [z.literal(WRB_FRAME_MARKER), z.string(), z.nullable(z.string())],
   z.unknown(),
@@ -31,29 +32,35 @@ export function buildBatchBody(
   return new URLSearchParams({ 'f.req': JSON.stringify(envelope) }).toString();
 }
 
-interface EnvelopeMatch {
-  found: boolean;
-  value: unknown;
+export interface BatchEnvelope {
+  payload: unknown;
+  status: number | undefined;
 }
 
-function matchEnvelope(frames: readonly unknown[], rpcId: string): EnvelopeMatch {
+function frameStatus(frame: readonly unknown[]): number | undefined {
+  const status = frame[STATUS_SLOT];
+  return isArray(status) && typeof status[0] === 'number' ? status[0] : undefined;
+}
+
+function matchEnvelope(frames: readonly unknown[], rpcId: string): BatchEnvelope | undefined {
   for (const frame of frames) {
     if (!isArray(frame)) {
       continue;
     }
     if (frame[0] === WRB_FRAME_MARKER && frame[1] === rpcId) {
       const raw = parseRaw(targetFrameSchema, frame, `batchexecute ${rpcId} envelope`)[2];
+      const status = frameStatus(frame);
       if (raw === null) {
-        return { found: true, value: null };
+        return { payload: null, status };
       }
       try {
-        return { found: true, value: JSON.parse(raw) };
+        return { payload: JSON.parse(raw), status };
       } catch {
         throw new ParseError(`batchexecute ${rpcId} payload is not valid JSON`);
       }
     }
   }
-  return { found: false, value: undefined };
+  return undefined;
 }
 
 function tryParseArray(text: string): readonly unknown[] | undefined {
@@ -65,7 +72,7 @@ function tryParseArray(text: string): readonly unknown[] | undefined {
   }
 }
 
-export function parseBatchResponse(text: string, rpcId: string): unknown {
+export function parseBatchEnvelope(text: string, rpcId: string): BatchEnvelope {
   const start = text.indexOf('[');
   if (start === -1) {
     throw new ParseError(`batchexecute response missing array start: ${snippet(text)}`);
@@ -81,19 +88,23 @@ export function parseBatchResponse(text: string, rpcId: string): unknown {
     if (frames === undefined) {
       continue;
     }
-    const match = matchEnvelope(frames, rpcId);
-    if (match.found) {
-      return match.value;
+    const envelope = matchEnvelope(frames, rpcId);
+    if (envelope !== undefined) {
+      return envelope;
     }
   }
 
   const whole = tryParseArray(body);
   if (whole !== undefined) {
-    const match = matchEnvelope(whole, rpcId);
-    if (match.found) {
-      return match.value;
+    const envelope = matchEnvelope(whole, rpcId);
+    if (envelope !== undefined) {
+      return envelope;
     }
   }
 
   throw new ParseError(`batchexecute response has no envelope for rpc ${rpcId}: ${snippet(body)}`);
+}
+
+export function parseBatchResponse(text: string, rpcId: string): unknown {
+  return parseBatchEnvelope(text, rpcId).payload;
 }

@@ -5,8 +5,8 @@ import { createDeveloper, developer, type DeveloperOptions } from './developer.t
 import { developerAppSchema, type DeveloperApp } from './schema.ts';
 import { developerUrl } from './specs.ts';
 import type { App } from '../app/schema.ts';
-import type { OnIntegrityEvent } from '../../core/integrity.ts';
-import type { OnDegradation } from '../../core/degradation.ts';
+import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
+import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 
 const readFixture = (name: string): string =>
@@ -17,6 +17,17 @@ const readFixture = (name: string): string =>
 
 const googleHtml = readFixture('google.html');
 const mojangHtml = readFixture('mojang.html');
+const googleContinuation = readFixture('google-continuation.txt');
+const googleNameHtml = readFixture('google-name.html');
+const googleNameContinuation = readFixture('google-name-continuation.txt');
+const nullContinuation = readFixture('null-continuation.txt');
+
+const GOOGLE_NUMERIC_ID = '5700313618786177705';
+const GOOGLE_NAME = 'Google LLC';
+const NUMERIC_FIRST_PAGE = 10;
+const NUMERIC_CONTINUATION = 100;
+const NAME_FIRST_PAGE = 20;
+const NAME_CONTINUATION = 70;
 
 const fetchReturning = (body: string): typeof fetch => {
   const impl: typeof fetch = () => Promise.resolve(new Response(body, { status: 200 }));
@@ -44,16 +55,19 @@ const appListItem = (id: string): unknown[] => {
   return item;
 };
 
+const framedBatch = (payload: unknown): string => {
+  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
+  const json = JSON.stringify(frame);
+  return `)]}'\n\n${json.length.toString()}\n${json}`;
+};
+
 const developerBatch = (ids: string[], nextToken: string | null): string => {
   const clusterNode: unknown[] = [];
   clusterNode[0] = ids.map((id) => appListItem(id));
   clusterNode[7] = [null, nextToken];
   const wrap: unknown[] = [];
   wrap[6] = clusterNode;
-  const payload = [wrap];
-  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
-  const json = JSON.stringify(frame);
-  return `)]}'\n\n${json.length.toString()}\n${json}`;
+  return framedBatch([wrap]);
 };
 
 const buildDsThree = (data: unknown): string =>
@@ -228,6 +242,113 @@ describe('developer pagination', () => {
 
     expect(count()).toBe(1);
     expect(items).toHaveLength(5);
+  });
+});
+
+interface RecordedRun {
+  items: DeveloperApp[];
+  degradations: DegradationEvent[];
+  integrity: IntegrityEvent[];
+}
+
+const runRecorded = async (devId: string, bodies: string[]): Promise<RecordedRun> => {
+  const degradations: DegradationEvent[] = [];
+  const integrity: IntegrityEvent[] = [];
+  const { fetchImpl } = sequenceFetch(bodies);
+  const items = (await developer({
+    devId,
+    num: 500,
+    requestOptions: { fetchImpl },
+    onDegradation: (event) => degradations.push(event),
+    onIntegrityEvent: (event) => integrity.push(event),
+  })) as DeveloperApp[];
+  return { items, degradations, integrity };
+};
+
+describe('developer recorded continuation layouts', () => {
+  it('collects a name developer continuation served in the shared cluster layout', async () => {
+    const { items, degradations, integrity } = await runRecorded(GOOGLE_NAME, [
+      googleNameHtml,
+      googleNameContinuation,
+    ]);
+
+    expect(items).toHaveLength(NAME_FIRST_PAGE + NAME_CONTINUATION);
+    expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
+    for (const item of items) {
+      expect(() => developerAppSchema.parse(item)).not.toThrow();
+      expect(item.developer).toBe(GOOGLE_NAME);
+    }
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
+  });
+
+  it('collects a numeric developer continuation served in the numeric layout', async () => {
+    const { items, degradations, integrity } = await runRecorded(GOOGLE_NUMERIC_ID, [
+      googleHtml,
+      googleContinuation,
+    ]);
+
+    expect(items).toHaveLength(NUMERIC_FIRST_PAGE + NUMERIC_CONTINUATION);
+    for (const item of items) {
+      expect(() => developerAppSchema.parse(item)).not.toThrow();
+    }
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
+  });
+
+  it('reports an anchor fallback when a numeric developer is served the name layout', async () => {
+    const { items, degradations, integrity } = await runRecorded(GOOGLE_NUMERIC_ID, [
+      googleHtml,
+      googleNameContinuation,
+    ]);
+
+    expect(items).toHaveLength(NUMERIC_FIRST_PAGE + NAME_CONTINUATION);
+    expect(degradations).toEqual([]);
+    expect(integrity).toHaveLength(1);
+    expect(integrity[0]?.context).toBe('developer');
+    expect(integrity[0]?.reason).toBe('rpc-anchor-fallback');
+    expect(integrity[0]?.error.message).toBe(
+      'developer: continuation apps resolved at 0.0.0 instead of 0.6.0',
+    );
+  });
+
+  it('reports an anchor fallback when a name developer is served the numeric layout', async () => {
+    const { items, degradations, integrity } = await runRecorded(GOOGLE_NAME, [
+      googleNameHtml,
+      googleContinuation,
+    ]);
+
+    expect(items).toHaveLength(NAME_FIRST_PAGE + NUMERIC_CONTINUATION);
+    expect(degradations).toEqual([]);
+    expect(integrity).toHaveLength(1);
+    expect(integrity[0]?.reason).toBe('rpc-anchor-fallback');
+    expect(integrity[0]?.error.message).toBe(
+      'developer: continuation apps resolved at 0.6.0 instead of 0.0.0',
+    );
+  });
+
+  it('keeps the first page without an event when the server ends with a null payload', async () => {
+    const { items, degradations, integrity } = await runRecorded(GOOGLE_NUMERIC_ID, [
+      googleHtml,
+      nullContinuation,
+    ]);
+
+    expect(items).toHaveLength(NUMERIC_FIRST_PAGE);
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
+  });
+
+  it('degrades with the name layout path when neither layout carries apps', async () => {
+    const { items, degradations, integrity } = await runRecorded(GOOGLE_NAME, [
+      googleNameHtml,
+      framedBatch([[null, null]]),
+    ]);
+
+    expect(items).toHaveLength(NAME_FIRST_PAGE);
+    expect(integrity).toEqual([]);
+    expect(degradations).toHaveLength(1);
+    expect(degradations[0]?.reason).toBe('cluster-page-parse');
+    expect(degradations[0]?.error.message).toContain('developer continuation apps response');
   });
 });
 

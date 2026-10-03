@@ -67,6 +67,18 @@ the winner. Inspect the candidates and tighten the schema around stable root
 structure until exactly one validates; do not pick the first key or delete a
 valid route to silence the error.
 
+A `developer` continuation raises the same event with a message of the form
+`continuation apps resolved at <path> instead of <path>`. It means the page carrying the apps
+sat at the declared fallback layout rather than at the primary one, so the public result is
+still complete. The primary layout follows the kind of `devId`: `NUMERIC_CLUSTER_LAYOUT` for
+numeric ids and `NAME_CLUSTER_LAYOUT` for names, both in `src/features/developer/specs.ts`.
+
+1. Record the continuation with `pnpm fixtures:update developer-continuation` and compare the
+   apps and token positions with both layouts.
+2. Promote the layout Google now serves to primary for that kind of `devId` and keep the other
+   as the fallback during the rollout.
+3. Extend the recorded fixture tests so the repaired route emits no event.
+
 The other integrity reasons have narrower responses:
 
 - `optional-section-parse`: refresh the fixture and inspect the named
@@ -94,6 +106,14 @@ node held something that is neither `null`, absent nor a `[?, token]` pair, so
 treat it as a path drift and diff the `PAGINATION_MAPPINGS` and
 `CLUSTER_MAPPINGS` constants against a fresh recorded continuation
 (`pnpm fixtures:update similar-continuation`).
+
+A continuation that Google answers with a null payload and status `5` (a
+`wrb.fr` frame whose data slot is `null` and whose status slot reads
+`[5, null, [[...PlayDataError, [1]]]]`) ends the list the same way and raises no
+event: the server had nothing more to serve for that token. Any other status
+with a null payload still raises `cluster-page-parse`. Status `3` is what Google
+returns when the request body itself is malformed, so treat it as a drift in
+`buildClusterBody` or `clusterUrl` rather than in the response paths.
 
 ## Live contract assertion rules
 

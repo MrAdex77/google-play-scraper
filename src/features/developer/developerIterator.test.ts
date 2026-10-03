@@ -1,8 +1,27 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { developer } from './developer.ts';
 import { createDeveloperIterator, developerIterator } from './developerIterator.ts';
 import { developerAppSchema } from './schema.ts';
 import type { DegradationEvent } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
+import type { IntegrityEvent } from '../../core/integrity.ts';
+
+const readFixture = (name: string): string =>
+  readFileSync(
+    fileURLToPath(new URL(`../../../test/fixtures/developer/${name}`, import.meta.url)),
+    'utf8',
+  );
+
+const googleHtml = readFixture('google.html');
+const googleContinuation = readFixture('google-continuation.txt');
+const googleNameHtml = readFixture('google-name.html');
+const googleNameContinuation = readFixture('google-name-continuation.txt');
+const nullContinuation = readFixture('null-continuation.txt');
+
+const GOOGLE_NUMERIC_ID = '5700313618786177705';
+const GOOGLE_NAME = 'Google LLC';
 
 const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () => number } => {
   let index = 0;
@@ -148,6 +167,83 @@ describe('developerIterator layouts', () => {
     );
 
     expect(ids).toEqual(['com.adex77.WhereAmI']);
+  });
+});
+
+describe('developerIterator recorded continuation layouts', () => {
+  const streamRecorded = async (
+    devId: string,
+    bodies: string[],
+  ): Promise<{ ids: string[]; degradations: DegradationEvent[]; integrity: IntegrityEvent[] }> => {
+    const degradations: DegradationEvent[] = [];
+    const integrity: IntegrityEvent[] = [];
+    const { fetchImpl } = sequenceFetch(bodies);
+    const ids = await collect(
+      developerIterator({
+        devId,
+        requestOptions: { fetchImpl },
+        onDegradation: (event) => degradations.push(event),
+        onIntegrityEvent: (event) => integrity.push(event),
+      }),
+    );
+    return { ids, degradations, integrity };
+  };
+
+  it('streams a name developer across its recorded continuation page', async () => {
+    const bodies = [googleNameHtml, googleNameContinuation];
+
+    const { ids, degradations, integrity } = await streamRecorded(GOOGLE_NAME, bodies);
+
+    expect(ids).toHaveLength(90);
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
+  });
+
+  it('yields the same apps in the same order as developer for a name developer', async () => {
+    const bodies = [googleNameHtml, googleNameContinuation];
+    const { ids } = await streamRecorded(GOOGLE_NAME, bodies);
+
+    const items = await developer({
+      devId: GOOGLE_NAME,
+      num: 500,
+      requestOptions: { fetchImpl: sequenceFetch(bodies).fetchImpl },
+    });
+
+    expect(ids).toEqual(items.map((item) => item.appId));
+  });
+
+  it('streams a numeric developer across its recorded continuation page', async () => {
+    const { ids, degradations, integrity } = await streamRecorded(GOOGLE_NUMERIC_ID, [
+      googleHtml,
+      googleContinuation,
+    ]);
+
+    expect(ids).toHaveLength(110);
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
+  });
+
+  it('ends the stream after the first page when the server answers with a null payload', async () => {
+    const { ids, degradations, integrity } = await streamRecorded(GOOGLE_NUMERIC_ID, [
+      googleHtml,
+      nullContinuation,
+    ]);
+
+    expect(ids).toHaveLength(10);
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
+  });
+
+  it('reports an anchor fallback when the continuation uses the other layout', async () => {
+    const { ids, degradations, integrity } = await streamRecorded(GOOGLE_NUMERIC_ID, [
+      googleHtml,
+      googleNameContinuation,
+    ]);
+
+    expect(ids).toHaveLength(80);
+    expect(degradations).toEqual([]);
+    expect(integrity.map((event) => event.reason)).toEqual(['rpc-anchor-fallback']);
+    expect(integrity[0]?.context).toBe('developer');
   });
 });
 
