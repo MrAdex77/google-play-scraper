@@ -162,6 +162,14 @@ function similarRecorder(appId: string, detailsFile: string, clusterFile: string
 }
 
 const SIMILAR_CONTINUATION_REQUEST_LIMIT = 10;
+const SIMILAR_TOKEN_NODE_PATH = PAGINATION_MAPPINGS.token.slice(0, -1);
+
+function endsOnNullTokenNode(payload: unknown): boolean {
+  const apps = getPath(payload, PAGINATION_MAPPINGS.apps);
+  return (
+    getPath(payload, SIMILAR_TOKEN_NODE_PATH) === null && Array.isArray(apps) && apps.length > 0
+  );
+}
 
 function similarContinuationRecorder(appId: string, file: string): Recorder {
   return {
@@ -178,8 +186,12 @@ function similarContinuationRecorder(appId: string, file: string): Recorder {
           method: 'POST',
           body: buildClusterBody(CLUSTER_PAGE_SIZE, token),
         });
-        const next = getPath(parseBatchResponse(text, CLUSTER_RPC_ID), PAGINATION_MAPPINGS.token);
+        const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
+        const next = getPath(payload, PAGINATION_MAPPINGS.token);
         if (typeof next !== 'string') {
+          if (!endsOnNullTokenNode(payload)) {
+            throw new Error(`the final page for "${appId}" has no null token node, re-anchor it`);
+          }
           await writeFixture(file, text);
           return;
         }
