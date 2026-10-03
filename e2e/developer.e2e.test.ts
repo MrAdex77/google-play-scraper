@@ -213,13 +213,13 @@ liveDescribe('developer live contract', () => {
   it('prices continuation items exactly in a comma decimal storefront', async () => {
     const continuation = await continuationOffersAgreeing({ country: 'de', lang: 'de' });
 
-    expect(new Set(continuation.map((item) => item.currency))).toEqual(new Set(['EUR']));
+    expect(new Set(continuation.flatMap((item) => item.currency ?? []))).toEqual(new Set(['EUR']));
   });
 
   it('keeps the continuation pages of an arabic digit storefront', async () => {
     const continuation = await continuationOffersAgreeing({ country: 'sa', lang: 'ar' });
 
-    expect(new Set(continuation.map((item) => item.currency))).toEqual(new Set(['SAR']));
+    expect(new Set(continuation.flatMap((item) => item.currency ?? []))).toEqual(new Set(['SAR']));
   });
 
   it('returns the full catalog and stops when num exceeds it', async () => {

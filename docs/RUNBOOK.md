@@ -261,9 +261,9 @@ turns up:
   app's listing, which catches drift on either surface.
 - `expectOfferAgreement` for a cluster item measured against the same app's
   listing within one run. `expectListingOffersAgree` in `e2e/helpers.ts` runs it
-  over a sample and requires a priced item in that sample, so a surface that
-  reads the price from anything but the offer micros cannot pass on free apps
-  alone.
+  over a sample and requires an item priced above zero in that sample, so a
+  surface that reads the price from anything but the offer micros cannot pass
+  on free apps or sales to zero alone.
 
 The offer fields deserve their own note, because they are the one place where
 absence carries meaning. `price`, `currency` and `priceText` are three sibling

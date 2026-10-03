@@ -70,8 +70,8 @@ export async function expectListingOffersAgree(
   label: string,
 ): Promise<void> {
   expect(
-    sample.some((item) => item.currency !== undefined),
-    `${label}: the sample must hold a priced item to compare offers`,
+    sample.some((item) => item.price > 0),
+    `${label}: the sample must hold a paid item to compare prices`,
   ).toBe(true);
   for (const item of sample) {
     const listing = await liveClient.app({ appId: item.appId, ...storefront });
