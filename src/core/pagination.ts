@@ -80,15 +80,22 @@ function prepareLayout(layout: ClusterLayout, context: string): PreparedLayout {
   };
 }
 
+function carriesApps(payload: unknown, layout: ClusterLayout): boolean {
+  const apps = getPath(payload, layout.apps);
+  return Array.isArray(apps) && apps.length > 0;
+}
+
 function resolveLayout(
   payload: unknown,
   primary: PreparedLayout,
   fallbacks: readonly PreparedLayout[],
   context: string,
 ): PreparedLayout {
+  const matching = [primary, ...fallbacks].filter(
+    (candidate) => safeParse(candidate.appsSchema, payload).success,
+  );
   const resolved =
-    [primary, ...fallbacks].find((candidate) => safeParse(candidate.appsSchema, payload).success) ??
-    primary;
+    matching.find((candidate) => carriesApps(payload, candidate.layout)) ?? matching[0] ?? primary;
   parseRaw(resolved.appsSchema, payload, `${context} continuation apps response`);
   parseRaw(resolved.tokenSchema, payload, `${context} continuation token response`);
   return resolved;

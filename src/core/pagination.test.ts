@@ -533,6 +533,17 @@ describe('clusterPages layout fallbacks', () => {
     expect(events).toEqual([]);
   });
 
+  it('reads a populated fallback layout when the primary layout holds an empty list', async () => {
+    const wrap: unknown[] = [];
+    wrap[0] = [[]];
+    wrap[6] = [[['fallback']]];
+    const { pages, events, degradations } = run([framedBatchResponse([wrap])]);
+
+    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['fallback']]);
+    expect(degradations).toEqual([]);
+    expect(events.map((event) => event.reason)).toEqual(['rpc-anchor-fallback']);
+  });
+
   it('degrades with the primary path when no layout carries apps', async () => {
     const { pages, events, degradations } = run([framedBatchResponse([[null, null]])]);
 
