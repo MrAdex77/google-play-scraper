@@ -1149,9 +1149,10 @@ const details = await app({
 | `onIntegrityEvent` | `request-budget-exhausted` | A bounded review read reached its request budget and returned the partial set. |
 | `onIntegrityEvent` | `section-anchor-fallback`  | A best-effort section resolved outside its declared anchor.                    |
 
-Two boundaries to know:
+Boundaries to know:
 
-- An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion.
+- An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion. A continuation that Google answers with a null payload (an error status instead of data) is read the same way.
+- `developer` reads a continuation page from the layout that matches the kind of `devId` (numeric id or name). When Google serves the other layout instead, the page is still read and an `rpc-anchor-fallback` event reports it, so treat that event as a scheduled repair rather than an outage.
 - `app` emits `optional-section-parse` with context `app comments` when the available comment roots are structurally invalid. A valid empty comment root returns an empty list without an event. Treat a rising event rate as a signal, not each event.
 - `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`, and an accumulation that runs out of request budget returns its partial set and emits `request-budget-exhausted`.
 
