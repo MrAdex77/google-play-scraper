@@ -254,6 +254,9 @@ turns up:
   first page it continued from.
 - `expectSearchListingAgreement` for a search item measured against the same
   app's listing, which catches drift on either surface.
+- `expectOfferAgreement` for a cluster item measured against the same app's
+  listing within one run, which catches a surface that reads the price from
+  anything but the offer micros.
 
 The offer fields deserve their own note, because they are the one place where
 absence carries meaning. `price`, `currency` and `priceText` are three sibling
@@ -268,6 +271,17 @@ what it costs.
 A consequence worth stating plainly: `free` false is not the claim "this app
 costs money", because an offerless listing also reads as `free` false with
 `price` 0. Read `currency` first when deciding which state a listing is in.
+
+Cluster items (`similar` and `developer` past their first page) read `price` and
+`free` from the offer micros, never from the display text, because the text is
+locale formatted: `4,69 €` and `R$ 19,99` carry a decimal comma, `￥1,300` a
+thousands comma, and an Arabic storefront serves Eastern Arabic digits. A
+listing on sale to zero is `price` 0 and `free` true on every surface, the same
+as its `app()` result. A continuation item with no offer node at all reads
+`free` true, because Google drops the node for free apps on those pages, while
+a first page item with no offer node reads `free` false like a search row. So
+an undefined `currency` on a continuation item does not separate a free app
+from an offerless listing; call `app()` when that distinction matters.
 
 Three thresholds in the suite are measured, not guessed, on 2026-08-26 unless
 a bullet says otherwise:
