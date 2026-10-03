@@ -84,6 +84,17 @@ The other integrity reasons have narrower responses:
   the suite already fails on `rpc-anchor-fallback`, so that the repair is
   actually scheduled rather than accumulated.
 
+### Cluster continuation end
+
+The last continuation page of a cluster serves its token node (`[0, 0, 7]` for
+`similar`) as `null`, or omits it. That is the normal end of the list, and the
+optional raw path schemas read `null` like an absent value. A
+`cluster-page-parse` event whose message names the token response means the
+node held something that is neither `null`, absent nor a `[?, token]` pair, so
+treat it as a path drift and diff the `PAGINATION_MAPPINGS` and
+`CLUSTER_MAPPINGS` constants against a fresh recorded continuation
+(`pnpm fixtures:update similar-continuation`).
+
 ## Live contract assertion rules
 
 The scheduled suite exists to catch scraper breakage, not catalogue movement. An
@@ -192,14 +203,6 @@ read a `paginate: true` reviews page through `reviewsAnchor`, then hand it to
 requested limit and to exceed the page it continued from. A probe whose first page stops carrying a token fails with a
 message naming the re-anchor task, because that is a serving regime change and
 not a parse break.
-
-The last continuation page of a cluster serves its token node (`[0, 0, 7]` for
-`similar`) as `null`, or omits it. That is the normal end of the list, and the
-raw path schemas read `null` like an absent value. A `cluster-page-parse` event
-whose message names the token response means the node held something that is
-neither `null`, absent nor a `[?, token]` pair, so treat it as a path drift and
-diff the `PAGINATION_MAPPINGS` and `CLUSTER_MAPPINGS` constants against a fresh
-recorded continuation (`pnpm fixtures:update similar-continuation`).
 
 Three shapes follow from those rules and are worth copying. `num` equal to the
 live first page count must return exactly that page, and `num` one past it must
