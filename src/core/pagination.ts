@@ -134,6 +134,9 @@ export async function* clusterPages<M extends SpecMap>(
     try {
       const text = await client.request({ url: clusterUrl(lang, country), method: 'POST', body });
       const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
+      if (payload === null) {
+        return;
+      }
       used = resolveLayout(payload, primary, fallbacks, context);
 
       const apps = getPath(payload, used.layout.apps);

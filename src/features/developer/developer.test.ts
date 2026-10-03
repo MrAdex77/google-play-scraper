@@ -20,6 +20,7 @@ const mojangHtml = readFixture('mojang.html');
 const googleContinuation = readFixture('google-continuation.txt');
 const googleNameHtml = readFixture('google-name.html');
 const googleNameContinuation = readFixture('google-name-continuation.txt');
+const nullContinuation = readFixture('null-continuation.txt');
 
 const GOOGLE_NUMERIC_ID = '5700313618786177705';
 const GOOGLE_NAME = 'Google LLC';
@@ -324,6 +325,17 @@ describe('developer recorded continuation layouts', () => {
     expect(integrity[0]?.error.message).toBe(
       'developer: continuation apps resolved at 0.6.0 instead of 0.0.0',
     );
+  });
+
+  it('keeps the first page without an event when the server ends with a null payload', async () => {
+    const { items, degradations, integrity } = await runRecorded(GOOGLE_NUMERIC_ID, [
+      googleHtml,
+      nullContinuation,
+    ]);
+
+    expect(items).toHaveLength(NUMERIC_FIRST_PAGE);
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
   });
 
   it('degrades with the name layout path when neither layout carries apps', async () => {

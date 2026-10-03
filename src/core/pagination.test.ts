@@ -42,6 +42,23 @@ const batchResponseWithTokenNode = (apps: unknown[], tokenNode: unknown): string
 const batchResponse = (apps: unknown[], token: string | null): string =>
   batchResponseWithTokenNode(apps, [null, token]);
 
+const NULL_PAYLOAD_RESPONSE = `)]}'\n\n${JSON.stringify([
+  [
+    'wrb.fr',
+    'qnKhOb',
+    null,
+    null,
+    null,
+    [
+      5,
+      null,
+      [['type.googleapis.com/wireless.android.finsky.boq.web.data.store.error.PlayDataError', [1]]],
+    ],
+    'generic',
+  ],
+  ['di', 53],
+])}\n`;
+
 const fallbackBatchResponse = (apps: unknown[], token: string | null): string =>
   batchResponseInSlot(6, apps, [null, token]);
 
@@ -395,6 +412,51 @@ describe('clusterPages', () => {
     });
 
     await expect(collectPages(generator)).rejects.toThrow('consumer handler bug');
+  });
+});
+
+describe('clusterPages null continuation payload', () => {
+  const runNull = async (responses: string[]) => {
+    const { client, requests } = queuedClient(responses);
+    const events: IntegrityEvent[] = [];
+    const degradations: DegradationEvent[] = [];
+    const pages = await collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [{ id: 'seed' }],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        fallbackLayouts: [FALLBACK_LAYOUT],
+        context: 'test',
+        onIntegrityEvent: (event) => events.push(event),
+        onDegradation: (event) => degradations.push(event),
+      }),
+    );
+    return { pages, requests, events, degradations };
+  };
+
+  it('ends the stream without an event when the server answers with a null payload', async () => {
+    const { pages, requests, events, degradations } = await runNull([NULL_PAYLOAD_RESPONSE]);
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed']]);
+    expect(requests).toHaveLength(1);
+    expect(events).toEqual([]);
+    expect(degradations).toEqual([]);
+  });
+
+  it('keeps the pages collected before a null payload', async () => {
+    const { pages, requests, degradations } = await runNull([
+      batchResponse([['a']], 't2'),
+      NULL_PAYLOAD_RESPONSE,
+    ]);
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed'], ['a']]);
+    expect(requests).toHaveLength(2);
+    expect(degradations).toEqual([]);
   });
 });
 

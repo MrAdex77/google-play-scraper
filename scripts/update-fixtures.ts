@@ -363,6 +363,10 @@ const recorders: Recorder[] = [
     firstPageFile: 'developer/google-name.html',
     continuationFile: 'developer/google-name-continuation.txt',
   }),
+  developerContinuationRecorder({
+    devId: '6298676178012338170',
+    continuationFile: 'developer/null-continuation.txt',
+  }),
   similarRecorder(
     'com.google.android.apps.translate',
     'similar/translate-details.html',

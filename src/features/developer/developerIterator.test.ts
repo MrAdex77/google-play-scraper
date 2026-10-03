@@ -18,6 +18,7 @@ const googleHtml = readFixture('google.html');
 const googleContinuation = readFixture('google-continuation.txt');
 const googleNameHtml = readFixture('google-name.html');
 const googleNameContinuation = readFixture('google-name-continuation.txt');
+const nullContinuation = readFixture('null-continuation.txt');
 
 const GOOGLE_NUMERIC_ID = '5700313618786177705';
 const GOOGLE_NAME = 'Google LLC';
@@ -218,6 +219,17 @@ describe('developerIterator recorded continuation layouts', () => {
     ]);
 
     expect(ids).toHaveLength(110);
+    expect(degradations).toEqual([]);
+    expect(integrity).toEqual([]);
+  });
+
+  it('ends the stream after the first page when the server answers with a null payload', async () => {
+    const { ids, degradations, integrity } = await streamRecorded(GOOGLE_NUMERIC_ID, [
+      googleHtml,
+      nullContinuation,
+    ]);
+
+    expect(ids).toHaveLength(10);
     expect(degradations).toEqual([]);
     expect(integrity).toEqual([]);
   });
