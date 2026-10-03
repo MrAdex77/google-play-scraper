@@ -375,7 +375,7 @@ Three e2e tests pin the current Google Play serving regime instead of the code:
 
 - `confirms google still serves an exact match card for a package id search` in
   `e2e/search.e2e.test.ts`
-- `confirms google still serves no search continuation token` in
+- `confirms google still serves a search continuation token for a short term` in
   `e2e/search.e2e.test.ts`
 - `confirms the numeric first page still requires a continuation` in
   `e2e/developer.e2e.test.ts`
@@ -400,7 +400,13 @@ correctly. Every size the suite needs is read live. Measured for reference only:
 on 2026-09-10 the numeric developer first page served 10 apps and a token, the
 similar cluster's first page 50 apps and a token, an English search first page
 30 results for "geography quiz" and 20 for "panda", and a reviews page 150
-reviews. On 2026-09-17 TOP_FREE APPLICATION served 199 apps at `num` 250 and
+reviews. On 2026-10-02 a search first page carried a continuation token for the
+single character terms and digits (50 apps) and for a minority of app names
+(an exact match card plus 21 or 22 apps, among them "minecraft", "gmail" and
+"reddit"), and for none of 89 randomly drawn app titles. The continuation
+served 100 apps per request and ended at 180 to 250 apps in total, a count that
+moved between runs, so only the first page of the same run is ever a reference.
+On 2026-09-17 TOP_FREE APPLICATION served 199 apps at `num` 250 and
 500, GAME_TRIVIA 200, and every chart honoured a smaller `num` exactly. On 2026-09-22 the
 reviews RPC honoured every page size from 1 to 4500 exactly, served an empty payload with no
 token for 4501 and above, applied the score filter on all three sorts and the device filter
@@ -415,19 +421,33 @@ unrelated reasons. The continuation token one is answered by the procedure
 below. The exact match card one is answered by re-anchoring the pool as
 described above it.
 
-When the search continuation token tripwire fires because a token returned:
+Search pagination is opportunistic. Google serves a continuation token only for
+some terms, so `SEARCH_CONTINUATION_ANCHORS` in `e2e/searchAnchors.ts` is a
+maintained pool: the tripwire fails only when no anchor serves a token, and the
+continuation tests take the first anchor that does. Every other assertion about
+the continuation is relational (the aggregate stays within `num`, exceeds the
+first page of the same run, repeats no app).
 
-1. Open `play.google.com/store/search?q=game&c=apps` in a browser with the
-   network panel filtered to `batchexecute` and scroll to the bottom of the
-   results.
-2. Note the `rpcids` of any request that returns app items. As of July 2026 only
-   `teXCtc` fires and it returns related-search chips, not apps, so `teXCtc` is
-   the first suspect for a revived pagination RPC.
-3. Replay that request to map the item shape, then update
-   `SECTIONS_MAPPING.token`, the cluster body builder, and `searchPageItemSpecs`
-   together.
-4. Only after the continuation parses live, raise the search count assertions
-   above 30.
+When the search continuation token tripwire fires because no anchor serves a
+token:
+
+1. Probe a few single character terms and app names with `fetchSearchFirstPage`
+   and read `page.token`. If any of them still serves one, replace the pool in
+   `e2e/searchAnchors.ts` with terms that do and commit as
+   `test(e2e): re-anchor the search continuation pool`.
+2. If none does, Google withdrew search pagination again, as it did in
+   July 2026. Open `play.google.com/store/search?q=a&c=apps` in a browser with
+   the network panel filtered to `batchexecute` and scroll to the bottom of the
+   results. Note the `rpcids` of any request that returns app items: in July
+   2026 only `teXCtc` fired and it returns related-search chips, not apps.
+3. Do not touch the continuation tests until step 1 or 2 has decided whether the
+   regime changed. A continuation that is still served but fails to parse shows
+   up as a `cluster-page-parse` degradation event with the continuation tests
+   red and the tripwire green. Search continuation items use the cluster item
+   shape (`src/core/clusterItem.ts`), the same one `similar` and `developer`
+   read, so diff a fresh recorded continuation
+   (`pnpm fixtures:update search-continuation`) against
+   `test/fixtures/search/fl-studio-mobile-continuation.txt`.
 
 Never satisfy a tripwire by weakening it: thresholds fall under hard rule 11,
 so the fix is always a re-port of the contract, never a threshold tweak.

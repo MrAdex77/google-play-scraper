@@ -16,6 +16,7 @@ import {
   deletePath,
   replaceScriptBlockData,
 } from '../../../test/helpers/responseMutation.ts';
+import { clusterBatchResponse, clusterItem } from '../../../test/helpers/clusterResponse.ts';
 import { memoized } from '../memoized/memoized.ts';
 import { searchResultSchema, type SearchResult } from './schema.ts';
 import type { App } from '../app/schema.ts';
@@ -91,19 +92,9 @@ const searchPageRoot = (ids: string[], token: string): unknown => {
 const searchPageHtml = (ids: string[], token: string): string =>
   buildScriptData('ds:4', searchPageRoot(ids, token));
 
-const clusterBatchOf = (apps: unknown[], nextToken: string | null): string => {
-  const inner: unknown[] = [];
-  inner[0] = apps;
-  inner[7] = [null, nextToken];
-  const payload = [[inner]];
-  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
-  const json = JSON.stringify(frame);
-  return `)]}'\n\n${json.length.toString()}\n${json}`;
-};
-
 const clusterBatch = (ids: string[], nextToken: string | null): string =>
-  clusterBatchOf(
-    ids.map((id) => coreData(id)),
+  clusterBatchResponse(
+    ids.map((id) => clusterItem(id)),
     nextToken,
   );
 
@@ -182,7 +173,7 @@ describe('search pagination', () => {
 
   it('reports a degradation event and keeps the first page when the continuation is malformed', async () => {
     const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
-    const malformedPage = clusterBatchOf([[42]], null);
+    const malformedPage = clusterBatchResponse([[42]], null);
     const events: DegradationEvent[] = [];
 
     const results = (await search({
@@ -197,6 +188,42 @@ describe('search pagination', () => {
     expect(events[0]?.context).toBe('search');
     expect(events[0]?.reason).toBe('cluster-page-parse');
     expect(events[0]?.error).toBeInstanceOf(ParseError);
+  });
+
+  it('drops a continuation item that repeats an app already returned', async () => {
+    const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
+    const secondPage = clusterBatch(['c', 'd', 'e'], null);
+
+    const results = (await search({
+      term: 'panda',
+      num: 5,
+      requestOptions: { fetchImpl: sequenceFetch([firstPage, secondPage]) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+
+  it('keeps paging until num apps pass the price filter', async () => {
+    const firstPage = searchPageHtml(['free1'], 'page-2-token');
+    const secondPage = clusterBatchResponse(
+      [
+        clusterItem('paid1', 990000),
+        clusterItem('free2'),
+        clusterItem('paid2', 1990000),
+        clusterItem('paid3', 2990000),
+      ],
+      null,
+    );
+
+    const results = (await search({
+      term: 'panda',
+      price: 'paid',
+      num: 3,
+      requestOptions: { fetchImpl: sequenceFetch([firstPage, secondPage]) },
+    })) as SearchResult[];
+
+    expect(results.map((item) => item.appId)).toEqual(['paid1', 'paid2', 'paid3']);
+    expect(results.every((item) => !item.free && item.price > 0)).toBe(true);
   });
 
   it('returns only the first page when it already satisfies num', async () => {

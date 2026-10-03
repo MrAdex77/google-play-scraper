@@ -76,30 +76,6 @@ export const searchItemSpecs = {
   score: { paths: [[0, 4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
 
-export const searchPageItemSpecs = {
-  title: { paths: [[3]], missing: REQUIRED, schema: shape.title },
-  appId: { paths: [[0, 0]], missing: REQUIRED, schema: shape.appId },
-  url: { paths: [[10, 4, 2]], missing: REQUIRED, schema: shape.url, transform: resolveAppUrl },
-  icon: { paths: [[1, 3, 2]], missing: REQUIRED, schema: shape.icon },
-  developer: { paths: [[14]], missing: REQUIRED, schema: shape.developer },
-  currency: { paths: [[8, 1, 0, 1]], missing: OPTIONAL, schema: shape.currency },
-  price: {
-    paths: [[8, 1, 0, 0]],
-    missing: DEFAULT_PRICE,
-    schema: shape.price,
-    transform: microsToUnits,
-  },
-  free: {
-    paths: [[8, 1, 0, 0]],
-    missing: DEFAULT_NOT_FREE,
-    schema: shape.free,
-    transform: isFreeMicros,
-  },
-  summary: { paths: [[13, 1]], missing: OPTIONAL, schema: shape.summary },
-  scoreText: { paths: [[4, 0]], missing: OPTIONAL, schema: shape.scoreText },
-  score: { paths: [[4, 1]], missing: OPTIONAL, schema: shape.score },
-} satisfies SpecMap;
-
 const EXACT_MATCH_OFFER_NODE = {
   url: [17, 0, 0, 4, 2],
   price: [17, 0, 2, 0, 1, 0, 0],

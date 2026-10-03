@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createSearchIterator, searchIterator } from './searchIterator.ts';
 import { searchResultSchema } from './schema.ts';
 import { ValidationError } from '../../core/errors.ts';
+import { clusterBatchResponse, clusterItem } from '../../../test/helpers/clusterResponse.ts';
 
 const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () => number } => {
   let index = 0;
@@ -16,13 +17,13 @@ const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () =
 const buildScriptData = (key: string, value: unknown): string =>
   `<script>AF_initDataCallback({key: '${key}', hash: '1', data:${JSON.stringify(value)}, sideChannel: {}});</script>`;
 
-const coreData = (id: string, priceMicros = 0): unknown[] => {
+const coreData = (id: string): unknown[] => {
   const core: unknown[] = [];
   core[0] = [id];
   core[1] = [null, null, null, [null, null, `https://icon.example/${id}`]];
   core[3] = `App ${id}`;
   core[4] = ['4.5', 4.5];
-  core[8] = [null, [[priceMicros, 'USD']]];
+  core[8] = [null, [[0, 'USD']]];
   core[10] = [null, null, null, null, [null, null, `/store/apps/details?id=${id}`]];
   core[13] = [null, `Summary of ${id}`];
   core[14] = `Dev ${id}`;
@@ -80,16 +81,11 @@ const exactMatchSection = (id: string, index = 23): unknown[] => {
 const clusterBatch = (
   entries: { id: string; priceMicros?: number }[],
   nextToken: string | null,
-): string => {
-  const apps = entries.map((entry) => coreData(entry.id, entry.priceMicros ?? 0));
-  const inner: unknown[] = [];
-  inner[0] = apps;
-  inner[7] = [null, nextToken];
-  const payload = [[inner]];
-  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
-  const json = JSON.stringify(frame);
-  return `)]}'\n\n${json.length.toString()}\n${json}`;
-};
+): string =>
+  clusterBatchResponse(
+    entries.map((entry) => clusterItem(entry.id, entry.priceMicros)),
+    nextToken,
+  );
 
 const collect = async (
   generator: AsyncGenerator<{ appId: string }>,
@@ -145,6 +141,18 @@ describe('searchIterator streaming', () => {
     expect(ids).toEqual(['paid1']);
   });
 
+  it('yields an app once even when later pages repeat it', async () => {
+    const { fetchImpl } = sequenceFetch([
+      searchPageHtml(['a'], 'next'),
+      clusterBatch([{ id: 'b' }, { id: 'c' }], 'last'),
+      clusterBatch([{ id: 'c' }, { id: 'a' }, { id: 'd' }], null),
+    ]);
+
+    const ids = await collect(searchIterator({ term: 'panda', requestOptions: { fetchImpl } }));
+
+    expect(ids).toEqual(['a', 'b', 'c', 'd']);
+  });
+
   it('prepends the exact match exactly once across pages', async () => {
     const { fetchImpl } = sequenceFetch([
       searchPageHtml(['a', 'b'], 'next', 'exact'),
@@ -155,6 +163,21 @@ describe('searchIterator streaming', () => {
 
     expect(ids).toEqual(['exact', 'a', 'b', 'c']);
     expect(ids.filter((id) => id === 'exact')).toHaveLength(1);
+  });
+
+  it('keeps the exact match card over a continuation copy of the same app', async () => {
+    const { fetchImpl } = sequenceFetch([
+      searchPageHtml(['a'], 'next', 'exact'),
+      clusterBatch([{ id: 'exact' }, { id: 'c' }], null),
+    ]);
+
+    const results = [];
+    for await (const item of searchIterator({ term: 'panda', requestOptions: { fetchImpl } })) {
+      results.push(item);
+    }
+
+    expect(results.map((item) => item.appId)).toEqual(['exact', 'a', 'c']);
+    expect(results[0]?.developerId).toBe('exact-dev');
   });
 
   it('surfaces a card anchored in a section after the result list', async () => {
