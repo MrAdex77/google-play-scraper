@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { BASE_URL } from '../src/constants.ts';
 import { buildBatchBody, parseBatchResponse } from '../src/core/batchexecute.ts';
 import { createHttpClient, type HttpClient } from '../src/core/http.ts';
+import { fetchDeveloperFirstPage } from '../src/features/developer/developer.ts';
 import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features/suggest/specs.ts';
 import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.ts';
 import { category, collection, device, sort, type Device } from '../src/constants.ts';
@@ -138,6 +139,41 @@ function developerRecorder(devId: string, file: string): Recorder {
     async run(client) {
       const html = await client.request({ url: developerUrl(devId, 'en', 'us') });
       await writeFixture(file, html);
+    },
+  };
+}
+
+interface DeveloperContinuationRecording {
+  devId: string;
+  firstPageFile?: string;
+  continuationFile: string;
+}
+
+function developerContinuationRecorder(recording: DeveloperContinuationRecording): Recorder {
+  const { devId } = recording;
+  return {
+    name: 'developer-continuation',
+    async run(client) {
+      const html = await client.request({ url: developerUrl(devId, 'en', 'us') });
+      if (recording.firstPageFile !== undefined) {
+        await writeFixture(recording.firstPageFile, html);
+      }
+
+      const replay: HttpClient = { request: () => Promise.resolve(html) };
+      const { token } = await fetchDeveloperFirstPage(
+        { devId, lang: 'en', country: 'us', throttle: THROTTLE_REQUESTS_PER_SECOND },
+        () => replay,
+      );
+      if (token === undefined) {
+        throw new Error(`no developer continuation token for "${devId}"`);
+      }
+
+      const response = await client.request({
+        url: clusterUrl('en', 'us'),
+        method: 'POST',
+        body: buildClusterBody(CLUSTER_PAGE_SIZE, token),
+      });
+      await writeFixture(recording.continuationFile, response);
     },
   };
 }
@@ -318,6 +354,15 @@ const recorders: Recorder[] = [
   listRecorder('TOP_FREE', 'GAME', 100, 'list/topfree-game.txt'),
   developerRecorder('5700313618786177705', 'developer/google.html'),
   developerRecorder('Mojang', 'developer/mojang.html'),
+  developerContinuationRecorder({
+    devId: '5700313618786177705',
+    continuationFile: 'developer/google-continuation.txt',
+  }),
+  developerContinuationRecorder({
+    devId: 'Google LLC',
+    firstPageFile: 'developer/google-name.html',
+    continuationFile: 'developer/google-name-continuation.txt',
+  }),
   similarRecorder(
     'com.google.android.apps.translate',
     'similar/translate-details.html',

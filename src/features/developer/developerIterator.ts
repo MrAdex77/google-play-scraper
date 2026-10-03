@@ -1,11 +1,13 @@
 import * as z from 'zod/mini';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import { parseOptions } from '../../core/options.ts';
-import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { clusterPages } from '../../core/pagination.ts';
-import { DEVELOPER_CONTEXT, developerOptionsSchema, fetchDeveloperFirstPage } from './developer.ts';
+import {
+  developerClusterParams,
+  developerOptionsSchema,
+  fetchDeveloperFirstPage,
+} from './developer.ts';
 import { developerAppSchema, type DeveloperApp } from './schema.ts';
-import { CLUSTER_MAPPINGS } from './specs.ts';
 
 const DEVELOPER_ITERATOR_CONTEXT = 'developerIterator';
 
@@ -22,21 +24,8 @@ async function* streamDeveloper(
   options: ParsedDeveloperIteratorOptions,
   resolveClient: ResolveClient,
 ): AsyncGenerator<DeveloperApp, void, undefined> {
-  const { client, apps, token } = await fetchDeveloperFirstPage(options, resolveClient);
-
-  const pages = clusterPages({
-    client,
-    lang: options.lang,
-    country: options.country,
-    initialApps: apps,
-    initialToken: token,
-    itemSpecs: clusterItemSpecs,
-    appsPath: CLUSTER_MAPPINGS.apps,
-    tokenPath: CLUSTER_MAPPINGS.token,
-    context: DEVELOPER_CONTEXT,
-    onDegradation: options.onDegradation,
-    onIntegrityEvent: options.onIntegrityEvent,
-  });
+  const firstPage = await fetchDeveloperFirstPage(options, resolveClient);
+  const pages = clusterPages(developerClusterParams(options, firstPage));
 
   for await (const page of pages) {
     for (const item of page) {

@@ -3,7 +3,7 @@ import { clientFromOptions, type HttpClient, type ResolveClient } from '../../co
 import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
 import { clusterItemSpecs } from '../../core/clusterItem.ts';
-import { fetchClusterApps } from '../../core/pagination.ts';
+import { fetchClusterApps, type ClusterPagesParams } from '../../core/pagination.ts';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.ts';
@@ -12,7 +12,7 @@ import { app } from '../app/app.ts';
 import type { App } from '../app/schema.ts';
 import { developerAppSchema, type DeveloperApp } from './schema.ts';
 import {
-  CLUSTER_MAPPINGS,
+  developerClusterLayouts,
   developerScriptDataSelection,
   developerUrl,
   isNumericDevId,
@@ -112,27 +112,41 @@ export async function fetchDeveloperFirstPage(
   return { client, apps: initial.apps, token: initial.token };
 }
 
+export function developerClusterParams(
+  options: Pick<
+    ParsedDeveloperOptions,
+    'devId' | 'lang' | 'country' | 'onDegradation' | 'onIntegrityEvent'
+  >,
+  firstPage: DeveloperFirstPage,
+): ClusterPagesParams<typeof clusterItemSpecs> {
+  const { primary, fallback } = developerClusterLayouts(options.devId);
+  return {
+    client: firstPage.client,
+    lang: options.lang,
+    country: options.country,
+    initialApps: firstPage.apps,
+    initialToken: firstPage.token,
+    itemSpecs: clusterItemSpecs,
+    appsPath: primary.apps,
+    tokenPath: primary.token,
+    fallbackLayouts: [fallback],
+    context: DEVELOPER_CONTEXT,
+    onDegradation: options.onDegradation,
+    onIntegrityEvent: options.onIntegrityEvent,
+  };
+}
+
 export function createDeveloper(
   getApp: GetApp<App>,
   resolveClient: ResolveClient = clientFromOptions,
 ) {
   return async function developer(options: DeveloperOptions): Promise<DeveloperApp[] | App[]> {
     const parsed = parseOptions(developerOptionsSchema, options, DEVELOPER_CONTEXT);
-    const { client, apps, token } = await fetchDeveloperFirstPage(parsed, resolveClient);
+    const firstPage = await fetchDeveloperFirstPage(parsed, resolveClient);
 
     const items = await fetchClusterApps({
-      client,
-      lang: parsed.lang,
-      country: parsed.country,
+      ...developerClusterParams(parsed, firstPage),
       num: parsed.num,
-      initialApps: apps,
-      initialToken: token,
-      itemSpecs: clusterItemSpecs,
-      appsPath: CLUSTER_MAPPINGS.apps,
-      tokenPath: CLUSTER_MAPPINGS.token,
-      context: DEVELOPER_CONTEXT,
-      onDegradation: parsed.onDegradation,
-      onIntegrityEvent: parsed.onIntegrityEvent,
     });
 
     const sliced = items.slice(0, parsed.num);

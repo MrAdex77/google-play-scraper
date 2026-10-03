@@ -1,5 +1,6 @@
 import { BASE_URL } from '../../constants.ts';
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
+import type { ClusterLayout } from '../../core/pagination.ts';
 import { getPath, type Path } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
 import { deriveScriptDataSelection } from '../../core/scriptData.ts';
@@ -62,10 +63,24 @@ export const developerScriptDataSelection = deriveScriptDataSelection([
   nameInitialRootSpec,
 ]);
 
-export const CLUSTER_MAPPINGS = {
+export const NUMERIC_CLUSTER_LAYOUT = {
   apps: [0, 6, 0],
   token: [0, 6, 7, 1],
-} satisfies Record<string, Path>;
+} satisfies ClusterLayout;
+
+export const NAME_CLUSTER_LAYOUT = {
+  apps: [0, 0, 0],
+  token: [0, 0, 7, 1],
+} satisfies ClusterLayout;
+
+export function developerClusterLayouts(devId: string): {
+  primary: ClusterLayout;
+  fallback: ClusterLayout;
+} {
+  return isNumericDevId(devId)
+    ? { primary: NUMERIC_CLUSTER_LAYOUT, fallback: NAME_CLUSTER_LAYOUT }
+    : { primary: NAME_CLUSTER_LAYOUT, fallback: NUMERIC_CLUSTER_LAYOUT };
+}
 
 export const nameItemSpecs = {
   title: { paths: [[0, 3]], missing: REQUIRED, schema: shape.title },
