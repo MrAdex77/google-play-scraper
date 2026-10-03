@@ -165,6 +165,21 @@ describe('searchIterator streaming', () => {
     expect(ids.filter((id) => id === 'exact')).toHaveLength(1);
   });
 
+  it('keeps the exact match card over a continuation copy of the same app', async () => {
+    const { fetchImpl } = sequenceFetch([
+      searchPageHtml(['a'], 'next', 'exact'),
+      clusterBatch([{ id: 'exact' }, { id: 'c' }], null),
+    ]);
+
+    const results = [];
+    for await (const item of searchIterator({ term: 'panda', requestOptions: { fetchImpl } })) {
+      results.push(item);
+    }
+
+    expect(results.map((item) => item.appId)).toEqual(['exact', 'a', 'c']);
+    expect(results[0]?.developerId).toBe('exact-dev');
+  });
+
   it('surfaces a card anchored in a section after the result list', async () => {
     const { fetchImpl } = sequenceFetch([
       searchPageWithSections([appsSection(['a', 'b']), exactMatchSection('exact')]),
