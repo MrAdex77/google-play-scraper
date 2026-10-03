@@ -4,14 +4,14 @@ import { clusterItemSpecs } from './clusterItem.ts';
 import { SpecError } from './errors.ts';
 import { extract } from './spec.ts';
 
-const buildClusterItem = (priceCell: unknown[] | undefined, ...discount: unknown[]): unknown[] => {
+const buildClusterItem = (priceCell: unknown[] | undefined, ...offerTail: unknown[]): unknown[] => {
   const item: unknown[] = [];
   item[1] = [null, [[null, null, null, [null, null, 'https://icon.example/app.png']]]];
   item[2] = 'Cluster App';
   item[4] = [[['Cluster Dev']], [null, [null, [null, 'A cluster summary']]]];
   item[6] = [[null, null, [null, ['4.2', 4.2]]]];
   if (priceCell !== undefined) {
-    item[7] = [[null, null, null, [null, null, [null, [priceCell, ...discount]]]]];
+    item[7] = [[null, null, null, [null, null, [null, [priceCell, ...offerTail]]]]];
   }
   item[9] = [null, null, null, null, [null, null, '/store/apps/details?id=com.cluster.app']];
   item[12] = ['com.cluster.app'];
@@ -90,6 +90,18 @@ describe('cluster item extraction', () => {
 
     expect(result.price).toBe(0.25);
     expect(result.free).toBe(false);
+    expect(result.currency).toBe('USD');
+  });
+
+  it('reads null micros as a missing offer like every other surface', () => {
+    const result = extract(
+      buildClusterItem([null, 'USD', '$3.99']),
+      clusterItemSpecs,
+      'cluster-test',
+    );
+
+    expect(result.price).toBe(0);
+    expect(result.free).toBe(true);
     expect(result.currency).toBe('USD');
   });
 
