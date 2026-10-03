@@ -20,21 +20,30 @@ const itemSpecs = {
 
 const APPS_PATH = [0, 0, 0];
 const TOKEN_PATH = [0, 0, 7, 1];
+const FALLBACK_LAYOUT = { apps: [0, 6, 0], token: [0, 6, 7, 1] };
 
 const framedBatchResponse = (payload: unknown): string => {
   const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
   return `)]}'\n\n${JSON.stringify(frame).length.toString()}\n${JSON.stringify(frame)}`;
 };
 
-const batchResponseWithTokenNode = (apps: unknown[], tokenNode: unknown): string => {
+const batchResponseInSlot = (slot: number, apps: unknown[], tokenNode: unknown): string => {
   const inner: unknown[] = [];
   inner[0] = apps;
   inner[7] = tokenNode;
-  return framedBatchResponse([[inner]]);
+  const wrap: unknown[] = [];
+  wrap[slot] = inner;
+  return framedBatchResponse([wrap]);
 };
+
+const batchResponseWithTokenNode = (apps: unknown[], tokenNode: unknown): string =>
+  batchResponseInSlot(0, apps, tokenNode);
 
 const batchResponse = (apps: unknown[], token: string | null): string =>
   batchResponseWithTokenNode(apps, [null, token]);
+
+const fallbackBatchResponse = (apps: unknown[], token: string | null): string =>
+  batchResponseInSlot(6, apps, [null, token]);
 
 const batchResponseWithoutToken = (apps: unknown[]): string => framedBatchResponse([[[apps]]]);
 
@@ -386,6 +395,105 @@ describe('clusterPages', () => {
     });
 
     await expect(collectPages(generator)).rejects.toThrow('consumer handler bug');
+  });
+});
+
+describe('clusterPages layout fallbacks', () => {
+  const run = (
+    responses: string[],
+    overrides: Partial<Parameters<typeof clusterPages<typeof itemSpecs>>[0]> = {},
+  ) => {
+    const { client, requests } = queuedClient(responses);
+    const events: IntegrityEvent[] = [];
+    const degradations: DegradationEvent[] = [];
+    const pages = collectPages(
+      clusterPages({
+        client,
+        lang: 'en',
+        country: 'us',
+        initialApps: [],
+        initialToken: 't1',
+        itemSpecs,
+        appsPath: APPS_PATH,
+        tokenPath: TOKEN_PATH,
+        fallbackLayouts: [FALLBACK_LAYOUT],
+        context: 'test',
+        onIntegrityEvent: (event) => events.push(event),
+        onDegradation: (event) => degradations.push(event),
+        ...overrides,
+      }),
+    );
+    return { pages, requests, events, degradations };
+  };
+
+  it('reads a continuation from the fallback layout and reports the anchor fallback', async () => {
+    const { pages, events, degradations } = run([fallbackBatchResponse([['a'], ['b']], null)]);
+
+    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['a', 'b']]);
+    expect(degradations).toEqual([]);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.context).toBe('test');
+    expect(events[0]?.reason).toBe('rpc-anchor-fallback');
+    expect(events[0]?.error).toBeInstanceOf(ParseError);
+    expect(events[0]?.error.message).toBe(
+      'test: continuation apps resolved at 0.6.0 instead of 0.0.0',
+    );
+  });
+
+  it('follows the fallback token path to the next continuation page', async () => {
+    const { pages, requests, events } = run([
+      fallbackBatchResponse([['a']], 't2'),
+      fallbackBatchResponse([['b']], null),
+    ]);
+
+    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['a'], ['b']]);
+    expect(requests).toHaveLength(2);
+    expect(events.map((event) => event.reason)).toEqual([
+      'rpc-anchor-fallback',
+      'rpc-anchor-fallback',
+    ]);
+  });
+
+  it('keeps the primary layout without an event when it carries the apps', async () => {
+    const { pages, events } = run([batchResponse([['a']], 't2'), batchResponse([['b']], null)]);
+
+    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['a'], ['b']]);
+    expect(events).toEqual([]);
+  });
+
+  it('prefers the primary layout when both layouts carry apps', async () => {
+    const wrap: unknown[] = [];
+    wrap[0] = [[['primary']]];
+    wrap[6] = [[['fallback']]];
+    const { pages, events } = run([framedBatchResponse([wrap])]);
+
+    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['primary']]);
+    expect(events).toEqual([]);
+  });
+
+  it('degrades with the primary path when no layout carries apps', async () => {
+    const { pages, events, degradations } = run([framedBatchResponse([[null, null]])]);
+
+    expect(await pages).toEqual([]);
+    expect(events).toEqual([]);
+    expect(degradations).toHaveLength(1);
+    expect(degradations[0]?.reason).toBe('cluster-page-parse');
+    expect(degradations[0]?.error.message).toContain('test continuation apps response');
+  });
+
+  it('ends silently when the fallback layout serves an empty apps list', async () => {
+    const { pages, requests, events, degradations } = run([fallbackBatchResponse([], null)]);
+
+    expect(await pages).toEqual([]);
+    expect(requests).toHaveLength(1);
+    expect(events).toEqual([]);
+    expect(degradations).toEqual([]);
+  });
+
+  it('rejects a fallback layout containing a non-array segment', async () => {
+    const { pages } = run([], { fallbackLayouts: [{ apps: ['root'], token: TOKEN_PATH }] });
+
+    await expect(pages).rejects.toThrow('test response path must contain only array indexes');
   });
 });
 

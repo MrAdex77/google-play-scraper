@@ -7,6 +7,7 @@ import { getPath, type Path } from './path.ts';
 import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.ts';
 import { extract, type Extracted, type SpecMap } from './spec.ts';
 import * as z from 'zod/mini';
+import { safeParse } from 'zod/v4/core';
 
 export const CLUSTER_RPC_ID = 'qnKhOb';
 export const CLUSTER_PAGE_SIZE = 100;
@@ -27,6 +28,11 @@ function asToken(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
+export interface ClusterLayout {
+  apps: Path;
+  token: Path;
+}
+
 export interface ClusterPagesParams<M extends SpecMap> {
   client: HttpClient;
   lang: string;
@@ -36,6 +42,7 @@ export interface ClusterPagesParams<M extends SpecMap> {
   itemSpecs: M;
   appsPath: Path;
   tokenPath: Path;
+  fallbackLayouts?: readonly ClusterLayout[];
   context: string;
   onDegradation?: OnDegradation;
   onIntegrityEvent?: OnIntegrityEvent;
@@ -56,10 +63,56 @@ function numericPath(path: Path, context: string): number[] {
   return result;
 }
 
+interface PreparedLayout {
+  layout: ClusterLayout;
+  appsSchema: z.ZodMiniType;
+  tokenSchema: z.ZodMiniType;
+}
+
+function prepareLayout(layout: ClusterLayout, context: string): PreparedLayout {
+  return {
+    layout,
+    appsSchema: rawArrayPathSchema(numericPath(layout.apps, context), z.array(z.unknown())),
+    tokenSchema: rawOptionalArrayPathSchema(
+      numericPath(layout.token, context),
+      z.nullable(z.string()),
+    ),
+  };
+}
+
+function resolveLayout(
+  payload: unknown,
+  primary: PreparedLayout,
+  fallbacks: readonly PreparedLayout[],
+  context: string,
+): PreparedLayout {
+  const resolved =
+    [primary, ...fallbacks].find((candidate) => safeParse(candidate.appsSchema, payload).success) ??
+    primary;
+  parseRaw(resolved.appsSchema, payload, `${context} continuation apps response`);
+  parseRaw(resolved.tokenSchema, payload, `${context} continuation token response`);
+  return resolved;
+}
+
+function reportFallbackLayout(
+  used: PreparedLayout,
+  primary: PreparedLayout,
+  context: string,
+  onIntegrityEvent?: OnIntegrityEvent,
+): void {
+  if (used === primary) {
+    return;
+  }
+  const error = new ParseError(
+    `${context}: continuation apps resolved at ${used.layout.apps.join('.')} instead of ${primary.layout.apps.join('.')}`,
+  );
+  onIntegrityEvent?.({ context, reason: 'rpc-anchor-fallback', error });
+}
+
 export async function* clusterPages<M extends SpecMap>(
   params: ClusterPagesParams<M>,
 ): AsyncGenerator<Extracted<M>[], void, undefined> {
-  const { client, lang, country, itemSpecs, appsPath, tokenPath, context } = params;
+  const { client, lang, country, itemSpecs, context } = params;
 
   if (params.initialApps.length > 0) {
     yield params.initialApps;
@@ -67,11 +120,8 @@ export async function* clusterPages<M extends SpecMap>(
 
   const seenTokens = new Set<string>();
   let token = asToken(params.initialToken);
-  const appsPageSchema = rawArrayPathSchema(numericPath(appsPath, context), z.array(z.unknown()));
-  const tokenPageSchema = rawOptionalArrayPathSchema(
-    numericPath(tokenPath, context),
-    z.nullable(z.string()),
-  );
+  const primary = prepareLayout({ apps: params.appsPath, token: params.tokenPath }, context);
+  const fallbacks = (params.fallbackLayouts ?? []).map((layout) => prepareLayout(layout, context));
 
   while (token !== undefined) {
     if (detectPaginationTokenCycle(seenTokens, token, context, params.onIntegrityEvent)) {
@@ -80,18 +130,18 @@ export async function* clusterPages<M extends SpecMap>(
     const body = buildClusterBody(CLUSTER_PAGE_SIZE, token);
 
     let page: Extracted<M>[];
+    let used: PreparedLayout;
     try {
       const text = await client.request({ url: clusterUrl(lang, country), method: 'POST', body });
       const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
-      parseRaw(appsPageSchema, payload, `${context} continuation apps response`);
-      parseRaw(tokenPageSchema, payload, `${context} continuation token response`);
+      used = resolveLayout(payload, primary, fallbacks, context);
 
-      const apps = getPath(payload, appsPath);
+      const apps = getPath(payload, used.layout.apps);
       if (!Array.isArray(apps) || apps.length === 0) {
         return;
       }
       page = apps.map((item) => extract(item, itemSpecs, context));
-      token = asToken(getPath(payload, tokenPath));
+      token = asToken(getPath(payload, used.layout.token));
     } catch (error) {
       if (error instanceof ParseError) {
         params.onDegradation?.({ context, reason: 'cluster-page-parse', error });
@@ -99,6 +149,7 @@ export async function* clusterPages<M extends SpecMap>(
       }
       throw error;
     }
+    reportFallbackLayout(used, primary, context, params.onIntegrityEvent);
     yield page;
   }
 }
