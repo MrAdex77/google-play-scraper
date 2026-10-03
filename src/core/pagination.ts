@@ -1,4 +1,4 @@
-import { BATCH_URL, parseBatchResponse } from './batchexecute.ts';
+import { BATCH_URL, parseBatchEnvelope, type BatchEnvelope } from './batchexecute.ts';
 import type { OnDegradation } from './degradation.ts';
 import { ParseError } from './errors.ts';
 import type { HttpClient } from './http.ts';
@@ -11,6 +11,8 @@ import { safeParse } from 'zod/v4/core';
 
 export const CLUSTER_RPC_ID = 'qnKhOb';
 export const CLUSTER_PAGE_SIZE = 100;
+
+const NOT_FOUND_STATUS = 5;
 
 const CLUSTER_STATIC_QUERY =
   'rpcids=qnKhOb&f.sid=-697906427155521722&bl=boq_playuiserver_20190903.08_p0';
@@ -26,6 +28,10 @@ export function buildClusterBody(numberOfApps: number, withToken: string): strin
 
 function asToken(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function isExhausted(envelope: BatchEnvelope): boolean {
+  return envelope.payload === null && envelope.status === NOT_FOUND_STATUS;
 }
 
 export interface ClusterLayout {
@@ -140,10 +146,11 @@ export async function* clusterPages<M extends SpecMap>(
     let used: PreparedLayout;
     try {
       const text = await client.request({ url: clusterUrl(lang, country), method: 'POST', body });
-      const payload = parseBatchResponse(text, CLUSTER_RPC_ID);
-      if (payload === null) {
+      const envelope = parseBatchEnvelope(text, CLUSTER_RPC_ID);
+      if (isExhausted(envelope)) {
         return;
       }
+      const { payload } = envelope;
       used = resolveLayout(payload, primary, fallbacks, context);
 
       const apps = getPath(payload, used.layout.apps);

@@ -448,6 +448,17 @@ describe('clusterPages null continuation payload', () => {
     expect(degradations).toEqual([]);
   });
 
+  it('degrades when a null payload carries a status other than not found', async () => {
+    const invalidRequest = NULL_PAYLOAD_RESPONSE.replace('[5,null,', '[3,null,');
+    const { pages, events, degradations } = await runNull([invalidRequest]);
+
+    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed']]);
+    expect(events).toEqual([]);
+    expect(degradations).toHaveLength(1);
+    expect(degradations[0]?.reason).toBe('cluster-page-parse');
+    expect(degradations[0]?.error.message).toContain('test continuation apps response');
+  });
+
   it('keeps the pages collected before a null payload', async () => {
     const { pages, requests, degradations } = await runNull([
       batchResponse([['a']], 't2'),

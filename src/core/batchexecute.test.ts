@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BATCH_URL, buildBatchBody, parseBatchResponse } from './batchexecute.ts';
+import {
+  BATCH_URL,
+  buildBatchBody,
+  parseBatchEnvelope,
+  parseBatchResponse,
+} from './batchexecute.ts';
 import { BASE_URL } from '../constants.ts';
 import { ParseError } from './errors.ts';
 
@@ -103,5 +108,22 @@ describe('parseBatchResponse', () => {
 
   it('throws a ParseError when there is no array to parse', () => {
     expect(() => parseBatchResponse(")]}' not json at all", 'rpcChunk')).toThrow(ParseError);
+  });
+});
+
+describe('parseBatchEnvelope', () => {
+  it('reports the status code of an error frame next to its null payload', () => {
+    const text = `)]}'\n\n[["wrb.fr","rpcErr",null,null,null,[5,null,[["PlayDataError",[1]]]],"generic"]]`;
+    expect(parseBatchEnvelope(text, 'rpcErr')).toEqual({ payload: null, status: 5 });
+  });
+
+  it('reports no status for a frame that carries data', () => {
+    const text = `)]}'\n\n[["wrb.fr","rpcOk","[1]",null,null,null,"generic"]]`;
+    expect(parseBatchEnvelope(text, 'rpcOk')).toEqual({ payload: [1], status: undefined });
+  });
+
+  it('ignores a status slot without a numeric code', () => {
+    const text = `)]}'\n\n[["wrb.fr","rpcOdd",null,null,null,["5"],"generic"]]`;
+    expect(parseBatchEnvelope(text, 'rpcOdd')).toEqual({ payload: null, status: undefined });
   });
 });

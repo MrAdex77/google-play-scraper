@@ -1151,7 +1151,7 @@ const details = await app({
 
 Boundaries to know:
 
-- An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion. A continuation that Google answers with a null payload (an error status instead of data) is read the same way.
+- An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion. A continuation that Google answers with a null payload and a not found status (its way of saying there is nothing more to serve) is read the same way. Any other error status still emits `cluster-page-parse`.
 - `developer` reads a continuation page from the layout that matches the kind of `devId` (numeric id or name). When Google serves the other layout instead, the page is still read and an `rpc-anchor-fallback` event reports it, so treat that event as a scheduled repair rather than an outage.
 - `app` emits `optional-section-parse` with context `app comments` when the available comment roots are structurally invalid. A valid empty comment root returns an empty list without an event. Treat a rising event rate as a signal, not each event.
 - `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`, and an accumulation that runs out of request budget returns its partial set and emits `request-budget-exhausted`.
