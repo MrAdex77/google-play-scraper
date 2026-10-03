@@ -33,7 +33,7 @@ function buildRawArrayPathSchema(
 ): z.ZodMiniType {
   let schema = valueSchema;
   for (const index of path.toReversed()) {
-    const nested = optionalSegments ? z.optional(schema) : schema;
+    const nested = optionalSegments ? z.nullish(schema) : schema;
     const items: [z.ZodMiniType, ...z.ZodMiniType[]] = [nested];
     for (let offset = 0; offset < index; offset += 1) {
       items.unshift(z.unknown());

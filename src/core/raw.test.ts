@@ -48,4 +48,37 @@ describe('rawArrayPathSchema', () => {
     expect(() => parseRaw(schema, [null, [null, null, 'next']], 'token')).not.toThrow();
     expect(() => parseRaw(schema, [null, [null, null, 5]], 'token')).toThrow('token: 1.2');
   });
+
+  const clusterTokenSchema = rawOptionalArrayPathSchema([0, 0, 7, 1], z.nullable(z.string()));
+  const withTokenNode = (tokenNode: unknown): unknown[] => {
+    const inner: unknown[] = [];
+    inner[7] = tokenNode;
+    return [[inner]];
+  };
+
+  it('treats a null segment like an absent one at every depth', () => {
+    expect(() => parseRaw(clusterTokenSchema, [null], 'token')).not.toThrow();
+    expect(() => parseRaw(clusterTokenSchema, [[null]], 'token')).not.toThrow();
+    expect(() => parseRaw(clusterTokenSchema, withTokenNode(null), 'token')).not.toThrow();
+    expect(() => parseRaw(clusterTokenSchema, withTokenNode(undefined), 'token')).not.toThrow();
+    expect(() => parseRaw(clusterTokenSchema, withTokenNode([null, null]), 'token')).not.toThrow();
+    expect(() =>
+      parseRaw(clusterTokenSchema, withTokenNode([null, 'next']), 'token'),
+    ).not.toThrow();
+  });
+
+  it('still rejects a present segment of the wrong type', () => {
+    expect(() => parseRaw(clusterTokenSchema, withTokenNode('text'), 'token')).toThrow(
+      'token: 0.0.7',
+    );
+    expect(() => parseRaw(clusterTokenSchema, withTokenNode({}), 'token')).toThrow('token: 0.0.7');
+    expect(() => parseRaw(clusterTokenSchema, withTokenNode([null, 5]), 'token')).toThrow(
+      'token: 0.0.7.1',
+    );
+    expect(() => parseRaw(clusterTokenSchema, ['text'], 'token')).toThrow('token: 0');
+  });
+
+  it('still requires an array at the root of an optional path', () => {
+    expect(() => parseRaw(clusterTokenSchema, null, 'token')).toThrow(ParseError);
+  });
 });
