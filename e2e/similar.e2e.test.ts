@@ -74,14 +74,14 @@ liveDescribe('similar live contract', () => {
 
   it('keeps the final continuation page when google serves a null token node', async () => {
     const events: DegradationEvent[] = [];
-    const { apps, token } = await fetchSimilarFirstPage(SPARSE_QUERY, clientFromOptions);
+    const { client, apps, token } = await fetchSimilarFirstPage(SPARSE_QUERY, clientFromOptions);
     expect(
       token,
       'the sparse anchor must still carry a continuation token on its first page',
     ).toBeDefined();
 
     const finalPage = parseBatchResponse(
-      await clientFromOptions(SPARSE_QUERY).request({
+      await client.request({
         url: clusterUrl(SPARSE_QUERY.lang, SPARSE_QUERY.country),
         method: 'POST',
         body: buildClusterBody(CLUSTER_PAGE_SIZE, token ?? ''),
@@ -101,8 +101,13 @@ liveDescribe('similar live contract', () => {
     })) as SimilarApp[];
 
     expect(events).toEqual([]);
-    expect(items.length).toBeGreaterThan(apps.length);
-    expect(items.length).toBeLessThanOrEqual(SIMILAR_MAX_APPS);
+    expectContinuationContract(
+      { firstPageCount: apps.length, token },
+      items.length,
+      SIMILAR_MAX_APPS,
+      'sparse similar cluster',
+    );
+    expect(items.some((item) => item.appId === SPARSE_APP_ID)).toBe(false);
     expectAppItemsContract(items, 'sparse similar cluster');
   });
 
