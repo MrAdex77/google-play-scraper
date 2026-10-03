@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.3.0...v1.4.0) (2026-10-03)
+
+
+### Features
+
+* **reviews:** add server-side filters and sized page requests ([#139](https://github.com/MrAdex77/google-play-scraper/issues/139)) ([ec18d70](https://github.com/MrAdex77/google-play-scraper/commit/ec18d70b891bcef1e45691a5d7e79a85c4d8c512))
+
+
+### Bug Fixes
+
+* **core:** keep the final cluster page when its token node is null ([#143](https://github.com/MrAdex77/google-play-scraper/issues/143)) ([8f0980a](https://github.com/MrAdex77/google-play-scraper/commit/8f0980a809f2bbc4447ce0089116c0c684d11ee9))
+* **core:** read cluster item offers from micros ([#145](https://github.com/MrAdex77/google-play-scraper/issues/145)) ([97a7591](https://github.com/MrAdex77/google-play-scraper/commit/97a75914eea23b348bd3c14cb1d4e63ebfe762aa))
+* **developer:** paginate name developers through the shared cluster layout ([#144](https://github.com/MrAdex77/google-play-scraper/issues/144)) ([bcb7778](https://github.com/MrAdex77/google-play-scraper/commit/bcb77787636cb26c318cf5fcdaecaa56aecf9218))
+* **search:** follow search continuation pages ([#146](https://github.com/MrAdex77/google-play-scraper/issues/146)) ([3edf1c2](https://github.com/MrAdex77/google-play-scraper/commit/3edf1c28cc31dd005b2d9d4413ad54a0de4f413a))
+
 ## [1.3.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.2.0...v1.3.0) (2026-09-24)
 
 
