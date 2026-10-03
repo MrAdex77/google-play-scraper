@@ -13,10 +13,16 @@ import {
 import {
   expectAppItemsContract,
   expectContinuationContract,
-  expectOfferAgreement,
   type ContinuationAnchor,
 } from './contracts.ts';
-import { evenlySpaced, expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
+import {
+  evenlySpaced,
+  expectFieldCoverage,
+  expectListingOffersAgree,
+  liveClient,
+  liveDescribe,
+  type Storefront,
+} from './helpers.ts';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
 const GOOGLE_QUERY: DeveloperQuery = {
@@ -39,8 +45,6 @@ const PAID_CATALOGUE_DEV_ID = '8792077038568095073';
 const PAID_CATALOGUE_NUM = 60;
 const OFFER_SAMPLE_SIZE = 4;
 
-type Storefront = Required<Pick<DeveloperQuery, 'country' | 'lang'>>;
-
 async function firstPageOf(query: DeveloperQuery): Promise<ContinuationAnchor> {
   const { apps, token } = await fetchDeveloperFirstPage(query, clientFromOptions);
 
@@ -48,7 +52,7 @@ async function firstPageOf(query: DeveloperQuery): Promise<ContinuationAnchor> {
   return { firstPageCount: apps.length, token };
 }
 
-async function expectContinuationOffersAgree(storefront: Storefront): Promise<DeveloperApp[]> {
+async function continuationOffersAgreeing(storefront: Storefront): Promise<DeveloperApp[]> {
   const label = `${storefront.country} paid catalogue`;
   const events: DegradationEvent[] = [];
   const { firstPageCount } = await firstPageOf({
@@ -67,11 +71,9 @@ async function expectContinuationOffersAgree(storefront: Storefront): Promise<De
   expect(events, `${label} degraded`).toEqual([]);
   expect(items.length, `${label} lost its continuation pages`).toBeGreaterThan(firstPageCount);
   expectAppItemsContract(items, label);
-  for (const item of evenlySpaced(items.slice(firstPageCount), OFFER_SAMPLE_SIZE)) {
-    const listing = await liveClient.app({ appId: item.appId, ...storefront });
-    expectOfferAgreement(item, listing, label);
-  }
-  return items;
+  const continuation = items.slice(firstPageCount);
+  await expectListingOffersAgree(evenlySpaced(continuation, OFFER_SAMPLE_SIZE), storefront, label);
+  return continuation;
 }
 
 async function googleFirstPage(): Promise<ContinuationAnchor> {
@@ -209,15 +211,15 @@ liveDescribe('developer live contract', () => {
   });
 
   it('prices continuation items exactly in a comma decimal storefront', async () => {
-    const items = await expectContinuationOffersAgree({ country: 'de', lang: 'de' });
+    const continuation = await continuationOffersAgreeing({ country: 'de', lang: 'de' });
 
-    expect(new Set(items.flatMap((item) => item.currency ?? []))).toEqual(new Set(['EUR']));
+    expect(new Set(continuation.map((item) => item.currency))).toEqual(new Set(['EUR']));
   });
 
   it('keeps the continuation pages of an arabic digit storefront', async () => {
-    const items = await expectContinuationOffersAgree({ country: 'sa', lang: 'ar' });
+    const continuation = await continuationOffersAgreeing({ country: 'sa', lang: 'ar' });
 
-    expect(new Set(items.flatMap((item) => item.currency ?? []))).toEqual(new Set(['SAR']));
+    expect(new Set(continuation.map((item) => item.currency))).toEqual(new Set(['SAR']));
   });
 
   it('returns the full catalog and stops when num exceeds it', async () => {

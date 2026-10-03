@@ -1,6 +1,7 @@
 import { describe, expect } from 'vitest';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../src/core/http.ts';
-import { createClient } from '../src/index.ts';
+import { createClient, type AppItem } from '../src/index.ts';
+import { expectOfferAgreement } from './contracts.ts';
 import { fieldCoverage } from './coverage.ts';
 
 const LIVE_TESTS_DISABLED = process.env.GP_E2E === '0';
@@ -53,7 +54,27 @@ export function expectFieldCoverage(
   }
 }
 
+export interface Storefront {
+  country: string;
+  lang: string;
+}
+
 export function evenlySpaced<T>(items: readonly T[], count: number): T[] {
-  const step = Math.max(1, Math.floor(items.length / count));
+  const step = Math.max(1, Math.ceil(items.length / count));
   return items.filter((_, index) => index % step === 0).slice(0, count);
+}
+
+export async function expectListingOffersAgree(
+  sample: readonly AppItem[],
+  storefront: Storefront,
+  label: string,
+): Promise<void> {
+  expect(
+    sample.some((item) => item.currency !== undefined),
+    `${label}: the sample must hold a priced item to compare offers`,
+  ).toBe(true);
+  for (const item of sample) {
+    const listing = await liveClient.app({ appId: item.appId, ...storefront });
+    expectOfferAgreement(item, listing, label);
+  }
 }

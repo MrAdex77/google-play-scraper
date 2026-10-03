@@ -11,12 +11,14 @@ import { getPath } from '../src/core/path.ts';
 import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/similar/similar.ts';
 import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
 import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.ts';
+import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
 import {
-  expectAppItemsContract,
-  expectContinuationContract,
-  expectOfferAgreement,
-} from './contracts.ts';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
+  expectFieldCoverage,
+  expectListingOffersAgree,
+  liveClient,
+  liveDescribe,
+  type Storefront,
+} from './helpers.ts';
 
 const FLAGSHIP_APP_ID = 'com.google.android.apps.translate';
 const FLAGSHIP_QUERY: SimilarQuery = {
@@ -35,8 +37,8 @@ const SPARSE_QUERY: SimilarQuery = {
 };
 const TOKEN_NODE_PATH = PAGINATION_MAPPINGS.token.slice(0, -1);
 
-const GAME_APP_ID = 'com.miHoYo.GenshinImpact';
-const GERMAN_STOREFRONT = { country: 'de', lang: 'de' } as const;
+const GAME_APP_ID = 'com.mojang.minecraftpe';
+const GERMAN_STOREFRONT: Storefront = { country: 'de', lang: 'de' };
 const PRICED_SAMPLE_SIZE = 4;
 const FREE_SAMPLE_SIZE = 2;
 
@@ -151,10 +153,7 @@ liveDescribe('similar live contract', () => {
     const priced = continuation.filter((item) => item.currency !== undefined);
     const free = continuation.filter((item) => item.currency === undefined);
     const sample = [...priced.slice(0, PRICED_SAMPLE_SIZE), ...free.slice(0, FREE_SAMPLE_SIZE)];
-    for (const item of sample) {
-      const listing = await liveClient.app({ appId: item.appId, ...GERMAN_STOREFRONT });
-      expectOfferAgreement(item, listing, 'german game similar continuation');
-    }
+    await expectListingOffersAgree(sample, GERMAN_STOREFRONT, 'german game similar continuation');
   });
 
   it('rejects a nonexistent source app with a NotFoundError', async () => {
