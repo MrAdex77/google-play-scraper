@@ -1,10 +1,11 @@
 import * as z from 'zod/mini';
+import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import { parseOptions } from '../../core/options.ts';
 import { clusterPages } from '../../core/pagination.ts';
 import { searchOptionsSchema, SEARCH_CONTEXT, fetchSearchFirstPage } from './search.ts';
 import { searchResultSchema, type SearchResult } from './schema.ts';
-import { CLUSTER_MAPPINGS, filterByPrice, searchPageItemSpecs } from './specs.ts';
+import { CLUSTER_MAPPINGS, filterByPrice } from './specs.ts';
 
 const SEARCH_ITERATOR_CONTEXT = 'searchIterator';
 
@@ -29,7 +30,7 @@ async function* streamSearch(
     country: options.country,
     initialApps: page.apps,
     initialToken: page.token,
-    itemSpecs: searchPageItemSpecs,
+    itemSpecs: clusterItemSpecs,
     appsPath: CLUSTER_MAPPINGS.apps,
     tokenPath: CLUSTER_MAPPINGS.token,
     context: SEARCH_CONTEXT,

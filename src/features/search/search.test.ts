@@ -16,6 +16,7 @@ import {
   deletePath,
   replaceScriptBlockData,
 } from '../../../test/helpers/responseMutation.ts';
+import { clusterBatchResponse, clusterItem } from '../../../test/helpers/clusterResponse.ts';
 import { memoized } from '../memoized/memoized.ts';
 import { searchResultSchema, type SearchResult } from './schema.ts';
 import type { App } from '../app/schema.ts';
@@ -91,19 +92,9 @@ const searchPageRoot = (ids: string[], token: string): unknown => {
 const searchPageHtml = (ids: string[], token: string): string =>
   buildScriptData('ds:4', searchPageRoot(ids, token));
 
-const clusterBatchOf = (apps: unknown[], nextToken: string | null): string => {
-  const inner: unknown[] = [];
-  inner[0] = apps;
-  inner[7] = [null, nextToken];
-  const payload = [[inner]];
-  const frame = [['wrb.fr', 'qnKhOb', JSON.stringify(payload), null, null, null, 'generic']];
-  const json = JSON.stringify(frame);
-  return `)]}'\n\n${json.length.toString()}\n${json}`;
-};
-
 const clusterBatch = (ids: string[], nextToken: string | null): string =>
-  clusterBatchOf(
-    ids.map((id) => coreData(id)),
+  clusterBatchResponse(
+    ids.map((id) => clusterItem(id)),
     nextToken,
   );
 
@@ -182,7 +173,7 @@ describe('search pagination', () => {
 
   it('reports a degradation event and keeps the first page when the continuation is malformed', async () => {
     const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
-    const malformedPage = clusterBatchOf([[42]], null);
+    const malformedPage = clusterBatchResponse([[42]], null);
     const events: DegradationEvent[] = [];
 
     const results = (await search({

@@ -3,6 +3,7 @@ import { BASE_URL } from '../../constants.ts';
 import { ParseError } from '../../core/errors.ts';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
 import { parseOptionalSection, type OnIntegrityEvent } from '../../core/integrity.ts';
+import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
 import { fetchClusterApps } from '../../core/pagination.ts';
@@ -22,7 +23,6 @@ import {
   isExactMatchCard,
   priceGoogleValue,
   searchItemSpecs,
-  searchPageItemSpecs,
   searchRootSpec,
   searchScriptDataSelection,
   SECTIONS_MAPPING,
@@ -42,7 +42,7 @@ type ParsedSearchOptions = z.infer<typeof searchOptionsSchema>;
 export const SEARCH_URL = `${BASE_URL}/store/search`;
 export const SEARCH_CONTEXT = 'search';
 
-type SearchItem = Extracted<typeof searchPageItemSpecs>;
+type SearchItem = Extracted<typeof searchItemSpecs>;
 
 export type SearchQuery = Pick<
   ParsedSearchOptions,
@@ -201,7 +201,7 @@ export function createSearch(
       num: parsed.num,
       initialApps: page.apps,
       initialToken: page.token,
-      itemSpecs: searchPageItemSpecs,
+      itemSpecs: clusterItemSpecs,
       appsPath: CLUSTER_MAPPINGS.apps,
       tokenPath: CLUSTER_MAPPINGS.token,
       context: SEARCH_CONTEXT,
