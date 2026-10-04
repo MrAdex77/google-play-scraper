@@ -193,6 +193,55 @@ describe('app', () => {
     expect(result.description.includes(String.fromCharCode(0))).toBe(false);
   });
 
+  it('turns the summary and changelog into plain text', async () => {
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const summaryHolder = (details[73] as unknown[])[0] as unknown[];
+    summaryHolder[1] = 'Hunt &amp; <b>Explore</b> the &quot;wild&quot;';
+    const changelogHolder = (details[144] as unknown[])[1] as unknown[];
+    changelogHolder[1] = '&#8226; Modern Android &amp; TV UI<br>&#8226; It&#39;s <i>faster</i>';
+
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(buildScriptData('ds:5', ds5)) },
+    });
+
+    expect(result.summary).toBe('Hunt & Explore the "wild"');
+    expect(result.recentChanges).toBe("\u2022 Modern Android & TV UI\n\u2022 It's faster");
+  });
+
+  it('decodes the changelog entities recorded in the minecraft and where am i fixtures', async () => {
+    const minecraft = await app({
+      appId: 'com.mojang.minecraftpe',
+      requestOptions: { fetchImpl: fetchReturning(minecraftHtml) },
+    });
+    const whereAmI = await app({
+      appId: 'com.adex77.WhereAmI',
+      requestOptions: { fetchImpl: fetchReturning(whereAmIHtml) },
+    });
+
+    expect(minecraft.recentChanges).toBe("What's new in 26.32: Various bug fixes!");
+    expect(whereAmI.recentChanges).toContain('Ranked System & ELO Matchmaking');
+    expect(whereAmI.recentChanges).toContain('\nNew Campaigns');
+    expect(whereAmI.recentChanges).not.toMatch(/<br>|&amp;/);
+  });
+
+  it('rejects a summary that is not a string', async () => {
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const summaryHolder = (details[73] as unknown[])[0] as unknown[];
+    summaryHolder[1] = 42;
+
+    await expect(
+      app({
+        appId: 'com.google.android.apps.translate',
+        requestOptions: { fetchImpl: fetchReturning(buildScriptData('ds:5', ds5)) },
+      }),
+    ).rejects.toBeInstanceOf(SpecError);
+  });
+
   it('resolves version, update time, and changelog through the shifted fallback paths', async () => {
     const appId = 'com.google.android.apps.translate';
     const baseline = await app({

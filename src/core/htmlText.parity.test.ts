@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import * as cheerio from 'cheerio';
 import { describe, expect, it } from 'vitest';
 import { htmlToPlainText } from './htmlText.ts';
+import { getPath } from './path.ts';
 import { parseScriptData } from './scriptData.ts';
 import { resolveScriptRoot } from './scriptRoot.ts';
 import { extract } from './spec.ts';
@@ -15,18 +16,28 @@ function legacyDescriptionText(html: string): string {
 
 const FIXTURE_NAMES = ['translate', 'minecraft', 'whereami'] as const;
 
-function fixtureDescriptionHtml(name: string): string {
+function fixtureDetailsRoot(name: string): unknown {
   const html = readFileSync(
     fileURLToPath(new URL(`../../test/fixtures/app/${name}.html`, import.meta.url)),
     'utf8',
   );
-  const data = parseScriptData(html);
-  const details = resolveScriptRoot(data, appDetailsRootSpec, 'app details');
-  const extracted = extract(details.root, appSpecs, 'app');
-  return extracted.descriptionHTML;
+  return resolveScriptRoot(parseScriptData(html), appDetailsRootSpec, 'app details').root;
+}
+
+function fixtureDescriptionHtml(name: string): string {
+  return extract(fixtureDetailsRoot(name), appSpecs, 'app').descriptionHTML;
+}
+
+function fixtureRecentChangesHtml(name: string): string {
+  const changes = getPath(fixtureDetailsRoot(name), [1, 2, 144, 1, 1]);
+  return typeof changes === 'string' ? changes : '';
 }
 
 const SYNTHETIC_CORPUS = [
+  'Hunt &amp; Explore',
+  'Hole Stars<br><br>It&#39;s &quot;fun&quot; &gt; all<br>Terms: https://example.com/?a=1&amp;b=2',
+  '<b>Blix</b> app </b>, with<u>under</u>line <br> <br>spaced',
+  '&#8226; Modern Android &amp; Android TV UI<br>&#8226; Fixes',
   '&amp;',
   '&lt;',
   '&gt;',
@@ -80,6 +91,13 @@ describe('htmlToPlainText parity with the cheerio implementation', () => {
     it(`matches cheerio on the ${name} fixture description`, () => {
       const descriptionHtml = fixtureDescriptionHtml(name);
       expect(htmlToPlainText(descriptionHtml)).toBe(legacyDescriptionText(descriptionHtml));
+    });
+  }
+
+  for (const name of FIXTURE_NAMES) {
+    it(`matches cheerio on the ${name} fixture changelog`, () => {
+      const changelogHtml = fixtureRecentChangesHtml(name);
+      expect(htmlToPlainText(changelogHtml)).toBe(legacyDescriptionText(changelogHtml));
     });
   }
 
