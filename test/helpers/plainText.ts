@@ -101,5 +101,10 @@ export function expectPlainSafetyReport(report: DataSafety, label: string): void
   for (const practice of report.securityPractices) {
     expectGoogleLabelText(practice.practice, `${label} practice`);
     expectGoogleLabelText(practice.description, `${label} ${practice.practice} description`);
+    expectHtmlTwin(
+      practice.description,
+      practice.descriptionHTML,
+      `${label} ${practice.practice} description`,
+    );
   }
 }

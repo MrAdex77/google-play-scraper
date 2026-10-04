@@ -8,6 +8,8 @@ import { expectPlainSafetyReport } from '../../../test/helpers/plainText.ts';
 import { DATA_SAFETY_RPC_ID } from './specs.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
+const FAMILIES_POLICY_HTML =
+  'The developer has committed to follow the Play Families Policy &amp; more. <a href="https://support.google.com/googleplay/android-developer/answer/9893335" target="_blank">See the policy</a>';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -75,7 +77,7 @@ describe('datasafety fixture parsing', () => {
     expect(() => new URL(result.privacyPolicyUrl ?? '')).not.toThrow();
   });
 
-  it('returns every recorded report string as plain text', async () => {
+  it('returns every recorded report string as plain text beside its markup', async () => {
     const result = await dataSafety({
       appId: TRANSLATE,
       requestOptions: { fetchImpl: fetchReturning(fixture) },
@@ -86,6 +88,8 @@ describe('datasafety fixture parsing', () => {
       practice: 'Independent security review',
       description:
         'This app has been independently validated against a global security standard. See details',
+      descriptionHTML:
+        'This app has been independently validated against a global security standard. <a href="https://appdefensealliance.dev/masa" target="_blank">See details</a>',
     });
   });
 });
@@ -240,26 +244,21 @@ describe('datasafety degraded pages', () => {
       { data: 'Location', optional: true, purpose: 'App functionality', type: 'Data collected' },
     ]);
     expect(result.securityPractices).toEqual([
-      { practice: 'Data is encrypted', description: 'Encrypted in transit' },
+      {
+        practice: 'Data is encrypted',
+        description: 'Encrypted in transit',
+        descriptionHTML: 'Encrypted in transit',
+      },
     ]);
     expect(result.privacyPolicyUrl).toBe('https://example.com/privacy');
   });
 
-  it('turns a security practice description into plain text', async () => {
+  it('turns a security practice description into plain text and keeps its markup', async () => {
     const node138: unknown[] = [];
     node138[9] = [
       null,
       null,
-      [
-        [
-          null,
-          'Committed to follow the Play Families Policy',
-          [
-            null,
-            'The developer has committed to follow the Play Families Policy &amp; more. <a href="https://support.google.com/googleplay/android-developer/answer/9893335" target="_blank">See the policy</a>',
-          ],
-        ],
-      ],
+      [[null, 'Committed to follow the Play Families Policy', [null, FAMILIES_POLICY_HTML]]],
     ];
     const html = buildDataSafetyHtml(wrapSafetyNode({ '138': node138 }));
 
@@ -273,6 +272,7 @@ describe('datasafety degraded pages', () => {
         practice: 'Committed to follow the Play Families Policy',
         description:
           'The developer has committed to follow the Play Families Policy & more. See the policy',
+        descriptionHTML: FAMILIES_POLICY_HTML,
       },
     ]);
   });

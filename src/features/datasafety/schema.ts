@@ -10,6 +10,7 @@ export const dataEntrySchema = z.object({
 export const securityPracticeSchema = z.object({
   practice: z.string(),
   description: z.optional(z.string()),
+  descriptionHTML: z.optional(z.string()),
 });
 
 export const dataSafetySchema = z.object({
