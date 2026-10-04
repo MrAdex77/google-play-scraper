@@ -8,7 +8,7 @@ import { parseScriptData } from './scriptData.ts';
 import { resolveScriptRoot } from './scriptRoot.ts';
 import { extract } from './spec.ts';
 import { appDetailsRootSpec, appSpecs } from '../features/app/specs.ts';
-import { legacyDescriptionText } from '../../test/helpers/plainText.ts';
+import { cheerioText } from '../../test/helpers/plainText.ts';
 
 const FIXTURE_NAMES = ['translate', 'minecraft', 'whereami'] as const;
 
@@ -84,6 +84,8 @@ const SYNTHETIC_CORPUS = [
   '',
   'mixed <b>Bold &amp; &#39;quoted&#39;</b><br>next &lt;line&gt;',
   'wait&#133; it&#146;s here &#150; now&#153;',
+  '<div><p>Real ones order here</p><br><div>nested <b>deal</b></div></div><br>tail',
+  'unclosed </div> wrapper <div>text',
   '&#x80;&#x82;&#x8A;&#x8C;&#x8E;&#x9C;&#x9E;&#x9F;',
 ] as const;
 
@@ -96,28 +98,26 @@ describe('htmlToPlainText parity with the cheerio implementation', () => {
   for (const name of FIXTURE_NAMES) {
     it(`matches cheerio on the ${name} fixture description`, () => {
       const descriptionHtml = fixtureDescriptionHtml(name);
-      expect(htmlToPlainText(descriptionHtml)).toBe(legacyDescriptionText(descriptionHtml));
+      expect(htmlToPlainText(descriptionHtml)).toBe(cheerioText(descriptionHtml));
     });
   }
 
   for (const name of FIXTURE_NAMES) {
     it(`matches cheerio on the ${name} fixture changelog`, () => {
       const changelogHtml = fixtureRecentChangesHtml(name);
-      expect(htmlToPlainText(changelogHtml)).toBe(legacyDescriptionText(changelogHtml));
+      expect(htmlToPlainText(changelogHtml)).toBe(cheerioText(changelogHtml));
     });
   }
 
   for (const reference of WINDOWS_1252_RANGE) {
     it(`matches cheerio for the windows-1252 reference ${reference}`, () => {
-      expect(sanitizeText(htmlToPlainText(reference))).toBe(
-        sanitizeText(legacyDescriptionText(reference)),
-      );
+      expect(sanitizeText(htmlToPlainText(reference))).toBe(sanitizeText(cheerioText(reference)));
     });
   }
 
   for (const input of SYNTHETIC_CORPUS) {
     it(`matches cheerio for ${JSON.stringify(input)}`, () => {
-      expect(htmlToPlainText(input)).toBe(legacyDescriptionText(input));
+      expect(htmlToPlainText(input)).toBe(cheerioText(input));
     });
   }
 });
