@@ -70,6 +70,12 @@ export function expectHtmlSummaries(
   for (const item of items) {
     expectHtmlTwin(item.summary, item.summaryHTML, `${label} summary`);
   }
+  const twins = items.filter((item) => item.summaryHTML !== undefined);
+  expect(twins.length, `${label}: at least one summary twin must be present`).toBeGreaterThan(0);
+  expect(
+    twins.some((item) => item.summaryHTML !== item.summary),
+    `${label}: some summaryHTML must keep the markup its summary drops`,
+  ).toBe(true);
 }
 
 export function expectConvertedSummaries(
