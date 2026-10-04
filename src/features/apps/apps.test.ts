@@ -10,6 +10,7 @@ import type { App } from '../app/schema.ts';
 import type { OnDegradation } from '../../core/degradation.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import { changeRoutingTableEntry } from '../../../test/helpers/responseMutation.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -127,6 +128,41 @@ describe('apps', () => {
 
     const tooMany = Array.from({ length: 251 }, (_unused, index) => `com.app${index.toString()}`);
     await expect(apps({ appIds: tooMany })).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('turns every malformed appId into a rejected entry without a request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const appIds = MALFORMED_APP_IDS.filter((appId) => appId.length > 0);
+
+    const result = await apps({ appIds, requestOptions: { fetchImpl } });
+
+    expect(result.map((entry) => entry.appId)).toEqual(appIds);
+    for (const entry of result) {
+      expect(entry.status).toBe('rejected');
+      if (entry.status === 'rejected') {
+        expect(entry.error).toBeInstanceOf(ValidationError);
+        expect(entry.error.message).toMatch(/^app: appId: must be/);
+      }
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('keeps the batch alive around a malformed appId and preserves order', async () => {
+    const appIds = ['com.one', 'com.żółw.app', 'com.three'];
+    const fetch = countingAppFetch();
+
+    const result = await apps({ appIds, requestOptions: { fetchImpl: fetch.fetchImpl } });
+
+    expect(result.map((entry) => [entry.appId, entry.status])).toEqual([
+      ['com.one', 'fulfilled'],
+      ['com.żółw.app', 'rejected'],
+      ['com.three', 'fulfilled'],
+    ]);
+    expect(fetch.state.calls).toBe(2);
+  });
+
+  it('still rejects an empty string through whole call validation', async () => {
+    await expect(apps({ appIds: ['com.one', ''] })).rejects.toBeInstanceOf(ValidationError);
   });
 
   it('caps the request rate at the shared client limiter despite a higher concurrency', async () => {

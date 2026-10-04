@@ -8,6 +8,7 @@ import { parseScriptData } from '../../core/scriptData.ts';
 import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 import { plainText } from '../../core/htmlText.ts';
 import { expectConvertedSummaries, expectHtmlSummaries } from '../../../test/helpers/plainText.ts';
@@ -244,6 +245,18 @@ describe('similar cluster fallbacks', () => {
 describe('similar options', () => {
   it('rejects a missing appId through validation', async () => {
     await expect(similar({} as SimilarOptions)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('rejects every malformed appId before any request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(similar({ appId, requestOptions: { fetchImpl } })).rejects.toThrow(
+        /^similar: appId: must be/,
+      );
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
 
