@@ -18,6 +18,19 @@ export const requestOptionsSchema = z.object({
 
 export type RequestOptions = z.infer<typeof requestOptionsSchema>;
 
+const APP_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
+const APP_ID_MAX_LENGTH = 255;
+const APP_ID_FORMAT_MESSAGE =
+  'must be an Android package name: two or more dot separated segments, each starting with a letter and using only letters, digits, and underscores';
+const APP_ID_LENGTH_MESSAGE = `must be at most ${APP_ID_MAX_LENGTH.toString()} characters`;
+
+export const appIdSchema = z
+  .string()
+  .check(
+    z.maxLength(APP_ID_MAX_LENGTH, APP_ID_LENGTH_MESSAGE),
+    z.regex(APP_ID_PATTERN, APP_ID_FORMAT_MESSAGE),
+  );
+
 export const baseOptionsSchema = z.object({
   lang: z._default(z.string().check(z.minLength(2), z.maxLength(7)), 'en'),
   country: z._default(z.string().check(z.length(2)), 'us'),

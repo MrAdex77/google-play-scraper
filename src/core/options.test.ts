@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { baseOptionsSchema, parseOptions } from './options.ts';
+import * as z from 'zod/mini';
+import { appIdSchema, baseOptionsSchema, parseOptions } from './options.ts';
 import { ValidationError } from './errors.ts';
 
 describe('parseOptions', () => {
@@ -125,5 +126,69 @@ describe('parseOptions', () => {
       expect(act).toThrow(ValidationError);
       expect(act).toThrow(new RegExp(field));
     }
+  });
+});
+
+describe('appIdSchema', () => {
+  const schema = z.object({ appId: appIdSchema });
+  const parseAppId = (appId: unknown): unknown => parseOptions(schema, { appId }, 'app');
+
+  it.each([
+    'com.whatsapp',
+    'com.adex77.WhereAmI',
+    'com.Pocketpair.NeverGrave',
+    'com.pid.preserve_complete',
+    'COM.WHATSAPP',
+    'a.b',
+    'sixpack.absworkout.bellyfatworkout.abdominalworkout.sixpack_in_seven_days',
+  ])('accepts the package name %s', (appId) => {
+    expect(parseAppId(appId)).toEqual({ appId });
+  });
+
+  it.each([
+    '',
+    'a',
+    'com',
+    'com.',
+    '.com',
+    'com..app',
+    ' com.whatsapp',
+    'com.whatsapp ',
+    'com.whatsapp\n',
+    'com.what sapp',
+    'com.whatsapp&hl=de',
+    'com.whatsapp#frag',
+    'com.whatsapp/../com.spotify.music',
+    'com.whatsapp"',
+    'com.whatsapp%',
+    'com.whatsapp\\',
+    'com.my-app',
+    'com.\u017c\u00f3\u0142w.app',
+    'com.whatsapp\u4e2d\u6587',
+    '1com.app',
+    'com.1app',
+    '_com.app',
+  ])('rejects the malformed id %j', (appId) => {
+    const act = (): unknown => parseAppId(appId);
+
+    expect(act).toThrow(ValidationError);
+    expect(act).toThrow(/^app: appId: must be an Android package name/);
+  });
+
+  it.each([42, null, undefined, ['com.whatsapp']])('rejects the non string value %j', (appId) => {
+    expect(() => parseAppId(appId)).toThrow(ValidationError);
+  });
+
+  it('accepts exactly 255 characters and rejects 256 with a length message', () => {
+    const longest = `com.${'a'.repeat(251)}`;
+
+    expect(parseAppId(longest)).toEqual({ appId: longest });
+    expect(() => parseAppId(`${longest}a`)).toThrow('app: appId: must be at most 255 characters');
+  });
+
+  it('reports both problems for an overlong id without a separator', () => {
+    expect(() => parseAppId('x'.repeat(300))).toThrow(
+      /must be at most 255 characters; appId: must be an Android package name/,
+    );
   });
 });
