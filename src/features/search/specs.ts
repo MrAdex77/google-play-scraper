@@ -4,6 +4,7 @@ import {
   microsToUnits,
   resolveAppUrl,
 } from '../../core/appItemTransforms.ts';
+import { plainText } from '../../core/htmlText.ts';
 import { getPath, type Path } from '../../core/path.ts';
 import { rawArrayPathSchema } from '../../core/raw.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
@@ -72,7 +73,7 @@ export const searchItemSpecs = {
     schema: shape.free,
     transform: isFreeMicros,
   },
-  summary: { paths: [[0, 13, 1]], missing: OPTIONAL, schema: shape.summary },
+  summary: { paths: [[0, 13, 1]], missing: OPTIONAL, schema: shape.summary, transform: plainText },
   scoreText: { paths: [[0, 4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[0, 4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
@@ -123,7 +124,12 @@ export const exactMatchSpecs = {
     schema: shape.free,
     transform: isFreeMicros,
   },
-  summary: { paths: [[16, 2, 73, 0, 1]], missing: OPTIONAL, schema: shape.summary },
+  summary: {
+    paths: [[16, 2, 73, 0, 1]],
+    missing: OPTIONAL,
+    schema: shape.summary,
+    transform: plainText,
+  },
   scoreText: { paths: [[16, 2, 51, 0, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[16, 2, 51, 0, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;

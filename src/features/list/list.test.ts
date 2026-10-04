@@ -8,6 +8,7 @@ import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import type { OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
+import { expectPlainSummaries } from '../../../test/helpers/plainText.ts';
 
 const topFreeGame = readFileSync(
   fileURLToPath(new URL('../../../test/fixtures/list/topfree-game.txt', import.meta.url)),
@@ -127,6 +128,20 @@ describe('list fixture parsing', () => {
     }
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
     expect(items.some((item) => item.free && item.price === 0)).toBe(true);
+  });
+
+  it('returns plain text summaries for every recorded item', async () => {
+    const items = (await list({
+      collection: 'TOP_FREE',
+      category: 'GAME',
+      num: 100,
+      requestOptions: { fetchImpl: fetchReturning(topFreeGame) },
+    })) as ListItem[];
+
+    expectPlainSummaries(items);
+    const holeStars = items.find((item) => item.summary?.startsWith('Hole Stars'));
+    expect(holeStars?.summary).toContain('Shine\n\nLooking for a game that\u2019s fun');
+    expect(holeStars?.summary).toContain("Whether you're sorting");
   });
 });
 

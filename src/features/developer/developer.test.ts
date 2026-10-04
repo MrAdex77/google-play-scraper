@@ -9,6 +9,7 @@ import type { App } from '../app/schema.ts';
 import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
+import { expectPlainSummaries } from '../../../test/helpers/plainText.ts';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -253,6 +254,22 @@ describe('developer fixture parsing', () => {
       expect(() => developerAppSchema.parse(item)).not.toThrow();
     }
     expect(items.map((item) => item.appId)).toContain('com.mojang.minecraftpe');
+  });
+
+  it('returns plain text summaries for both recorded developer pages', async () => {
+    const mojang = (await developer({
+      devId: 'Mojang',
+      requestOptions: { fetchImpl: fetchReturning(mojangHtml) },
+    })) as DeveloperApp[];
+    const google = (await developer({
+      devId: '5700313618786177705',
+      requestOptions: { fetchImpl: fetchReturning(googleHtml) },
+    })) as DeveloperApp[];
+
+    expectPlainSummaries(mojang);
+    expectPlainSummaries(google);
+    const education = mojang.find((item) => item.summary?.startsWith('THIS APP IS FOR SCHOOL'));
+    expect(education?.summary).toContain('USE. \n\nMinecraft Education');
   });
 });
 

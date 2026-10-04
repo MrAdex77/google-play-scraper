@@ -9,6 +9,7 @@ import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
+import { expectPlainSummaries } from '../../../test/helpers/plainText.ts';
 import { clusterOfferItems } from '../../../test/helpers/clusterOfferItems.ts';
 
 const SOURCE_APP_ID = 'com.google.android.apps.translate';
@@ -72,6 +73,17 @@ describe('similar fixture parsing', () => {
       expect(new URL(item.url).origin).toBe('https://play.google.com');
     }
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
+  });
+
+  it('returns plain text summaries for the recorded cluster', async () => {
+    const { fetchImpl } = sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]);
+
+    const items = (await similar({
+      appId: SOURCE_APP_ID,
+      requestOptions: { fetchImpl },
+    })) as SimilarApp[];
+
+    expectPlainSummaries(items);
   });
 
   it('never returns the source app among the similar results', async () => {
