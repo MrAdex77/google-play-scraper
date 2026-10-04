@@ -30,8 +30,14 @@ export const otherPermissionsResponseSchema = z.union([
   z.literal(null),
   rawOptionalArrayPathSchema([permission.OTHER], permissionSectionSchema),
 ]);
+const GROUP_NAME_PATH: Path = [0];
 const GROUP_PERMISSIONS_PATH: Path = [2];
 const PERMISSION_TEXT_PATH: Path = [1];
+
+function groupName(group: unknown): string {
+  const name = getPath(group, GROUP_NAME_PATH);
+  return typeof name === 'string' ? name : '';
+}
 
 function sectionEntries(section: unknown, type: AppPermission['type']): AppPermission[] {
   if (!Array.isArray(section)) {
@@ -43,10 +49,11 @@ function sectionEntries(section: unknown, type: AppPermission['type']): AppPermi
     if (!Array.isArray(groupPermissions)) {
       continue;
     }
+    const name = groupName(group);
     for (const groupPermission of groupPermissions) {
       const text = getPath(groupPermission, PERMISSION_TEXT_PATH);
       if (typeof text === 'string' && text.length > 0) {
-        entries.push({ permission: text, type });
+        entries.push({ permission: text, type, group: name });
       }
     }
   }
