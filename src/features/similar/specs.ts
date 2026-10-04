@@ -97,6 +97,8 @@ export function findSimilarClusterPath(
   return undefined;
 }
 
+const SUMMARY_CELL = { paths: [[13, 1]], missing: OPTIONAL };
+
 export const similarItemSpecs = {
   title: { paths: [[3]], missing: REQUIRED, schema: shape.title },
   appId: { paths: [[0, 0]], missing: REQUIRED, schema: shape.appId },
@@ -116,13 +118,8 @@ export const similarItemSpecs = {
     schema: shape.free,
     transform: isFreeMicros,
   },
-  summary: { paths: [[13, 1]], missing: OPTIONAL, schema: shape.summary, transform: plainText },
-  summaryHTML: {
-    paths: [[13, 1]],
-    missing: OPTIONAL,
-    schema: shape.summaryHTML,
-    transform: htmlText,
-  },
+  summary: { ...SUMMARY_CELL, schema: shape.summary, transform: plainText },
+  summaryHTML: { ...SUMMARY_CELL, schema: shape.summaryHTML, transform: htmlText },
   scoreText: { paths: [[4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;

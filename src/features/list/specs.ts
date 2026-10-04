@@ -57,6 +57,8 @@ export const listResponseSchema = z.union([
   rawArrayPathSchema(APPS_PATH, z.array(z.unknown())),
 ]);
 
+const SUMMARY_CELL = { paths: [[0, 13, 1]], missing: OPTIONAL };
+
 export const listItemSpecs = {
   title: { paths: [[0, 3]], missing: REQUIRED, schema: shape.title },
   appId: { paths: [[0, 0, 0]], missing: REQUIRED, schema: shape.appId },
@@ -76,13 +78,8 @@ export const listItemSpecs = {
     schema: shape.free,
     transform: isFreeMicros,
   },
-  summary: { paths: [[0, 13, 1]], missing: OPTIONAL, schema: shape.summary, transform: plainText },
-  summaryHTML: {
-    paths: [[0, 13, 1]],
-    missing: OPTIONAL,
-    schema: shape.summaryHTML,
-    transform: htmlText,
-  },
+  summary: { ...SUMMARY_CELL, schema: shape.summary, transform: plainText },
+  summaryHTML: { ...SUMMARY_CELL, schema: shape.summaryHTML, transform: htmlText },
   scoreText: { paths: [[0, 4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[0, 4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;

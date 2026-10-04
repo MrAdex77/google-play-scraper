@@ -6,6 +6,8 @@ import { defaulted, optional, required, type SpecMap } from './spec.ts';
 const shape = appItemSchema.shape;
 const OFFER_MICROS_PATH = [7, 0, 3, 2, 1, 0, 0];
 
+const SUMMARY_CELL = { paths: [[4, 1, 1, 1, 1]], missing: optional() };
+
 export const clusterItemSpecs = {
   title: { paths: [[2]], missing: required(), schema: shape.title },
   appId: { paths: [[12, 0]], missing: required(), schema: shape.appId },
@@ -25,18 +27,8 @@ export const clusterItemSpecs = {
     schema: shape.free,
     transform: isFreeMicros,
   },
-  summary: {
-    paths: [[4, 1, 1, 1, 1]],
-    missing: optional(),
-    schema: shape.summary,
-    transform: plainText,
-  },
-  summaryHTML: {
-    paths: [[4, 1, 1, 1, 1]],
-    missing: optional(),
-    schema: shape.summaryHTML,
-    transform: htmlText,
-  },
+  summary: { ...SUMMARY_CELL, schema: shape.summary, transform: plainText },
+  summaryHTML: { ...SUMMARY_CELL, schema: shape.summaryHTML, transform: htmlText },
   scoreText: { paths: [[6, 0, 2, 1, 0]], missing: optional(), schema: shape.scoreText },
   score: { paths: [[6, 0, 2, 1, 1]], missing: optional(), schema: shape.score },
 } satisfies SpecMap;
