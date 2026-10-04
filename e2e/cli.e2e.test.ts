@@ -227,6 +227,16 @@ liveDescribe('cli commands against live google play', () => {
       expect(typeof name).toBe('string');
       expect(name.length).toBeGreaterThan(0);
     }
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('permissions prints the group of every entry', async () => {
+    const parsed = await runCliJson(['permissions', TRANSLATE_ID]);
+    const entries = parsed as { permission: string; group: string }[];
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) {
+      expect(entry.group.length).toBeGreaterThan(0);
+    }
   });
 
   it('permissions prints an empty array for a missing app and exits 0', async () => {

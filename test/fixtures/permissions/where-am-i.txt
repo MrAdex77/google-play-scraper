@@ -1,0 +1,3 @@
+)]}'
+
+[["wrb.fr","xdSrCf","[[[\"Wi-Fi connection information\",[null,2,null,[null,null,\"https://play-lh.googleusercontent.com/U-_SG8pHTsqU_IyZTGQRkVMdLaAUeq1OnKGrB06KHF1z7vkkIQK3iF0HcbfTe1RnGlh-ajnZkbphl2W3Gdk\"]],[[null,\"view Wi-Fi connections\"]],[\"signal_wifi_4_bar\"]]],[[\"Other\",[null,2,null,[null,null,\"https://play-lh.googleusercontent.com/pkKXoPl5q7n8T0s7KREtdvUZn1PLRgx-Ox0t4tkO8af4JpgGbyAxLBTsvEKKBCjwBACQsZisSYNmHPGbBA\"]],[[null,\"view network connections\"],[null,\"full network access\"],[null,\"control vibration\"],[null,\"prevent device from sleeping\"]],[\"quiz\"]]],[[null,\"receive data from Internet\"]]]",null,null,null,"1"],["di",19],["af.httprm",18,"1960563050802755554",17]]

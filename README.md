@@ -647,12 +647,12 @@ page, matching the original `google-play-scraper`. The `score` filter never serv
 
 ### permissions
 
-Returns the permissions an app requests.
+Returns the permissions an app requests, one entry per permission group that lists it.
 
-| Option  | Type      | Default  | Description                                                       |
-| ------- | --------- | -------- | ----------------------------------------------------------------- |
-| `appId` | `string`  | required | The Google Play id of the app.                                    |
-| `short` | `boolean` | `false`  | When `true`, return a flat `string[]` of common permission names. |
+| Option  | Type      | Default  | Description                                                                         |
+| ------- | --------- | -------- | ----------------------------------------------------------------------------------- |
+| `appId` | `string`  | required | The Google Play id of the app.                                                      |
+| `short` | `boolean` | `false`  | When `true`, return a flat `string[]` of common permission names, each listed once. |
 
 ```typescript
 import { permissions } from '@mradex77/google-play-scraper';
@@ -665,12 +665,24 @@ Returns `AppPermission[]` (or `string[]` when `short` is `true`):
 
 ```javascript
 [
-  { permission: 'take pictures and videos', type: 0 },
-  { permission: 'view network connections', type: 1 },
+  { permission: 'read the contents of your USB storage', type: 0, group: 'Photos/Media/Files' },
+  { permission: 'read the contents of your USB storage', type: 0, group: 'Storage' },
+  { permission: 'take pictures and videos', type: 0, group: 'Camera' },
+  { permission: 'view network connections', type: 1, group: 'Other' },
 ];
 ```
 
 The `type` is `permission.COMMON` (`0`) or `permission.OTHER` (`1`).
+
+The `group` is the name of the permission group Google Play files the permission under, in the language of the requested `lang`, or an empty string when Google Play omits the name. A few legacy permissions belong to two groups (for example the USB storage permissions sit under both `Photos/Media/Files` and `Storage`), so the detailed list repeats such a permission once per group and `group` tells the rows apart. To list each permission once, drop the group:
+
+```typescript
+const unique = [
+  ...new Set(detailed.map((entry) => (typeof entry === 'string' ? entry : entry.permission))),
+];
+```
+
+The `short` list already does this for the common permissions, in the order Google Play serves them.
 
 ### dataSafety
 
@@ -1224,6 +1236,7 @@ The method names, options, and constants are the same, so most code keeps workin
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
+- `permissions` entries have `type` set to `permission.COMMON` or `permission.OTHER`, where the original put the group name in `type`. The group name now lives in `group`. `short` returns each common permission string once, where the original returned the names of the common groups.
 - The package is ESM first with a CommonJS build; the default export is the aggregate client and named exports are also available.
 
 ### Deriving from the exported schemas

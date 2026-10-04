@@ -317,12 +317,17 @@ function reviewsRecorder(recording: ReviewsRecording): Recorder {
   };
 }
 
-function permissionsRecorder(appId: string, file: string): Recorder {
+function permissionsRecorder(
+  name: string,
+  appId: string,
+  file: string,
+  storefront: Storefront = DEFAULT_STOREFRONT,
+): Recorder {
   return {
-    name: 'permissions',
+    name,
     async run(client) {
       const response = await client.request({
-        url: permissionsUrl('en', 'us'),
+        url: permissionsUrl(storefront.lang, storefront.country),
         method: 'POST',
         body: buildPermissionsBody(appId),
       });
@@ -447,7 +452,33 @@ const recorders: Recorder[] = [
     device: device.TABLET,
     initialFile: 'reviews/translate-tablet-size10.txt',
   }),
-  permissionsRecorder('com.google.android.apps.translate', 'permissions/translate.txt'),
+  permissionsRecorder(
+    'permissions',
+    'com.google.android.apps.translate',
+    'permissions/translate.txt',
+  ),
+  permissionsRecorder('permission-groups', 'com.whatsapp', 'permissions/whatsapp.txt'),
+  permissionsRecorder('permission-groups', 'com.whatsapp', 'permissions/whatsapp-de.txt', {
+    country: 'de',
+    lang: 'de',
+  }),
+  permissionsRecorder(
+    'permission-groups',
+    'com.google.android.apps.translate',
+    'permissions/translate-ja.txt',
+    {
+      country: 'jp',
+      lang: 'ja',
+    },
+  ),
+  permissionsRecorder(
+    'permission-groups',
+    'jp.kadokawa.gb.machisuba',
+    'permissions/other-only.txt',
+  ),
+  permissionsRecorder('permission-groups', 'org.asccp.app2019', 'permissions/common-only.txt'),
+  permissionsRecorder('permission-groups', 'com.watchfacestudio.awfwave', 'permissions/none.txt'),
+  permissionsRecorder('permission-groups', 'com.adex77.WhereAmI', 'permissions/where-am-i.txt'),
   dataSafetyRecorder('com.google.android.apps.translate', 'datasafety/translate.html'),
   dataSafetyMissingRecorder('pt', 'datasafety/missing-pt.html', false),
   dataSafetyMissingRecorder('de', 'datasafety/missing-de.tail.html', true),

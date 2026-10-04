@@ -1,0 +1,3 @@
+)]}'
+
+[["wrb.fr","xdSrCf","[null,[[\"Other\",[null,2,null,[null,null,\"https://play-lh.googleusercontent.com/pkKXoPl5q7n8T0s7KREtdvUZn1PLRgx-Ox0t4tkO8af4JpgGbyAxLBTsvEKKBCjwBACQsZisSYNmHPGbBA\"]],[[null,\"view network connections\"],[null,\"full network access\"],[null,\"run at startup\"],[null,\"control vibration\"],[null,\"prevent device from sleeping\"],[null,\"Google Play license check\"]],[\"quiz\"]]],[[null,\"receive data from Internet\"]]]",null,null,null,"1"],["di",24],["af.httprm",23,"-4290348617783015138",17]]

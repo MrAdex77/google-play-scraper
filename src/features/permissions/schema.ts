@@ -9,6 +9,7 @@ export const permissionTypeSchema = z.union([
 export const permissionSchema = z.object({
   permission: z.string(),
   type: permissionTypeSchema,
+  group: z.string(),
 });
 
 export type AppPermission = z.infer<typeof permissionSchema>;
