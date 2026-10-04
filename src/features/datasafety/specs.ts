@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { BASE_URL } from '../../constants.ts';
 import { getPath, isRecord, type Path } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
 import { deriveScriptDataSelection } from '../../core/scriptData.ts';
@@ -6,6 +7,13 @@ import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts'
 import { dataEntrySchema, securityPracticeSchema } from './schema.ts';
 
 export const DATA_SAFETY_RPC_ID = 'Ws7gDc';
+
+const DATA_SAFETY_URL = `${BASE_URL}/store/apps/datasafety`;
+
+export function dataSafetyUrl(appId: string, lang: string, country: string): string {
+  const params = new URLSearchParams({ id: appId, hl: lang, gl: country });
+  return `${DATA_SAFETY_URL}?${params.toString()}`;
+}
 
 const SHARED_DATA_PATH: Path = [1, 2, 1, '138', 4, 0, 0];
 const COLLECTED_DATA_PATH: Path = [1, 2, 1, '138', 4, 1, 0];

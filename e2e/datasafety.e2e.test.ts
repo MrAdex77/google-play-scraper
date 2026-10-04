@@ -3,6 +3,23 @@ import type { IntegrityEvent } from '../src/index.ts';
 import { liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
+const MISSING_APP = 'com.adex77.definitely.not.a.real.app';
+const UNAVAILABLE_EVERYWHERE_APP = 'br.com.itau';
+const STOREFRONT_RESTRICTED_APP = 'com.vkontakte.android';
+const REGIONAL_PRACTICE_APP = 'com.phonepe.app';
+const SECTIONLESS_APPS = ['com.google.android.gms', 'com.chucklefish.stardewvalley'];
+const MISSING_APP_LANGUAGES = ['en', 'pt', 'de', 'ja', 'ar', 'ru', 'fr', 'zh', 'pl', 'ko'];
+const REAL_APP_LANGUAGES = ['pt', 'ja', 'ar', 'ru'];
+const SECTIONLESS_CASES = SECTIONLESS_APPS.flatMap((appId) =>
+  ['en', 'pt', 'ja'].map((lang) => ({ appId, lang })),
+);
+
+const EMPTY_REPORT = {
+  sharedData: [],
+  collectedData: [],
+  securityPractices: [],
+  privacyPolicyUrl: undefined,
+};
 
 liveDescribe('datasafety live contract', () => {
   it('returns collected data, security practices, and a privacy policy url', async () => {
@@ -90,5 +107,93 @@ liveDescribe('datasafety live contract', () => {
     expect(result.collectedData).toEqual([]);
     expect(result.securityPractices).toEqual([]);
     expect(result.privacyPolicyUrl).toBeUndefined();
+  });
+
+  it.each(MISSING_APP_LANGUAGES)(
+    'returns an empty report for a missing app in %s',
+    async (lang) => {
+      const result = await liveClient.dataSafety({ appId: MISSING_APP, lang });
+
+      expect(result).toEqual(EMPTY_REPORT);
+    },
+  );
+
+  it('returns an empty report for an app Google Play serves nowhere, in its own storefront', async () => {
+    const result = await liveClient.dataSafety({
+      appId: UNAVAILABLE_EVERYWHERE_APP,
+      country: 'br',
+      lang: 'pt',
+    });
+
+    expect(result).toEqual(EMPTY_REPORT);
+  });
+
+  it.each(REAL_APP_LANGUAGES)('returns the real report for a listed app in %s', async (lang) => {
+    const events: IntegrityEvent[] = [];
+    const result = await liveClient.dataSafety({
+      appId: TRANSLATE,
+      lang,
+      onIntegrityEvent: (event) => events.push(event),
+    });
+
+    expect(result.collectedData.length).toBeGreaterThan(0);
+    expect(result.securityPractices.length).toBeGreaterThan(0);
+    expect(events).toEqual([]);
+  });
+
+  it.each(SECTIONLESS_CASES)(
+    'resolves $appId in $lang without integrity events although its safety section may be empty',
+    async ({ appId, lang }) => {
+      const events: IntegrityEvent[] = [];
+      const result = await liveClient.dataSafety({
+        appId,
+        lang,
+        onIntegrityEvent: (event) => events.push(event),
+      });
+
+      expect(Array.isArray(result.sharedData)).toBe(true);
+      expect(Array.isArray(result.collectedData)).toBe(true);
+      expect(Array.isArray(result.securityPractices)).toBe(true);
+      expect(events).toEqual([]);
+    },
+  );
+
+  it('honors the storefront country for an app that is not offered in every country', async () => {
+    const offered = await liveClient.dataSafety({
+      appId: STOREFRONT_RESTRICTED_APP,
+      country: 'us',
+    });
+    const withheld = await liveClient.dataSafety({
+      appId: STOREFRONT_RESTRICTED_APP,
+      country: 'de',
+    });
+
+    expect(offered.collectedData.length).toBeGreaterThan(0);
+    expect(withheld).toEqual(EMPTY_REPORT);
+  });
+
+  it('returns the same report content for a worldwide app in two storefronts', async () => {
+    const asEntries = (entries: readonly object[]): string[] =>
+      entries.map((entry) => JSON.stringify(entry)).sort();
+    const american = await liveClient.dataSafety({ appId: TRANSLATE, country: 'us' });
+    const german = await liveClient.dataSafety({ appId: TRANSLATE, country: 'de' });
+
+    expect(asEntries(german.collectedData)).toEqual(asEntries(american.collectedData));
+    expect(asEntries(german.securityPractices)).toEqual(asEntries(american.securityPractices));
+  });
+
+  it('adds the regional security practices of the requested storefront', async () => {
+    const practicesIn = async (country: string): Promise<string[]> => {
+      const report = await liveClient.dataSafety({ appId: REGIONAL_PRACTICE_APP, country });
+      return report.securityPractices.map((entry) => entry.practice);
+    };
+    const american = await practicesIn('us');
+    const indian = await practicesIn('in');
+
+    expect(american.length).toBeGreaterThan(0);
+    expect(indian).toEqual(expect.arrayContaining(american));
+    expect(indian.filter((practice) => !american.includes(practice))).toContain(
+      'UPI payments verified',
+    );
   });
 });

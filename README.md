@@ -676,6 +676,8 @@ import { dataSafety } from '@mradex77/google-play-scraper';
 const safety = await dataSafety({ appId: 'com.google.android.apps.translate' });
 ```
 
+`lang` localizes the labels and `country` selects the storefront. Most reports are identical across countries, but a storefront can add regional entries (the Indian storefront adds a "UPI payments verified" security practice to payment apps), and an app that Google Play withholds from a country has no report there, so it resolves with the empty report described under [Failure behavior](#failure-behavior). An app that does not exist resolves the same way in every language.
+
 Returns `DataSafety`. Trimmed:
 
 ```javascript
@@ -902,6 +904,8 @@ An unknown `appId` or `devId` does not fail the same way everywhere, because Goo
 | Resolves with a typed empty value | `search` and `suggest` (`[]`), `reviews` (`{ data: [], nextPaginationToken: null }`), `permissions` (`[]`), `dataSafety` (empty arrays, no `privacyPolicyUrl`) |
 | Maps the throw to a status        | `availability` reports `unavailable`                                                                                                                           |
 
+`dataSafety` recognizes a missing app from the structure of the error page Google Play serves, not from its wording, so the empty report is the same whichever `lang` you ask for. The same empty report comes back when the app is withheld from the requested `country`.
+
 Typed empties are limited to the documented response shapes above and other schema-backed empty variants. A structurally missing or malformed response root throws `ParseError`; a missing required field inside a valid root throws `SpecError`. Neither case is converted into an empty result, `0`, `false`, `Free`, or `VARY` unless that exact fallback is part of the documented field contract.
 
 ## Throttling and requestOptions
@@ -1052,7 +1056,7 @@ const details = await app({
 });
 ```
 
-Routes accept any `typeof fetch`, so the same helper also works for per-country rate limiting, logging or fixtures in tests. Omit `fallback` to send unmatched countries through a direct connection. The only request without a `gl` parameter is the `dataSafety` page fetch, which always uses the fallback route.
+Routes accept any `typeof fetch`, so the same helper also works for per-country rate limiting, logging or fixtures in tests. Omit `fallback` to send unmatched countries through a direct connection.
 
 ### Cancellation
 

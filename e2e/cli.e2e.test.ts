@@ -257,6 +257,15 @@ liveDescribe('cli commands against live google play', () => {
     expect(report).not.toHaveProperty('privacyPolicyUrl');
   });
 
+  it('data-safety prints an empty report for a missing app in a non english language', async () => {
+    const parsed = await runCliJson(['data-safety', MISSING_ID, '--lang', 'pt']);
+    const report = parsed as Record<string, unknown>;
+    expect(report.sharedData).toEqual([]);
+    expect(report.collectedData).toEqual([]);
+    expect(report.securityPractices).toEqual([]);
+    expect(report).not.toHaveProperty('privacyPolicyUrl');
+  });
+
   it('categories prints exactly the category taxonomy constant', async () => {
     const parsed = await runCliJson(['categories']);
 
