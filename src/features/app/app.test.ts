@@ -16,6 +16,7 @@ const readFixture = (name: string): string =>
 const translateHtml = readFixture('translate.html');
 const minecraftHtml = readFixture('minecraft.html');
 const whereAmIHtml = readFixture('whereami.html');
+const whatsappHtml = readFixture('whatsapp.html');
 
 const fetchReturning = (body: string, status = 200): typeof fetch => {
   const impl: typeof fetch = () => Promise.resolve(new Response(body, { status }));
@@ -72,6 +73,17 @@ describe('app', () => {
     expect(result.appId).toBe(appId);
     expect(result.url).toContain(`id=${appId}`);
     expect(result.comments).toEqual([]);
+  });
+
+  it('returns a name based developer id decoded from the developer link', async () => {
+    const result = await app({
+      appId: 'com.whatsapp',
+      requestOptions: { fetchImpl: fetchReturning(whatsappHtml) },
+    });
+
+    expect(result.developer).toBe('WhatsApp LLC');
+    expect(result.developerId).toBe('WhatsApp LLC');
+    expect(result.developerInternalID).toBe('WhatsApp LLC');
   });
 
   it('parses paid app fields from the minecraft details page', async () => {

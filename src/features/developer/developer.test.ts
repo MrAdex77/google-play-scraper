@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { createDeveloper, developer, type DeveloperOptions } from './developer.ts';
 import { developerAppSchema, type DeveloperApp } from './schema.ts';
 import { developerUrl } from './specs.ts';
+import { app } from '../app/app.ts';
 import type { App } from '../app/schema.ts';
 import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
@@ -17,6 +18,10 @@ const readFixture = (name: string): string =>
 
 const googleHtml = readFixture('google.html');
 const mojangHtml = readFixture('mojang.html');
+const whatsappAppHtml = readFileSync(
+  fileURLToPath(new URL('../../../test/fixtures/app/whatsapp.html', import.meta.url)),
+  'utf8',
+);
 const googleContinuation = readFixture('google-continuation.txt');
 const googleNameHtml = readFixture('google-name.html');
 const googleNameContinuation = readFixture('google-name-continuation.txt');
@@ -175,6 +180,44 @@ describe('developer url selection', () => {
   it('routes a name devId through the developer path with encoding', () => {
     expect(developerUrl('Mojang', 'en', 'us')).toContain('/store/apps/developer?id=Mojang');
     expect(developerUrl('DO Global', 'en', 'us')).toContain('id=DO+Global');
+  });
+});
+
+describe('developer id round trip', () => {
+  it.each([
+    ['WhatsApp LLC', 'id=WhatsApp+LLC'],
+    ['Fourth Enterprises, LLC', 'id=Fourth+Enterprises%2C+LLC'],
+    ['H&M', 'id=H%26M'],
+    ['Moon+', 'id=Moon%2B'],
+    ['A+ Federal Credit Union', 'id=A%2B+Federal+Credit+Union'],
+    ['100% Pure', 'id=100%25+Pure'],
+    ['Danfoss A/S', 'id=Danfoss+A%2FS'],
+    ['The Pokémon Company', 'id=The+Pok%C3%A9mon+Company'],
+  ])('encodes the name %s as one query value', (name, expectedQuery) => {
+    const url = developerUrl(name, 'en', 'us');
+
+    expect(url).toContain(`/store/apps/developer?${expectedQuery}&`);
+    expect(new URL(url).searchParams.get('id')).toBe(name);
+  });
+
+  it('requests the developer page that the app developer link points at', async () => {
+    const details = await app({
+      appId: 'com.whatsapp',
+      requestOptions: { fetchImpl: fetchReturning(whatsappAppHtml) },
+    });
+    const requested: string[] = [];
+    const fetchImpl: typeof fetch = (input) => {
+      requested.push(
+        typeof input === 'string' ? input : input instanceof URL ? input.href : input.url,
+      );
+      return Promise.resolve(new Response(mojangHtml, { status: 200 }));
+    };
+
+    await developer({ devId: details.developerId, requestOptions: { fetchImpl } });
+
+    expect(requested).toHaveLength(1);
+    expect(new URL(requested[0] ?? '').searchParams.get('id')).toBe('WhatsApp LLC');
+    expect(requested[0]).toContain('/store/apps/developer?id=WhatsApp+LLC&');
   });
 });
 
