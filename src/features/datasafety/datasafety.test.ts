@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { dataSafety, type DataSafetyOptions } from './datasafety.ts';
+import { createCountryFetch } from '../../core/countryFetch.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 import { DATA_SAFETY_RPC_ID } from './specs.ts';
 
@@ -288,6 +289,63 @@ describe('datasafety degraded pages', () => {
         }),
       ).rejects.toBeInstanceOf(ParseError);
     }
+  });
+});
+
+const urlOf = (input: Parameters<typeof fetch>[0]): string => {
+  if (typeof input === 'string') {
+    return input;
+  }
+  return input instanceof URL ? input.href : input.url;
+};
+
+describe('datasafety storefront request', () => {
+  const recordUrls = (urls: string[]): typeof fetch => {
+    return (input) => {
+      urls.push(urlOf(input));
+      return Promise.resolve(new Response(fixture, { status: 200 }));
+    };
+  };
+
+  it('sends the default language and country with the app id', async () => {
+    const urls: string[] = [];
+
+    await dataSafety({ appId: TRANSLATE, requestOptions: { fetchImpl: recordUrls(urls) } });
+
+    expect(urls).toHaveLength(1);
+    const params = new URL(urls[0] ?? '').searchParams;
+    expect(Object.fromEntries(params)).toEqual({ id: TRANSLATE, hl: 'en', gl: 'us' });
+  });
+
+  it('sends the requested language and country', async () => {
+    const urls: string[] = [];
+
+    await dataSafety({
+      appId: TRANSLATE,
+      lang: 'pt',
+      country: 'br',
+      requestOptions: { fetchImpl: recordUrls(urls) },
+    });
+
+    const params = new URL(urls[0] ?? '').searchParams;
+    expect(Object.fromEntries(params)).toEqual({ id: TRANSLATE, hl: 'pt', gl: 'br' });
+  });
+
+  it('routes through a per-country fetch by the country it sends', async () => {
+    const routed: string[] = [];
+    const fetchImpl = createCountryFetch({
+      perCountry: {
+        de: (input) => {
+          routed.push(urlOf(input));
+          return Promise.resolve(new Response(fixture, { status: 200 }));
+        },
+      },
+      fallback: () => Promise.reject(new Error('fallback route must not be used')),
+    });
+
+    await dataSafety({ appId: TRANSLATE, country: 'de', requestOptions: { fetchImpl } });
+
+    expect(routed).toHaveLength(1);
   });
 });
 

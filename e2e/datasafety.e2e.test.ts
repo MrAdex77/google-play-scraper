@@ -5,6 +5,7 @@ import { liveClient, liveDescribe } from './helpers.ts';
 const TRANSLATE = 'com.google.android.apps.translate';
 const MISSING_APP = 'com.adex77.definitely.not.a.real.app';
 const UNAVAILABLE_EVERYWHERE_APP = 'br.com.itau';
+const STOREFRONT_RESTRICTED_APP = 'com.vkontakte.android';
 const SECTIONLESS_APPS = ['com.google.android.gms', 'com.chucklefish.stardewvalley'];
 const MISSING_APP_LANGUAGES = ['en', 'pt', 'de', 'ja', 'ar', 'ru', 'fr', 'zh', 'pl', 'ko'];
 const REAL_APP_LANGUAGES = ['pt', 'ja', 'ar', 'ru'];
@@ -148,4 +149,28 @@ liveDescribe('datasafety live contract', () => {
       }
     },
   );
+
+  it('honors the storefront country for an app that is not offered in every country', async () => {
+    const offered = await liveClient.dataSafety({
+      appId: STOREFRONT_RESTRICTED_APP,
+      country: 'us',
+    });
+    const withheld = await liveClient.dataSafety({
+      appId: STOREFRONT_RESTRICTED_APP,
+      country: 'de',
+    });
+
+    expect(offered.collectedData.length).toBeGreaterThan(0);
+    expect(withheld).toEqual(EMPTY_REPORT);
+  });
+
+  it('returns the same report content for a worldwide app in two storefronts', async () => {
+    const asEntries = (entries: readonly object[]): string[] =>
+      entries.map((entry) => JSON.stringify(entry)).sort();
+    const american = await liveClient.dataSafety({ appId: TRANSLATE, country: 'us' });
+    const german = await liveClient.dataSafety({ appId: TRANSLATE, country: 'de' });
+
+    expect(asEntries(german.collectedData)).toEqual(asEntries(american.collectedData));
+    expect(asEntries(german.securityPractices)).toEqual(asEntries(american.securityPractices));
+  });
 });

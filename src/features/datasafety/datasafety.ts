@@ -32,7 +32,7 @@ export function createDataSafety(resolveClient: ResolveClient = clientFromOption
   return async function dataSafety(options: DataSafetyOptions): Promise<DataSafety> {
     const parsed = parseOptions(dataSafetyOptionsSchema, options, DATA_SAFETY_CONTEXT);
 
-    const params = new URLSearchParams({ id: parsed.appId, hl: parsed.lang });
+    const params = new URLSearchParams({ id: parsed.appId, hl: parsed.lang, gl: parsed.country });
     const url = `${DATA_SAFETY_URL}?${params.toString()}`;
 
     const client = resolveClient(parsed);
