@@ -1,5 +1,6 @@
 import { expect } from 'vitest';
 import type { App, AppItem, Review, ReviewsResult } from '../src/index.ts';
+import { expectPlainText } from '../test/helpers/plainText.ts';
 
 const PLAY_ORIGIN = 'https://play.google.com';
 const HTTPS_PROTOCOL = 'https:';
@@ -99,6 +100,7 @@ export function expectAppItemContract(item: AppItem, label: string): void {
     HTTPS_PROTOCOL,
   );
 
+  expectPlainText(item.summary, `${scoped} summary`);
   expectOfferConsistency(item, scoped);
   expectRatingConsistency(item, scoped);
 }
@@ -383,6 +385,9 @@ export function expectListingContract(listing: App, label: string): void {
     listing.descriptionHTML.length,
     `${scoped}: descriptionHTML must not be empty`,
   ).toBeGreaterThan(0);
+  expectPlainText(listing.description, `${scoped} description`);
+  expectPlainText(listing.summary, `${scoped} summary`);
+  expectPlainText(listing.recentChanges, `${scoped} recentChanges`);
   expect(listing.developer.length, `${scoped}: developer must not be empty`).toBeGreaterThan(0);
   expect(listing.developerId.length, `${scoped}: developerId must not be empty`).toBeGreaterThan(0);
   expect(listing.genreId.length, `${scoped}: genreId must not be empty`).toBeGreaterThan(0);
