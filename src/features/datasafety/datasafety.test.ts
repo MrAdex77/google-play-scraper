@@ -17,6 +17,23 @@ const missingFixture = readFileSync(
   'utf8',
 );
 
+const readFixture = (name: string): string =>
+  readFileSync(
+    fileURLToPath(new URL(`../../../test/fixtures/datasafety/${name}`, import.meta.url)),
+    'utf8',
+  );
+
+const MISSING_APP_ID = 'com.adex77.definitely.not.a.real.app';
+
+const localizedMissingPages = [
+  { lang: 'pt', title: 'Não encontrado', body: readFixture('missing-pt.html') },
+  { lang: 'de', title: 'Nicht gefunden', body: readFixture('missing-de.tail.html') },
+  { lang: 'ja', title: '見つかりませんでした', body: readFixture('missing-ja.tail.html') },
+  { lang: 'ar', title: 'لم يتم العثور على الصفحة', body: readFixture('missing-ar.tail.html') },
+  { lang: 'ru', title: 'Не найдено', body: readFixture('missing-ru.tail.html') },
+  { lang: 'zh', title: '未找到', body: readFixture('missing-zh.tail.html') },
+];
+
 const fetchReturning =
   (body: string): typeof fetch =>
   () =>
@@ -96,6 +113,65 @@ describe('datasafety degraded pages', () => {
     expect(result.collectedData).toEqual([]);
     expect(result.securityPractices).toEqual([]);
     expect(result.privacyPolicyUrl).toBeUndefined();
+  });
+
+  it.each(localizedMissingPages)(
+    'returns an empty report for the recorded $lang missing-app page',
+    async ({ lang, title, body }) => {
+      expect(body).toContain(title);
+      expect(body).not.toContain('<title>Not Found</title>');
+
+      const result = await dataSafety({
+        appId: MISSING_APP_ID,
+        lang,
+        requestOptions: { fetchImpl: fetchReturning(body) },
+      });
+
+      expect(result).toEqual({
+        sharedData: [],
+        collectedData: [],
+        securityPractices: [],
+        privacyPolicyUrl: undefined,
+      });
+    },
+  );
+
+  it('does not treat the english not found title alone as a missing app', async () => {
+    const html = `<html><head><title>Not Found</title></head><body></body></html>`;
+
+    await expect(
+      dataSafety({
+        appId: TRANSLATE,
+        requestOptions: { fetchImpl: fetchReturning(html) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
+  });
+
+  it('still rejects a localized page whose error markup is gone', async () => {
+    const withoutMarker = readFixture('missing-pt.html').replaceAll(
+      'id="error-section"',
+      'id="renamed-section"',
+    );
+
+    await expect(
+      dataSafety({
+        appId: MISSING_APP_ID,
+        lang: 'pt',
+        requestOptions: { fetchImpl: fetchReturning(withoutMarker) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
+  });
+
+  it('keeps parsing a real page when it contains no error markup', async () => {
+    expect(fixture).not.toContain('id="error-section"');
+
+    const result = await dataSafety({
+      appId: TRANSLATE,
+      lang: 'pt',
+      requestOptions: { fetchImpl: fetchReturning(fixture) },
+    });
+
+    expect(result.collectedData.length).toBeGreaterThan(0);
   });
 
   it('returns empty defaults when the safety blocks are missing', async () => {

@@ -343,6 +343,26 @@ function dataSafetyRecorder(appId: string, file: string): Recorder {
   };
 }
 
+const MISSING_APP_ID = 'com.adex77.definitely.not.a.real.app';
+const ERROR_PAGE_TAIL_MARKER = '<div id="af-error-page">';
+
+function dataSafetyMissingRecorder(lang: string, file: string, tailOnly: boolean): Recorder {
+  return {
+    name: 'datasafety-missing',
+    async run(client) {
+      const params = new URLSearchParams({ id: MISSING_APP_ID, hl: lang });
+      const html = await client.request({
+        url: `${BASE_URL}/store/apps/datasafety?${params.toString()}`,
+      });
+      const tailStart = html.indexOf(ERROR_PAGE_TAIL_MARKER);
+      if (tailOnly && tailStart === -1) {
+        throw new Error(`no error page container in the ${lang} response`);
+      }
+      await writeFixture(file, tailOnly ? html.slice(tailStart) : html);
+    },
+  };
+}
+
 const SYNTHETIC_DETAILS_LIKE_HTML = `<!doctype html>
 <html lang="en">
   <head>
@@ -434,6 +454,12 @@ const recorders: Recorder[] = [
   }),
   permissionsRecorder('com.google.android.apps.translate', 'permissions/translate.txt'),
   dataSafetyRecorder('com.google.android.apps.translate', 'datasafety/translate.html'),
+  dataSafetyMissingRecorder('pt', 'datasafety/missing-pt.html', false),
+  dataSafetyMissingRecorder('de', 'datasafety/missing-de.tail.html', true),
+  dataSafetyMissingRecorder('ja', 'datasafety/missing-ja.tail.html', true),
+  dataSafetyMissingRecorder('ar', 'datasafety/missing-ar.tail.html', true),
+  dataSafetyMissingRecorder('ru', 'datasafety/missing-ru.tail.html', true),
+  dataSafetyMissingRecorder('zh', 'datasafety/missing-zh.tail.html', true),
   syntheticRecorder('synthetic/details-like.html', SYNTHETIC_DETAILS_LIKE_HTML),
   syntheticRecorder('synthetic/batch-chunked.txt', SYNTHETIC_BATCH_CHUNKED),
 ];

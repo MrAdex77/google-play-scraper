@@ -17,7 +17,7 @@ export const dataSafetyOptionsSchema = z.extend(baseOptionsSchema, {
 export type DataSafetyOptions = z.input<typeof dataSafetyOptionsSchema>;
 
 const DATA_SAFETY_URL = `${BASE_URL}/store/apps/datasafety`;
-const MISSING_APP_MARKER = '<title>Not Found</title>';
+const MISSING_APP_MARKER = 'id="error-section"';
 
 function emptyDataSafetyReport(): DataSafety {
   return dataSafetySchema.parse({
