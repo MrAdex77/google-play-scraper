@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { plainText } from '../../core/htmlText.ts';
 import {
   buildHistogram,
   categoriesFromDetail,
   descriptionHtmlLocalized,
-  descriptionText,
   extractCategories,
   extractComments,
   extractScreenshots,
@@ -30,17 +30,6 @@ describe('descriptionHtmlLocalized', () => {
   it('returns undefined when neither description is a string', () => {
     expect(descriptionHtmlLocalized(detailWithDescriptions(null, null))).toBeUndefined();
     expect(descriptionHtmlLocalized(undefined)).toBeUndefined();
-  });
-});
-
-describe('descriptionText', () => {
-  it('strips markup and converts br tags to line breaks', () => {
-    expect(descriptionText('line one<br>line <b>two</b>')).toBe('line one\nline two');
-  });
-
-  it('returns undefined for a non string value', () => {
-    expect(descriptionText(undefined)).toBeUndefined();
-    expect(descriptionText(42)).toBeUndefined();
   });
 });
 
@@ -160,7 +149,7 @@ describe('categoriesFromDetail', () => {
 
 describe('description sanitization', () => {
   it('strips null bytes and control characters from parsed description text', () => {
-    expect(descriptionText('good\u0000 text\u0007')).toBe('good text');
+    expect(plainText('good\u0000 text\u0007')).toBe('good text');
   });
 
   it('strips control characters from the localized html description', () => {

@@ -1,5 +1,6 @@
 import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.ts';
+import { plainText } from '../../core/htmlText.ts';
 import { getPath, isRecord, type Path } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
 import { deriveScriptDataSelection } from '../../core/scriptData.ts';
@@ -83,7 +84,7 @@ function mapSecurityPractices(value: unknown): unknown {
   }
   return value.map((practice) => ({
     practice: getPath(practice, PRACTICE_LABEL_PATH),
-    description: getPath(practice, PRACTICE_DESCRIPTION_PATH),
+    description: plainText(getPath(practice, PRACTICE_DESCRIPTION_PATH) ?? undefined),
   }));
 }
 

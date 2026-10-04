@@ -35,6 +35,25 @@ describe('cluster item extraction', () => {
     expect(result.score).toBe(4.2);
   });
 
+  it('turns an html summary into plain text', () => {
+    const item = buildClusterItem(undefined);
+    item[4] = [
+      [['Cluster Dev']],
+      [null, [null, [null, 'Hunt &amp; <b>Explore</b><br>It&#39;s &quot;fun&quot;']]],
+    ];
+
+    const result = extract(item, clusterItemSpecs, 'cluster-test');
+
+    expect(result.summary).toBe('Hunt & Explore\nIt\'s "fun"');
+  });
+
+  it('rejects a summary that is not a string', () => {
+    const item = buildClusterItem(undefined);
+    item[4] = [[['Cluster Dev']], [null, [null, [null, 7]]]];
+
+    expect(() => extract(item, clusterItemSpecs, 'cluster-test')).toThrow(SpecError);
+  });
+
   it('treats a missing price cell as a free item costing zero', () => {
     const result = extract(buildClusterItem(undefined), clusterItemSpecs, 'cluster-test');
 

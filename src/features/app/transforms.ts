@@ -1,4 +1,3 @@
-import { htmlToPlainText } from '../../core/htmlText.ts';
 import { getPath } from '../../core/path.ts';
 import { sanitizeText } from '../../core/text.ts';
 import type { AppCategory } from './schema.ts';
@@ -10,13 +9,6 @@ export function descriptionHtmlLocalized(value: unknown): string | undefined {
   const original = getPath(value, [72, 0, 1]);
   const resolved = typeof translated === 'string' && translated.length > 0 ? translated : original;
   return sanitizeText(resolved);
-}
-
-export function descriptionText(html: unknown): string | undefined {
-  if (typeof html !== 'string') {
-    return undefined;
-  }
-  return sanitizeText(htmlToPlainText(html));
 }
 
 export function priceText(value: unknown): string {

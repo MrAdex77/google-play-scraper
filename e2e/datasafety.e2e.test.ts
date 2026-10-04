@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import type { IntegrityEvent } from '../src/index.ts';
+import { expectPlainSafetyReport } from '../test/helpers/plainText.ts';
 import { liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -8,6 +9,13 @@ const UNAVAILABLE_EVERYWHERE_APP = 'br.com.itau';
 const STOREFRONT_RESTRICTED_APP = 'com.vkontakte.android';
 const REGIONAL_PRACTICE_APP = 'com.phonepe.app';
 const SECTIONLESS_APPS = ['com.google.android.gms', 'com.chucklefish.stardewvalley'];
+const LINKED_PRACTICES_APP = 'com.google.android.apps.youtube.kids';
+const LINKED_PRACTICE_STOREFRONTS = [
+  { lang: 'en', country: 'us' },
+  { lang: 'ja', country: 'jp' },
+  { lang: 'ar', country: 'sa' },
+  { lang: 'de', country: 'de' },
+] as const;
 const MISSING_APP_LANGUAGES = ['en', 'pt', 'de', 'ja', 'ar', 'ru', 'fr', 'zh', 'pl', 'ko'];
 const REAL_APP_LANGUAGES = ['pt', 'ja', 'ar', 'ru'];
 const SECTIONLESS_CASES = SECTIONLESS_APPS.flatMap((appId) =>
@@ -43,6 +51,7 @@ liveDescribe('datasafety live contract', () => {
 
     expect(result.privacyPolicyUrl?.startsWith('http')).toBe(true);
     expect(events).toEqual([]);
+    expectPlainSafetyReport(result, 'translate');
   });
 
   it('returns a typed safety report for the Where Am I geography game', async () => {
@@ -57,6 +66,7 @@ liveDescribe('datasafety live contract', () => {
       expect(entry.type.length).toBeGreaterThan(0);
     }
     expect(result.privacyPolicyUrl?.startsWith('http')).toBe(true);
+    expectPlainSafetyReport(result, 'where am i');
   });
 
   it('returns shared data entries with purposes for a data rich social app', async () => {
@@ -73,6 +83,7 @@ liveDescribe('datasafety live contract', () => {
       }
     }
     expect(result.sharedData.some((entry) => entry.purpose !== undefined)).toBe(true);
+    expectPlainSafetyReport(result, 'instagram');
   });
 
   it('localizes the safety report labels for a polish storefront', async () => {
@@ -95,6 +106,19 @@ liveDescribe('datasafety live contract', () => {
     for (const entry of polishReport.collectedData) {
       expect(entry.data.length).toBeGreaterThan(0);
       expect(entry.type.length).toBeGreaterThan(0);
+    }
+    expectPlainSafetyReport(polishReport, 'polish where am i');
+  });
+
+  it('returns plain text security practice descriptions that google serves with links', async () => {
+    for (const { lang, country } of LINKED_PRACTICE_STOREFRONTS) {
+      const report = await liveClient.dataSafety({ appId: LINKED_PRACTICES_APP, lang, country });
+      const described = report.securityPractices.filter(
+        (practice) => (practice.description?.length ?? 0) > 0,
+      );
+
+      expectPlainSafetyReport(report, `${country} youtube kids`);
+      expect(described.length, `${country}: described practices`).toBeGreaterThan(0);
     }
   });
 
@@ -139,6 +163,7 @@ liveDescribe('datasafety live contract', () => {
     expect(result.collectedData.length).toBeGreaterThan(0);
     expect(result.securityPractices.length).toBeGreaterThan(0);
     expect(events).toEqual([]);
+    expectPlainSafetyReport(result, `translate ${lang}`);
   });
 
   it.each(SECTIONLESS_CASES)(

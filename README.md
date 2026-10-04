@@ -254,6 +254,8 @@ Returns an `App` with 55 fields. Trimmed:
 }
 ```
 
+`description`, `summary` and `recentChanges` are plain text: tags are removed, the entities Google uses (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;` and numeric references) are decoded and each `<br>` becomes a newline. Google serves them with markup or entity encoding, so `descriptionHTML` is the one field that keeps the markup. Escape these fields like any other text before inserting them into HTML.
+
 A listing that has not been released yet carries no offer at all. For those apps
 `preregister` is `true`, and `price`, `free` and `priceText` fall back to `0`, `false` and
 `'Free'` rather than describing a real offer. Rating, install and release fields are
@@ -433,6 +435,8 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
   },
 ];
 ```
+
+The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters, not a one line tagline), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. Call [app](#app) for `descriptionHTML` when you need the markup.
 
 Google Play serves a first result page of roughly 20 to 30 apps (50 for single character terms), and fewer for narrow terms. For a minority of queries it also serves a continuation token (verified October 2026: single character terms and digits, and some app names such as `minecraft` or `reddit`), and `search()` and `searchIterator()` follow it until Google ends the results, measured at no more than 250 in total. Continuation results are looser matches than the first page, and they carry `currency` only for paid apps. For every other term the first page is all Google serves, so a `num` above it is best-effort: the returned array may be shorter than requested, never longer, and never repeats an app.
 
@@ -694,6 +698,8 @@ Returns `DataSafety`. Trimmed:
   privacyPolicyUrl: 'https://policies.google.com/privacy'
 }
 ```
+
+Every string in the report is plain text. Google ends some practice descriptions with a link to the Play Families Policy or to the App Defense Alliance security standard; the library removes the tag and keeps its text, so the description reads `...against a global security standard. See details`, the same way links are handled in the `app` `description`.
 
 ### categories
 
@@ -1177,14 +1183,16 @@ This package follows [Semantic Versioning](https://semver.org). For a scraper th
 
 Integrity diagnostics use the additive API choice (Option B): the existing `DegradationEvent.reason` remains exactly `'cluster-page-parse'`, and the four new reasons live on the opt-in `onIntegrityEvent` callback. This keeps exhaustive switches over `DegradationEvent.reason` and narrowly typed `onDegradation` handlers intact while adding observability without a major release. `IntegrityReason` itself is a widening union, so a new reason is a minor release and an exhaustive switch over it needs a new arm.
 
-| Change                                                            | Release |
-| ----------------------------------------------------------------- | ------- |
-| Removing or renaming an exported function, option, or constant    | major   |
-| Removing a field from a result schema, or changing its type       | major   |
-| Raising the Node.js support floor or dropping a module format     | major   |
-| Adding a new method, option, or optional result field             | minor   |
-| Adding a reason to `IntegrityReason`                              | minor   |
-| Restoring extraction of a field after a Google Play layout change | patch   |
+| Change                                                                   | Release                                    |
+| ------------------------------------------------------------------------ | ------------------------------------------ |
+| Removing or renaming an exported function, option, or constant           | major                                      |
+| Removing a field from a result schema, or changing its type              | major                                      |
+| Raising the Node.js support floor or dropping a module format            | major                                      |
+| Adding a new method, option, or optional result field                    | minor                                      |
+| Adding a reason to `IntegrityReason`                                     | minor                                      |
+| Restoring extraction of a field after a Google Play layout change        | patch                                      |
+| Correcting how a documented plain text field is decoded, same type       | patch                                      |
+| Turning a documented markup string field into plain text, or the reverse | minor, with a security note in the release |
 
 What semver cannot cover is the content behind those shapes. Google Play changes its markup a few times a year, and a field can start coming back `undefined`, empty, or degraded without any release of this package. The policy for that case:
 
@@ -1199,6 +1207,8 @@ To watch for drift in your own production use, wire up [`onDegradation`](#monito
 The method names, options, and constants are the same, so most code keeps working after swapping the import. Watch for these differences:
 
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
+- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google: item summaries and changelogs carry tags such as `<br>`, `<b>` and `<font color=...>`, and all of them carry entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Treat the values as decoded text: do not decode entities or strip tags a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that rendered these fields with `innerHTML` should switch to `descriptionHTML` from `app`, or to escaped text styled with `white-space: pre-line`. **Security:** never pass `summary` or `recentChanges` to `innerHTML` after upgrading. Text that a developer typed as `<img src=x onerror=...>` now reaches you as that literal string, which `innerHTML` would execute, while the original returned it escaped.
+- `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.

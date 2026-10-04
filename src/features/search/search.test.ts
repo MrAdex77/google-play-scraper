@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createSearch, search, type SearchOptions } from './search.ts';
 import {
   filterByPrice,
@@ -22,7 +22,13 @@ import { searchResultSchema, type SearchResult } from './schema.ts';
 import type { App } from '../app/schema.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
+import { plainText } from '../../core/htmlText.ts';
+import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
 import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
+
+vi.mock(import('../../core/htmlText.ts'), { spy: true });
+
+const plainTextSpy = vi.mocked(plainText);
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -113,6 +119,34 @@ describe('search fixture parsing', () => {
     }
     expect(new Set(results.map((item) => item.appId)).size).toBe(results.length);
     expect(results.some((item) => item.free && item.price === 0)).toBe(true);
+  });
+
+  it('returns plain text summaries for every recorded page', async () => {
+    const fixtures = [pandaHtml, whereAmIHtml, biedronkaHtml];
+
+    for (const html of fixtures) {
+      plainTextSpy.mockClear();
+      const results = (await search({
+        term: 'recorded',
+        num: 30,
+        requestOptions: { fetchImpl: fetchReturning(html) },
+      })) as SearchResult[];
+
+      expectConvertedSummaries(plainTextSpy, results, 'recorded search');
+    }
+  });
+
+  it('decodes the entities and line breaks of a recorded panda summary', async () => {
+    const results = (await search({
+      term: 'panda',
+      num: 30,
+      requestOptions: { fetchImpl: fetchReturning(pandaHtml) },
+    })) as SearchResult[];
+
+    const restaurant = results.find((item) => item.summary?.startsWith('If you are an avid fan'));
+    expect(restaurant?.summary).toContain("Little Panda's Restaurant");
+    const noodle = results.find((item) => item.summary?.startsWith('Panda Noodle'));
+    expect(noodle?.summary).toContain('simulation game.\n\nLooking for a fun');
   });
 
   it('finds the Where Am I game among the where am i results', async () => {
@@ -728,6 +762,17 @@ describe('search exact match resolution', () => {
 
     expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
     expect(events).toEqual([]);
+  });
+
+  it('turns the exact match card summary into plain text', async () => {
+    const detail = exactMatchDetail('x');
+    detail[73] = [[null, 'Hunt &amp; Explore<br>the &quot;wild&quot;']];
+    const card = exactMatchCard('x', detail, primaryOfferNode('x'));
+    const html = searchPageWithSections([cardSection(card), sectionWithApps(['a'])]);
+
+    const results = await searchOn(html);
+
+    expect(results[0]?.summary).toBe('Hunt & Explore\nthe "wild"');
   });
 
   it('prepends a card anchored in a later section', async () => {

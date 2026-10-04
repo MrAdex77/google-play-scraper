@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createList, list, type ListOptions } from './list.ts';
 import { listItemSchema, type ListItem } from './schema.ts';
 import { buildListBody, CLUSTER_NAMES, LIST_RPC_ID } from './specs.ts';
@@ -8,6 +8,12 @@ import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import type { OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
+import { plainText } from '../../core/htmlText.ts';
+import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
+
+vi.mock(import('../../core/htmlText.ts'), { spy: true });
+
+const plainTextSpy = vi.mocked(plainText);
 
 const topFreeGame = readFileSync(
   fileURLToPath(new URL('../../../test/fixtures/list/topfree-game.txt', import.meta.url)),
@@ -127,6 +133,21 @@ describe('list fixture parsing', () => {
     }
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
     expect(items.some((item) => item.free && item.price === 0)).toBe(true);
+  });
+
+  it('returns plain text summaries for every recorded item', async () => {
+    plainTextSpy.mockClear();
+    const items = (await list({
+      collection: 'TOP_FREE',
+      category: 'GAME',
+      num: 100,
+      requestOptions: { fetchImpl: fetchReturning(topFreeGame) },
+    })) as ListItem[];
+
+    expectConvertedSummaries(plainTextSpy, items, 'top free game');
+    const holeStars = items.find((item) => item.summary?.startsWith('Hole Stars'));
+    expect(holeStars?.summary).toContain('Shine\n\nLooking for a game that\u2019s fun');
+    expect(holeStars?.summary).toContain("Whether you're sorting");
   });
 });
 

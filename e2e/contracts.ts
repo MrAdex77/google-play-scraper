@@ -1,5 +1,6 @@
 import { expect } from 'vitest';
 import type { App, AppItem, Review, ReviewsResult } from '../src/index.ts';
+import { oraclePlainText } from '../test/helpers/plainText.ts';
 
 const PLAY_ORIGIN = 'https://play.google.com';
 const HTTPS_PROTOCOL = 'https:';
@@ -383,6 +384,9 @@ export function expectListingContract(listing: App, label: string): void {
     listing.descriptionHTML.length,
     `${scoped}: descriptionHTML must not be empty`,
   ).toBeGreaterThan(0);
+  expect(listing.description, `${scoped}: description must be descriptionHTML decoded once`).toBe(
+    oraclePlainText(listing.descriptionHTML),
+  );
   expect(listing.developer.length, `${scoped}: developer must not be empty`).toBeGreaterThan(0);
   expect(listing.developerId.length, `${scoped}: developerId must not be empty`).toBeGreaterThan(0);
   expect(listing.genreId.length, `${scoped}: genreId must not be empty`).toBeGreaterThan(0);

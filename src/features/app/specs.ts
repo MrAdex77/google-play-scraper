@@ -2,7 +2,7 @@ import { developerIdFromUrl, microsToUnits } from '../../core/appItemTransforms.
 import { getPath, isRecord } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
 import { deriveScriptDataSelection } from '../../core/scriptData.ts';
-import { sanitizeText } from '../../core/text.ts';
+import { plainText } from '../../core/htmlText.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
 import * as z from 'zod/mini';
 import { appSchema } from './schema.ts';
@@ -10,7 +10,6 @@ import {
   buildHistogram,
   categoriesFromDetail,
   descriptionHtmlLocalized,
-  descriptionText,
   extractScreenshots,
   normalizeAndroidVersion,
   priceText,
@@ -84,7 +83,7 @@ export const appSpecs = {
     paths: [[1, 2]],
     missing: REQUIRED,
     schema: shape.description,
-    transform: (value) => descriptionText(descriptionHtmlLocalized(value)),
+    transform: (value) => plainText(descriptionHtmlLocalized(value)),
   },
   descriptionHTML: {
     paths: [[1, 2]],
@@ -92,7 +91,12 @@ export const appSpecs = {
     schema: shape.descriptionHTML,
     transform: descriptionHtmlLocalized,
   },
-  summary: { paths: [[1, 2, 73, 0, 1]], missing: OPTIONAL, schema: shape.summary },
+  summary: {
+    paths: [[1, 2, 73, 0, 1]],
+    missing: OPTIONAL,
+    schema: shape.summary,
+    transform: plainText,
+  },
   installs: { paths: [[1, 2, 13, 0]], missing: OPTIONAL, schema: shape.installs },
   minInstalls: { paths: [[1, 2, 13, 1]], missing: OPTIONAL, schema: shape.minInstalls },
   maxInstalls: { paths: [[1, 2, 13, 2]], missing: OPTIONAL, schema: shape.maxInstalls },
@@ -313,7 +317,7 @@ export const appSpecs = {
     ],
     missing: OPTIONAL,
     schema: shape.recentChanges,
-    transform: sanitizeText,
+    transform: plainText,
   },
   preregister: {
     paths: [[1, 2, 18, 0]],

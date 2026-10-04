@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDeveloper, developer, type DeveloperOptions } from './developer.ts';
 import { developerAppSchema, type DeveloperApp } from './schema.ts';
 import { developerUrl } from './specs.ts';
@@ -9,6 +9,12 @@ import type { App } from '../app/schema.ts';
 import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
+import { plainText } from '../../core/htmlText.ts';
+import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
+
+vi.mock(import('../../core/htmlText.ts'), { spy: true });
+
+const plainTextSpy = vi.mocked(plainText);
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -253,6 +259,23 @@ describe('developer fixture parsing', () => {
       expect(() => developerAppSchema.parse(item)).not.toThrow();
     }
     expect(items.map((item) => item.appId)).toContain('com.mojang.minecraftpe');
+  });
+
+  it('returns plain text summaries for both recorded developer pages', async () => {
+    plainTextSpy.mockClear();
+    const mojang = (await developer({
+      devId: 'Mojang',
+      requestOptions: { fetchImpl: fetchReturning(mojangHtml) },
+    })) as DeveloperApp[];
+    const google = (await developer({
+      devId: '5700313618786177705',
+      requestOptions: { fetchImpl: fetchReturning(googleHtml) },
+    })) as DeveloperApp[];
+
+    expectConvertedSummaries(plainTextSpy, mojang, 'mojang');
+    expectConvertedSummaries(plainTextSpy, google, 'google');
+    const education = mojang.find((item) => item.summary?.startsWith('THIS APP IS FOR SCHOOL'));
+    expect(education?.summary).toContain('USE. \n\nMinecraft Education');
   });
 });
 
