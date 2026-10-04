@@ -30,7 +30,10 @@ function fixtureDescriptionHtml(name: string): string {
 
 function fixtureRecentChangesHtml(name: string): string {
   const changes = getPath(fixtureDetailsRoot(name), [1, 2, 144, 1, 1]);
-  return typeof changes === 'string' ? changes : '';
+  if (typeof changes !== 'string') {
+    throw new Error(`${name} fixture has no changelog at the recorded path`);
+  }
+  return changes;
 }
 
 const SYNTHETIC_CORPUS = [

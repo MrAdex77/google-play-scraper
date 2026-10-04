@@ -242,6 +242,21 @@ describe('app', () => {
     ).rejects.toBeInstanceOf(SpecError);
   });
 
+  it('rejects a changelog that is not a string', async () => {
+    const data = parseScriptData(translateHtml);
+    const ds5 = data.blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    const changelogHolder = (details[144] as unknown[])[1] as unknown[];
+    changelogHolder[1] = 42;
+
+    await expect(
+      app({
+        appId: 'com.google.android.apps.translate',
+        requestOptions: { fetchImpl: fetchReturning(buildScriptData('ds:5', ds5)) },
+      }),
+    ).rejects.toBeInstanceOf(SpecError);
+  });
+
   it('resolves version, update time, and changelog through the shifted fallback paths', async () => {
     const appId = 'com.google.android.apps.translate';
     const baseline = await app({
