@@ -72,6 +72,7 @@ liveDescribe('permissions live contract', () => {
       const detailed = (await liveClient.permissions({ appId })) as AppPermission[];
       const short = (await liveClient.permissions({ appId, short: true })) as string[];
 
+      expect(short.length, `${appId} declares common permissions`).toBeGreaterThan(0);
       expect(new Set(short).size, `${appId} short output repeats a permission`).toBe(short.length);
       expect(short, `${appId} short output drifted from the detailed entries`).toEqual(
         uniqueCommonPermissions(detailed),
@@ -91,7 +92,7 @@ liveDescribe('permissions live contract', () => {
     expect(new Set(pairs).size).toBe(detailed.length);
   });
 
-  it('groups an other only listing under named groups without common entries', async () => {
+  it('names every group of an other only listing and keeps short in step', async () => {
     const detailed = (await liveClient.permissions({
       appId: OTHER_ONLY_PREREGISTRATION,
     })) as AppPermission[];

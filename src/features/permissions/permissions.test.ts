@@ -251,6 +251,15 @@ describe('permissions group field', () => {
     expect(await entriesFor('none')).toEqual([]);
   });
 
+  it('names a group in both sections of the owned anchor', async () => {
+    const entries = await entriesFor('where-am-i');
+
+    expect(new Set(entries.map((entry) => entry.type))).toEqual(
+      new Set([permission.COMMON, permission.OTHER]),
+    );
+    expect(entries.every((entry) => entry.group.length > 0)).toBe(true);
+  });
+
   it('rejects an entry without a group in the result schema', () => {
     expect(() =>
       permissionSchema.parse({ permission: 'camera', type: permission.COMMON }),
