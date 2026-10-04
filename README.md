@@ -442,7 +442,7 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
 ];
 ```
 
-The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters, not a one line tagline), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. `summaryHTML` carries the same cell with its markup, for callers that render HTML (sanitize it first, as for [app](#app)).
+The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters, not a one-line tagline), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. `summaryHTML` carries the same cell with its markup, for callers that render HTML (sanitize it first, as for [app](#app)).
 
 Google Play serves a first result page of roughly 20 to 30 apps (50 for single character terms), and fewer for narrow terms. For a minority of queries it also serves a continuation token (verified October 2026: single character terms and digits, and some app names such as `minecraft` or `reddit`), and `search()` and `searchIterator()` follow it until Google ends the results, measured at no more than 250 in total. Continuation results are looser matches than the first page, and they carry `currency` only for paid apps. For every other term the first page is all Google serves, so a `num` above it is best-effort: the returned array may be shorter than requested, never longer, and never repeats an app.
 
