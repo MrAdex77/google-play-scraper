@@ -9,6 +9,9 @@ const STOREFRONT_RESTRICTED_APP = 'com.vkontakte.android';
 const SECTIONLESS_APPS = ['com.google.android.gms', 'com.chucklefish.stardewvalley'];
 const MISSING_APP_LANGUAGES = ['en', 'pt', 'de', 'ja', 'ar', 'ru', 'fr', 'zh', 'pl', 'ko'];
 const REAL_APP_LANGUAGES = ['pt', 'ja', 'ar', 'ru'];
+const SECTIONLESS_CASES = SECTIONLESS_APPS.flatMap((appId) =>
+  ['en', 'pt', 'ja'].map((lang) => ({ appId, lang })),
+);
 
 const EMPTY_REPORT = {
   sharedData: [],
@@ -137,16 +140,20 @@ liveDescribe('datasafety live contract', () => {
     expect(events).toEqual([]);
   });
 
-  it.each(SECTIONLESS_APPS)(
-    'resolves a typed report for %s whose safety section may be empty',
-    async (appId) => {
-      for (const lang of ['en', 'pt', 'ja']) {
-        const result = await liveClient.dataSafety({ appId, lang });
+  it.each(SECTIONLESS_CASES)(
+    'resolves $appId in $lang without integrity events although its safety section may be empty',
+    async ({ appId, lang }) => {
+      const events: IntegrityEvent[] = [];
+      const result = await liveClient.dataSafety({
+        appId,
+        lang,
+        onIntegrityEvent: (event) => events.push(event),
+      });
 
-        expect(Array.isArray(result.sharedData)).toBe(true);
-        expect(Array.isArray(result.collectedData)).toBe(true);
-        expect(Array.isArray(result.securityPractices)).toBe(true);
-      }
+      expect(Array.isArray(result.sharedData)).toBe(true);
+      expect(Array.isArray(result.collectedData)).toBe(true);
+      expect(Array.isArray(result.securityPractices)).toBe(true);
+      expect(events).toEqual([]);
     },
   );
 
