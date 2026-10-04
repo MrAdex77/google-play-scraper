@@ -1195,15 +1195,16 @@ This package follows [Semantic Versioning](https://semver.org). For a scraper th
 
 Integrity diagnostics use the additive API choice (Option B): the existing `DegradationEvent.reason` remains exactly `'cluster-page-parse'`, and the four new reasons live on the opt-in `onIntegrityEvent` callback. This keeps exhaustive switches over `DegradationEvent.reason` and narrowly typed `onDegradation` handlers intact while adding observability without a major release. `IntegrityReason` itself is a widening union, so a new reason is a minor release and an exhaustive switch over it needs a new arm.
 
-| Change                                                            | Release |
-| ----------------------------------------------------------------- | ------- |
-| Removing or renaming an exported function, option, or constant    | major   |
-| Removing a field from a result schema, or changing its type       | major   |
-| Raising the Node.js support floor or dropping a module format     | major   |
-| Adding a new method, option, or optional result field             | minor   |
-| Adding a reason to `IntegrityReason`                              | minor   |
-| Restoring extraction of a field after a Google Play layout change | patch   |
-| Correcting the text a documented string field carries, same type  | patch   |
+| Change                                                                   | Release                                    |
+| ------------------------------------------------------------------------ | ------------------------------------------ |
+| Removing or renaming an exported function, option, or constant           | major                                      |
+| Removing a field from a result schema, or changing its type              | major                                      |
+| Raising the Node.js support floor or dropping a module format            | major                                      |
+| Adding a new method, option, or optional result field                    | minor                                      |
+| Adding a reason to `IntegrityReason`                                     | minor                                      |
+| Restoring extraction of a field after a Google Play layout change        | patch                                      |
+| Correcting how a documented plain text field is decoded, same type       | patch                                      |
+| Turning a documented markup string field into plain text, or the reverse | minor, with a security note in the release |
 
 What semver cannot cover is the content behind those shapes. Google Play changes its markup a few times a year, and a field can start coming back `undefined`, empty, or degraded without any release of this package. The policy for that case:
 
@@ -1218,7 +1219,7 @@ To watch for drift in your own production use, wire up [`onDegradation`](#monito
 The method names, options, and constants are the same, so most code keeps working after swapping the import. Watch for these differences:
 
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
-- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google: item summaries and changelogs carry tags such as `<br>`, `<b>` and `<font color=...>`, and all of them carry entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Treat the values as decoded text: do not decode entities or strip tags a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that rendered these fields with `innerHTML` should read the markup twins `summaryHTML` and `recentChangesHTML` instead (they hold what the original returned), passed through an HTML sanitizer, or render the escaped text styled with `white-space: pre-line`.
+- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google: item summaries and changelogs carry tags such as `<br>`, `<b>` and `<font color=...>`, and all of them carry entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Treat the values as decoded text: do not decode entities or strip tags a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that rendered these fields with `innerHTML` should read the markup twins `summaryHTML` and `recentChangesHTML` instead (they hold what the original returned), passed through an HTML sanitizer, or render the escaped text styled with `white-space: pre-line`. **Security:** never pass these fields to `innerHTML` after upgrading. Text that a developer typed as `<img src=x onerror=...>` now reaches you as that literal string, which `innerHTML` would execute, while the original returned it escaped.
 - `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept, and `descriptionHTML` keeps the original markup.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
