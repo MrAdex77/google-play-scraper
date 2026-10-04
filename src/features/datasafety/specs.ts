@@ -84,7 +84,7 @@ function mapSecurityPractices(value: unknown): unknown {
   }
   return value.map((practice) => ({
     practice: getPath(practice, PRACTICE_LABEL_PATH),
-    description: plainText(getPath(practice, PRACTICE_DESCRIPTION_PATH)),
+    description: plainText(getPath(practice, PRACTICE_DESCRIPTION_PATH) ?? undefined),
   }));
 }
 

@@ -277,6 +277,21 @@ describe('datasafety degraded pages', () => {
     ]);
   });
 
+  it('reads a null security practice description as missing', async () => {
+    const node138: unknown[] = [];
+    node138[9] = [null, null, [[null, 'Data is encrypted in transit', [null, null]]]];
+    const html = buildDataSafetyHtml(wrapSafetyNode({ '138': node138 }));
+
+    const result = await dataSafety({
+      appId: TRANSLATE,
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    });
+
+    expect(result.securityPractices).toEqual([
+      { practice: 'Data is encrypted in transit', description: undefined },
+    ]);
+  });
+
   it('rejects a security practice description that is not a string', async () => {
     const node138: unknown[] = [];
     node138[9] = [null, null, [[null, 'Data is encrypted', [null, 7]]]];
