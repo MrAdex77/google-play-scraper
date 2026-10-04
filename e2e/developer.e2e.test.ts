@@ -41,6 +41,12 @@ const GOOGLE_NAME_QUERY: DeveloperQuery = {
 const NETFLIX_NAME = 'Netflix, Inc.';
 const MULTI_PAGE_NUM = 100;
 const CATALOG_PROBE = 500;
+const ROUND_TRIP_ANCHORS = [
+  { appId: 'com.whatsapp', developer: 'WhatsApp LLC', shape: 'a name with a space' },
+  { appId: 'com.tdr3.hs.android', developer: 'Fourth Enterprises, LLC', shape: 'a comma name' },
+  { appId: 'com.hm.ged', developer: 'H&M', shape: 'a name with an ampersand' },
+  { appId: 'com.flyersoft.moonreaderp', developer: 'Moon+', shape: 'a name with a literal plus' },
+] as const;
 const PAID_CATALOGUE_DEV_ID = '8792077038568095073';
 const PAID_CATALOGUE_NUM = 60;
 const OFFER_SAMPLE_SIZE = 4;
@@ -197,6 +203,25 @@ liveDescribe('developer live contract', () => {
     }
     expect(events).toEqual([]);
   });
+
+  it.each(ROUND_TRIP_ANCHORS)(
+    'feeds app().developerId straight back into developer() for $shape',
+    async ({ appId, developer }) => {
+      const details = await liveClient.app({ appId });
+
+      expect(details.developerId, `${appId} developerId must be the plain name`).toBe(developer);
+      const items = (await liveClient.developer({
+        devId: details.developerId,
+        num: 10,
+      })) as DeveloperApp[];
+
+      expect(items.length, `${appId} developer page served no apps`).toBeGreaterThan(0);
+      expectAppItemsContract(items, `${appId} round trip`);
+      for (const item of items) {
+        expect(item.developer).toBe(developer);
+      }
+    },
+  );
 
   it('rejects an unknown numeric developer id with a NotFoundError', async () => {
     await expect(liveClient.developer({ devId: '9999999999999999999' })).rejects.toBeInstanceOf(
