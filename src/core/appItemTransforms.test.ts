@@ -43,6 +43,10 @@ describe('app item transforms', () => {
     ['/store/apps/developer?id=%E3%82%B3%E3%83%9F%E3%83%81', 'コミチ'],
     ['/store/apps/dev?id=5700313618786177705&hl=en', '5700313618786177705'],
     ['https://play.google.com/store/apps/developer?id=Mojang', 'Mojang'],
+    ['/store/apps/developer?id=Mojang#details', 'Mojang'],
+    ['/store/apps/developer?pid=1&id=Mojang', 'Mojang'],
+    ['/store/apps/developer?id=Mojang&id=Other', 'Mojang'],
+    ['/store/apps/developer?id=A%23B', 'A#B'],
   ])('decodes the id parameter of %s', (link, expected) => {
     expect(developerIdFromUrl(link)).toBe(expected);
   });
