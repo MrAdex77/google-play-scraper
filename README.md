@@ -709,7 +709,7 @@ Returns `DataSafety`. Trimmed:
 }
 ```
 
-Every string in the report is plain text. Google ends some practice descriptions with a link to the Play Families Policy or to the App Defense Alliance security standard; the library removes the tag and keeps its text, so the description reads `...against a global security standard. See details`, the same way links are handled in the `app` `description`. `descriptionHTML` keeps the description as Google serves it, link included.
+Every string in the report except `descriptionHTML` is plain text. Google ends some practice descriptions with a link to the Play Families Policy or to the App Defense Alliance security standard; the library removes the tag and keeps its text, so the description reads `...against a global security standard. See details`, the same way links are handled in the `app` `description`. `descriptionHTML` keeps the description as Google serves it, link included.
 
 ### categories
 
@@ -754,6 +754,8 @@ Returns a [shared client](#shared-client) whose promise-returning methods share 
 | `onIntegrityEvent` | `function` | none     | Client-level integrity callback. See [Monitoring drift](#monitoring-drift).                                                                  |
 | `maxAgeMs`         | `number`   | `300000` | Time to live per cache entry, in milliseconds, counted from the moment the filling request completes. A positive integer up to `2147483647`. |
 | `max`              | `number`   | `1000`   | Maximum number of cached entries. A positive integer up to `1000000`.                                                                        |
+
+`max` counts entries, not bytes. A `list`, `search`, `developer` or `similar` result keeps every item summary twice (`summary` and `summaryHTML`), and Google fills that cell with the whole description, so one entry for 100 items holds roughly 0.5 MB of text. Size `max` for the result shapes you cache.
 
 ```typescript
 import { memoized } from '@mradex77/google-play-scraper';
