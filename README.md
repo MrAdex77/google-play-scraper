@@ -676,7 +676,7 @@ import { dataSafety } from '@mradex77/google-play-scraper';
 const safety = await dataSafety({ appId: 'com.google.android.apps.translate' });
 ```
 
-`lang` localizes the labels and `country` selects the storefront. The report content is the same in every country, but an app that Google Play withholds from a country has no report there, so it resolves with the empty report described under [Failure behavior](#failure-behavior). An app that does not exist resolves the same way in every language.
+`lang` localizes the labels and `country` selects the storefront. Most reports are identical across countries, but a storefront can add regional entries (the Indian storefront adds a "UPI payments verified" security practice to payment apps), and an app that Google Play withholds from a country has no report there, so it resolves with the empty report described under [Failure behavior](#failure-behavior). An app that does not exist resolves the same way in every language.
 
 Returns `DataSafety`. Trimmed:
 
