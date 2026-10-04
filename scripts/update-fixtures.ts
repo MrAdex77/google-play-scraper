@@ -378,6 +378,7 @@ const recorders: Recorder[] = [
   appPageRecorder('com.google.android.apps.translate', 'app/translate.html'),
   appPageRecorder('com.mojang.minecraftpe', 'app/minecraft.html'),
   appPageRecorder('com.adex77.WhereAmI', 'app/whereami.html'),
+  appPageRecorder('com.whatsapp', 'app/whatsapp.html'),
   searchHtmlRecorder('panda', 'search/panda.html'),
   searchHtmlRecorder('where am i', 'search/where-am-i.html'),
   searchHtmlRecorder('biedronka', 'search/biedronka-pl.html', { country: 'pl', lang: 'pl' }),

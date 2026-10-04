@@ -49,13 +49,6 @@ function histogramCount(container: unknown, star: number): number {
   return typeof bucket === 'number' ? bucket : 0;
 }
 
-export function developerIdFromUrl(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  return value.split('id=')[1];
-}
-
 export function extractComments(root: unknown): string[] {
   const comments = getPath(root, [0]);
   if (!Array.isArray(comments)) {

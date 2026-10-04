@@ -500,6 +500,15 @@ const apps = await developer({ devId: '5700313618786177705' });
 
 Returns `DeveloperApp[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result.
 
+The `developerId` that [app](#app) returns (and the one a [search](#search) exact match carries) is already in this form, so it can be passed straight back: a numeric id for developers Google links by number, otherwise the plain developer name such as `WhatsApp LLC`, `H&M` or `Moon+`. It is the decoded name, never the form encoded query value (`WhatsApp+LLC`, `H%26M`) that the Google Play link holds; the library encodes it again when it builds the request.
+
+```typescript
+import { app, developer } from '@mradex77/google-play-scraper';
+
+const whatsapp = await app({ appId: 'com.whatsapp' });
+const catalogue = await developer({ devId: whatsapp.developerId });
+```
+
 ### similar
 
 Returns apps related to a given app.
@@ -1188,6 +1197,7 @@ The method names, options, and constants are the same, so most code keeps workin
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
+- `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
 - The package is ESM first with a CommonJS build; the default export is the aggregate client and named exports are also available.
 
 ### Deriving from the exported schemas

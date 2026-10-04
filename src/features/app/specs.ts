@@ -1,4 +1,4 @@
-import { microsToUnits } from '../../core/appItemTransforms.ts';
+import { developerIdFromUrl, microsToUnits } from '../../core/appItemTransforms.ts';
 import { getPath, isRecord } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
 import { deriveScriptDataSelection } from '../../core/scriptData.ts';
@@ -11,7 +11,6 @@ import {
   categoriesFromDetail,
   descriptionHtmlLocalized,
   descriptionText,
-  developerIdFromUrl,
   extractScreenshots,
   normalizeAndroidVersion,
   priceText,

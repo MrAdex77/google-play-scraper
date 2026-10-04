@@ -4,7 +4,6 @@ import {
   categoriesFromDetail,
   descriptionHtmlLocalized,
   descriptionText,
-  developerIdFromUrl,
   extractCategories,
   extractComments,
   extractScreenshots,
@@ -75,19 +74,6 @@ describe('buildHistogram', () => {
 
   it('fills zeros when the container is missing', () => {
     expect(buildHistogram(undefined)).toEqual({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
-  });
-});
-
-describe('developerIdFromUrl', () => {
-  it('takes everything after the id parameter', () => {
-    expect(developerIdFromUrl('/store/apps/dev?id=5700313618786177705')).toBe(
-      '5700313618786177705',
-    );
-  });
-
-  it('returns undefined without an id parameter or for non strings', () => {
-    expect(developerIdFromUrl('/store/apps/dev')).toBeUndefined();
-    expect(developerIdFromUrl(undefined)).toBeUndefined();
   });
 });
 

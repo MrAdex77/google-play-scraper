@@ -13,3 +13,10 @@ export function microsToUnits(value: unknown): number | undefined {
 export function isFreeMicros(value: unknown): boolean {
   return value === 0;
 }
+
+export function developerIdFromUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  return URL.parse(value, BASE_URL)?.searchParams.get('id') ?? undefined;
+}
