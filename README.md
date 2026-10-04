@@ -699,6 +699,8 @@ Returns `DataSafety`. Trimmed:
 }
 ```
 
+Every string in the report is plain text. Google ends some practice descriptions with a link to the Play Families Policy or to the App Defense Alliance security standard; the library removes the tag and keeps its text, so the description reads `...against a global security standard. See details`, the same way links are handled in the `app` `description`.
+
 ### categories
 
 Returns the Google Play category taxonomy as a list of category ids.
@@ -1205,6 +1207,7 @@ The method names, options, and constants are the same, so most code keeps workin
 
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
 - `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google: item summaries and changelogs carry tags such as `<br>`, `<b>` and `<font color=...>`, and all of them carry entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Treat the values as decoded text: do not decode entities or strip tags a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that rendered these fields with `innerHTML` should switch to `descriptionHTML` from `app`, or to escaped text styled with `white-space: pre-line`.
+- `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
