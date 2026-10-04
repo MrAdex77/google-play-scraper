@@ -1,13 +1,8 @@
-import * as cheerio from 'cheerio';
 import { expect, it } from 'vitest';
 import { htmlToPlainText } from '../src/core/htmlText.ts';
 import { sanitizeText } from '../src/core/text.ts';
+import { cheerioText } from '../test/helpers/plainText.ts';
 import { liveClient, liveDescribe } from './helpers.ts';
-
-function legacyDescriptionText(html: string): string {
-  const document = cheerio.load(`<div>${html.replace(/<br>/g, '\r\n')}</div>`);
-  return document('div').text();
-}
 
 const SUPPORTED_NAMED_ENTITIES = new Set(['amp', 'lt', 'gt', 'quot', 'apos', 'nbsp']);
 const ALLOWED_TAG = /^<\/?(?:b|i|u|br)\s*\/?>$/;
@@ -72,7 +67,7 @@ liveDescribe('description live parity without cheerio', () => {
       expect(html.length).toBeGreaterThan(0);
       expect(result.description.length).toBeGreaterThan(0);
 
-      expect(htmlToPlainText(html)).toBe(legacyDescriptionText(html));
+      expect(htmlToPlainText(html)).toBe(cheerioText(html));
       expect(result.description).toBe(sanitizeText(htmlToPlainText(html)));
 
       expect(

@@ -67,6 +67,12 @@ describe('expectConvertedOnce', () => {
 });
 
 describe('oraclePlainText', () => {
+  it('reads nested division markup once', () => {
+    const html = '<div><p>Real ones</p><br><div>nested</div></div><br>tail';
+
+    expect(oraclePlainText(html)).toBe('Real ones\nnested\ntail');
+  });
+
   it('matches the converter on google markup and escaped literals', () => {
     for (const input of [GOOGLE_MARKUP, ...ESCAPED_LITERALS]) {
       expect(oraclePlainText(input)).toBe(plainText(input));
