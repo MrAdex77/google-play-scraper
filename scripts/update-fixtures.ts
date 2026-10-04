@@ -24,6 +24,7 @@ import {
   reviewsUrl,
 } from '../src/features/reviews/specs.ts';
 import { buildPermissionsBody, permissionsUrl } from '../src/features/permissions/specs.ts';
+import { dataSafetyUrl } from '../src/features/datasafety/specs.ts';
 import { getPath } from '../src/core/path.ts';
 import {
   buildClusterBody,
@@ -334,10 +335,7 @@ function dataSafetyRecorder(appId: string, file: string): Recorder {
   return {
     name: 'datasafety',
     async run(client) {
-      const params = new URLSearchParams({ id: appId, hl: 'en' });
-      const html = await client.request({
-        url: `${BASE_URL}/store/apps/datasafety?${params.toString()}`,
-      });
+      const html = await client.request({ url: dataSafetyUrl(appId, 'en', 'us') });
       await writeFixture(file, html);
     },
   };
@@ -350,10 +348,7 @@ function dataSafetyMissingRecorder(lang: string, file: string, tailOnly: boolean
   return {
     name: 'datasafety-missing',
     async run(client) {
-      const params = new URLSearchParams({ id: MISSING_APP_ID, hl: lang });
-      const html = await client.request({
-        url: `${BASE_URL}/store/apps/datasafety?${params.toString()}`,
-      });
+      const html = await client.request({ url: dataSafetyUrl(MISSING_APP_ID, lang, 'us') });
       const tailStart = html.indexOf(ERROR_PAGE_TAIL_MARKER);
       if (tailOnly && tailStart === -1) {
         throw new Error(`no error page container in the ${lang} response`);

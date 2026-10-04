@@ -1,12 +1,16 @@
 import * as z from 'zod/mini';
-import { BASE_URL } from '../../constants.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { resolveScriptRoot } from '../../core/scriptRoot.ts';
 import { extract } from '../../core/spec.ts';
 import { dataSafetySchema, type DataSafety } from './schema.ts';
-import { dataSafetyRootSpec, dataSafetyScriptDataSelection, dataSafetySpecs } from './specs.ts';
+import {
+  dataSafetyRootSpec,
+  dataSafetyScriptDataSelection,
+  dataSafetySpecs,
+  dataSafetyUrl,
+} from './specs.ts';
 
 const DATA_SAFETY_CONTEXT = 'dataSafety';
 
@@ -16,7 +20,6 @@ export const dataSafetyOptionsSchema = z.extend(baseOptionsSchema, {
 
 export type DataSafetyOptions = z.input<typeof dataSafetyOptionsSchema>;
 
-const DATA_SAFETY_URL = `${BASE_URL}/store/apps/datasafety`;
 const MISSING_APP_MARKER = 'id="error-section"';
 
 function emptyDataSafetyReport(): DataSafety {
@@ -32,11 +35,10 @@ export function createDataSafety(resolveClient: ResolveClient = clientFromOption
   return async function dataSafety(options: DataSafetyOptions): Promise<DataSafety> {
     const parsed = parseOptions(dataSafetyOptionsSchema, options, DATA_SAFETY_CONTEXT);
 
-    const params = new URLSearchParams({ id: parsed.appId, hl: parsed.lang, gl: parsed.country });
-    const url = `${DATA_SAFETY_URL}?${params.toString()}`;
-
     const client = resolveClient(parsed);
-    const html = await client.request({ url });
+    const html = await client.request({
+      url: dataSafetyUrl(parsed.appId, parsed.lang, parsed.country),
+    });
     if (html.includes(MISSING_APP_MARKER)) {
       return emptyDataSafetyReport();
     }
