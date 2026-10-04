@@ -18,7 +18,7 @@ export function cheerioText(html: string): string {
 }
 
 export function oraclePlainText(html: string): string | undefined {
-  return sanitizeText(cheerioText(html));
+  return sanitizeText(cheerioText(sanitizeText(html) ?? ''));
 }
 
 function preview(text: string): string {
@@ -50,6 +50,34 @@ export function expectConvertedOnce(
   }
 }
 
+export function expectHtmlTwin(
+  text: string | undefined,
+  html: string | undefined,
+  label: string,
+): void {
+  expect(text === undefined, `${label}: text and markup must be present together`).toBe(
+    html === undefined,
+  );
+  if (html !== undefined) {
+    expect(text, `${label}: must be its markup decoded once`).toBe(oraclePlainText(html));
+  }
+}
+
+export function expectHtmlSummaries(
+  items: readonly { summary?: string; summaryHTML?: string }[],
+  label: string,
+): void {
+  for (const item of items) {
+    expectHtmlTwin(item.summary, item.summaryHTML, `${label} summary`);
+  }
+  const twins = items.filter((item) => item.summaryHTML !== undefined);
+  expect(twins.length, `${label}: at least one summary twin must be present`).toBeGreaterThan(0);
+  expect(
+    twins.some((item) => item.summaryHTML !== item.summary),
+    `${label}: some summaryHTML must keep the markup its summary drops`,
+  ).toBe(true);
+}
+
 export function expectConvertedSummaries(
   spy: PlainTextSpy,
   items: readonly { summary?: string }[],
@@ -79,5 +107,10 @@ export function expectPlainSafetyReport(report: DataSafety, label: string): void
   for (const practice of report.securityPractices) {
     expectGoogleLabelText(practice.practice, `${label} practice`);
     expectGoogleLabelText(practice.description, `${label} ${practice.practice} description`);
+    expectHtmlTwin(
+      practice.description,
+      practice.descriptionHTML,
+      `${label} ${practice.practice} description`,
+    );
   }
 }

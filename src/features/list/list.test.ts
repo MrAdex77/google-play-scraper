@@ -9,7 +9,7 @@ import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import type { OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 import { plainText } from '../../core/htmlText.ts';
-import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
+import { expectConvertedSummaries, expectHtmlSummaries } from '../../../test/helpers/plainText.ts';
 
 vi.mock(import('../../core/htmlText.ts'), { spy: true });
 
@@ -145,9 +145,11 @@ describe('list fixture parsing', () => {
     })) as ListItem[];
 
     expectConvertedSummaries(plainTextSpy, items, 'top free game');
+    expectHtmlSummaries(items, 'top free game');
     const holeStars = items.find((item) => item.summary?.startsWith('Hole Stars'));
     expect(holeStars?.summary).toContain('Shine\n\nLooking for a game that\u2019s fun');
     expect(holeStars?.summary).toContain("Whether you're sorting");
+    expect(holeStars?.summaryHTML).toContain('Shine<br><br>Looking for a game that\u2019s fun');
   });
 });
 

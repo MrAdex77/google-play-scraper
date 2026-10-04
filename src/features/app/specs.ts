@@ -2,7 +2,7 @@ import { developerIdFromUrl, microsToUnits } from '../../core/appItemTransforms.
 import { getPath, isRecord } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
 import { deriveScriptDataSelection } from '../../core/scriptData.ts';
-import { plainText } from '../../core/htmlText.ts';
+import { htmlText, plainText } from '../../core/htmlText.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
 import * as z from 'zod/mini';
 import { appSchema } from './schema.ts';
@@ -77,6 +77,16 @@ export const appScriptDataSelection = deriveScriptDataSelection([
   appCommentsRootSpec,
 ]);
 
+const SUMMARY_CELL = { paths: [[1, 2, 73, 0, 1]], missing: OPTIONAL };
+
+const RECENT_CHANGES_CELL = {
+  paths: [
+    [1, 2, 144, 1, 1],
+    [1, 2, -1, '145', 1, 1],
+  ],
+  missing: OPTIONAL,
+};
+
 export const appSpecs = {
   title: { paths: [[1, 2, 0, 0]], missing: REQUIRED, schema: shape.title },
   description: {
@@ -91,12 +101,8 @@ export const appSpecs = {
     schema: shape.descriptionHTML,
     transform: descriptionHtmlLocalized,
   },
-  summary: {
-    paths: [[1, 2, 73, 0, 1]],
-    missing: OPTIONAL,
-    schema: shape.summary,
-    transform: plainText,
-  },
+  summary: { ...SUMMARY_CELL, schema: shape.summary, transform: plainText },
+  summaryHTML: { ...SUMMARY_CELL, schema: shape.summaryHTML, transform: htmlText },
   installs: { paths: [[1, 2, 13, 0]], missing: OPTIONAL, schema: shape.installs },
   minInstalls: { paths: [[1, 2, 13, 1]], missing: OPTIONAL, schema: shape.minInstalls },
   maxInstalls: { paths: [[1, 2, 13, 2]], missing: OPTIONAL, schema: shape.maxInstalls },
@@ -310,14 +316,11 @@ export const appSpecs = {
     schema: shape.version,
     transform: (value) => (typeof value === 'string' && value.length > 0 ? value : 'VARY'),
   },
-  recentChanges: {
-    paths: [
-      [1, 2, 144, 1, 1],
-      [1, 2, -1, '145', 1, 1],
-    ],
-    missing: OPTIONAL,
-    schema: shape.recentChanges,
-    transform: plainText,
+  recentChanges: { ...RECENT_CHANGES_CELL, schema: shape.recentChanges, transform: plainText },
+  recentChangesHTML: {
+    ...RECENT_CHANGES_CELL,
+    schema: shape.recentChangesHTML,
+    transform: htmlText,
   },
   preregister: {
     paths: [[1, 2, 18, 0]],

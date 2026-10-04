@@ -116,9 +116,13 @@ liveDescribe('datasafety live contract', () => {
       const described = report.securityPractices.filter(
         (practice) => (practice.description?.length ?? 0) > 0,
       );
+      const linked = report.securityPractices.filter(
+        (practice) => practice.descriptionHTML?.includes('<a href=') === true,
+      );
 
       expectPlainSafetyReport(report, `${country} youtube kids`);
       expect(described.length, `${country}: described practices`).toBeGreaterThan(0);
+      expect(linked.length, `${country}: practices that keep their link markup`).toBeGreaterThan(0);
     }
   });
 

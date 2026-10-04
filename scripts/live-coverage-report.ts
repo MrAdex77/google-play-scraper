@@ -10,7 +10,7 @@ interface Anchor {
   fetch(): Promise<Items>;
 }
 
-const APP_ITEM_FIELDS = ['score', 'scoreText', 'summary', 'currency', 'developerId'];
+const APP_ITEM_FIELDS = ['score', 'scoreText', 'summary', 'summaryHTML', 'currency', 'developerId'];
 const REVIEW_FIELDS = ['text', 'userImage', 'version', 'replyText'];
 const TRANSLATE_APP_ID = 'com.google.android.apps.translate';
 const GOOGLE_DEV_ID = '5700313618786177705';

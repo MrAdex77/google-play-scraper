@@ -1,7 +1,7 @@
 import { BATCH_URL } from '../../core/batchexecute.ts';
 import type { Category, Collection } from '../../constants.ts';
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
-import { plainText } from '../../core/htmlText.ts';
+import { htmlText, plainText } from '../../core/htmlText.ts';
 import { rawArrayPathSchema } from '../../core/raw.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
 import { appItemSchema } from '../../core/appItem.ts';
@@ -57,6 +57,8 @@ export const listResponseSchema = z.union([
   rawArrayPathSchema(APPS_PATH, z.array(z.unknown())),
 ]);
 
+const SUMMARY_CELL = { paths: [[0, 13, 1]], missing: OPTIONAL };
+
 export const listItemSpecs = {
   title: { paths: [[0, 3]], missing: REQUIRED, schema: shape.title },
   appId: { paths: [[0, 0, 0]], missing: REQUIRED, schema: shape.appId },
@@ -76,7 +78,8 @@ export const listItemSpecs = {
     schema: shape.free,
     transform: isFreeMicros,
   },
-  summary: { paths: [[0, 13, 1]], missing: OPTIONAL, schema: shape.summary, transform: plainText },
+  summary: { ...SUMMARY_CELL, schema: shape.summary, transform: plainText },
+  summaryHTML: { ...SUMMARY_CELL, schema: shape.summaryHTML, transform: htmlText },
   scoreText: { paths: [[0, 4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[0, 4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;

@@ -23,7 +23,7 @@ import type { App } from '../app/schema.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 import { plainText } from '../../core/htmlText.ts';
-import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
+import { expectConvertedSummaries, expectHtmlSummaries } from '../../../test/helpers/plainText.ts';
 import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 
 vi.mock(import('../../core/htmlText.ts'), { spy: true });
@@ -133,6 +133,7 @@ describe('search fixture parsing', () => {
       })) as SearchResult[];
 
       expectConvertedSummaries(plainTextSpy, results, 'recorded search');
+      expectHtmlSummaries(results, 'recorded search');
     }
   });
 
@@ -773,6 +774,7 @@ describe('search exact match resolution', () => {
     const results = await searchOn(html);
 
     expect(results[0]?.summary).toBe('Hunt & Explore\nthe "wild"');
+    expect(results[0]?.summaryHTML).toBe('Hunt &amp; Explore<br>the &quot;wild&quot;');
   });
 
   it('prepends a card anchored in a later section', async () => {

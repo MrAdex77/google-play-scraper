@@ -85,6 +85,11 @@ export function htmlToPlainText(html: string): string {
   return stripTags(normalized).replace(ENTITIES, decodeEntity);
 }
 
+export function htmlText(value: unknown): unknown {
+  return typeof value === 'string' ? sanitizeText(value) : value;
+}
+
 export function plainText(value: unknown): unknown {
-  return typeof value === 'string' ? sanitizeText(htmlToPlainText(value)) : value;
+  const html = htmlText(value);
+  return typeof html === 'string' ? sanitizeText(htmlToPlainText(html)) : html;
 }

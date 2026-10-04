@@ -11,12 +11,14 @@
 | cluster item | `price`                     | default `0`                                   | established test | missing price cell yields `price: 0`, recorded micros read as units                       |
 | cluster item | `free`                      | default `true`                                | established test | missing price cell yields `free: true`, zero micros yield `free: true`                    |
 | cluster item | `summary`                   | optional                                      | pinned reference | absent optional item metadata remains undefined                                           |
+| cluster item | `summaryHTML`               | optional                                      | established test | present exactly when `summary` is, read from the same cell                                |
 | cluster item | `scoreText`                 | optional                                      | pinned reference | absent optional item metadata remains undefined                                           |
 | cluster item | `score`                     | optional                                      | pinned reference | absent optional item metadata remains undefined                                           |
 | app          | `title`                     | required                                      | recorded fixture | present in all app fixtures                                                               |
 | app          | `description`               | required                                      | recorded fixture | detail container present in all app fixtures                                              |
 | app          | `descriptionHTML`           | required                                      | recorded fixture | detail container present in all app fixtures                                              |
 | app          | `summary`                   | optional                                      | pinned reference | absent optional metadata remains undefined                                                |
+| app          | `summaryHTML`               | optional                                      | established test | present exactly when `summary` is, read from the same cell                                |
 | app          | `installs`                  | optional                                      | pinned reference | absent optional metadata remains undefined                                                |
 | app          | `minInstalls`               | optional                                      | pinned reference | absent optional metadata remains undefined                                                |
 | app          | `maxInstalls`               | optional                                      | pinned reference | absent optional metadata remains undefined                                                |
@@ -64,6 +66,7 @@
 | app          | `updated`                   | required                                      | recorded fixture | update timestamp present in all app fixtures                                              |
 | app          | `version`                   | default `VARY`                                | established test | absent version block yields `VARY`                                                        |
 | app          | `recentChanges`             | optional                                      | pinned reference | absent changelog remains undefined                                                        |
+| app          | `recentChangesHTML`         | optional                                      | established test | present exactly when `recentChanges` is, read from the same cell                          |
 | app          | `comments`                  | default `[]` declared, unreachable in `app()` | established test | an absent-marker root yields `[]`, a malformed root rejects                               |
 | app          | `preregister`               | default `false`                               | established test | absent availability source yields no preregistration                                      |
 | app          | `earlyAccessEnabled`        | default `false`                               | recorded fixture | absent in all three app fixtures                                                          |
@@ -78,6 +81,7 @@
 | search       | `price`                     | default `0`                                   | live probe       | an offerless preregistration row yields `price: 0`, card falls back to its detail node    |
 | search       | `free`                      | default `false`                               | live probe       | an offerless preregistration row yields `free: false`, card falls back to its detail node |
 | search       | `summary`                   | optional                                      | pinned reference | absent optional summary remains undefined                                                 |
+| search       | `summaryHTML`               | optional                                      | established test | present exactly when `summary` is, read from the same cell                                |
 | search       | `scoreText`                 | optional                                      | pinned reference | unrated results may omit score metadata                                                   |
 | search       | `score`                     | optional                                      | pinned reference | unrated results may omit score metadata                                                   |
 | list         | `title`                     | required                                      | recorded fixture | list fixture populates every item title                                                   |
@@ -89,6 +93,7 @@
 | list         | `price`                     | default `0`                                   | established test | priceless row yields `price: 0`                                                           |
 | list         | `free`                      | default `false`                               | established test | priceless row yields `free: false`                                                        |
 | list         | `summary`                   | optional                                      | pinned reference | absent optional summary remains undefined                                                 |
+| list         | `summaryHTML`               | optional                                      | established test | present exactly when `summary` is, read from the same cell                                |
 | list         | `scoreText`                 | optional                                      | pinned reference | unrated rows may omit score metadata                                                      |
 | list         | `score`                     | optional                                      | pinned reference | unrated rows may omit score metadata                                                      |
 | developer    | `title`                     | required                                      | recorded fixture | both developer layouts populate item titles                                               |
@@ -100,6 +105,7 @@
 | developer    | `price`                     | default `0`                                   | established test | priceless name-layout row yields `price: 0`                                               |
 | developer    | `free`                      | default `false`                               | established test | priceless name-layout row yields `free: false`                                            |
 | developer    | `summary`                   | optional                                      | pinned reference | absent optional summary remains undefined                                                 |
+| developer    | `summaryHTML`               | optional                                      | established test | present exactly when `summary` is, read from the same cell                                |
 | developer    | `scoreText`                 | optional                                      | pinned reference | unrated apps may omit score metadata                                                      |
 | developer    | `score`                     | optional                                      | pinned reference | unrated apps may omit score metadata                                                      |
 | similar      | `title`                     | required                                      | recorded fixture | similar fixture populates item titles                                                     |
@@ -111,6 +117,7 @@
 | similar      | `price`                     | default `0`                                   | established test | priceless similar row yields `price: 0`                                                   |
 | similar      | `free`                      | default `false`                               | established test | priceless similar row yields `free: false`                                                |
 | similar      | `summary`                   | optional                                      | pinned reference | absent optional summary remains undefined                                                 |
+| similar      | `summaryHTML`               | optional                                      | established test | present exactly when `summary` is, read from the same cell                                |
 | similar      | `scoreText`                 | optional                                      | pinned reference | unrated apps may omit score metadata                                                      |
 | similar      | `score`                     | optional                                      | pinned reference | unrated apps may omit score metadata                                                      |
 | reviews      | `id`                        | required                                      | recorded fixture | every recorded review carries an id                                                       |

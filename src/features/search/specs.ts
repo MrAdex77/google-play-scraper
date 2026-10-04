@@ -4,7 +4,7 @@ import {
   microsToUnits,
   resolveAppUrl,
 } from '../../core/appItemTransforms.ts';
-import { plainText } from '../../core/htmlText.ts';
+import { htmlText, plainText } from '../../core/htmlText.ts';
 import { getPath, type Path } from '../../core/path.ts';
 import { rawArrayPathSchema } from '../../core/raw.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
@@ -54,6 +54,8 @@ export const CLUSTER_MAPPINGS = {
   token: [0, 0, 7, 1],
 } satisfies Record<string, Path>;
 
+const PAGE_SUMMARY_CELL = { paths: [[0, 13, 1]], missing: OPTIONAL };
+
 export const searchItemSpecs = {
   title: { paths: [[0, 3]], missing: REQUIRED, schema: shape.title },
   appId: { paths: [[0, 0, 0]], missing: REQUIRED, schema: shape.appId },
@@ -73,7 +75,8 @@ export const searchItemSpecs = {
     schema: shape.free,
     transform: isFreeMicros,
   },
-  summary: { paths: [[0, 13, 1]], missing: OPTIONAL, schema: shape.summary, transform: plainText },
+  summary: { ...PAGE_SUMMARY_CELL, schema: shape.summary, transform: plainText },
+  summaryHTML: { ...PAGE_SUMMARY_CELL, schema: shape.summaryHTML, transform: htmlText },
   scoreText: { paths: [[0, 4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[0, 4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
@@ -89,6 +92,8 @@ const EXACT_MATCH_DETAIL_NODE = {
   price: [16, 2, 57, 0, 0, 0, 0, 1, 0, 0],
   currency: [16, 2, 57, 0, 0, 0, 0, 1, 0, 1],
 } satisfies Record<string, Path>;
+
+const EXACT_MATCH_SUMMARY_CELL = { paths: [[16, 2, 73, 0, 1]], missing: OPTIONAL };
 
 export const exactMatchSpecs = {
   title: { paths: [[16, 2, 0, 0]], missing: REQUIRED, schema: shape.title },
@@ -124,12 +129,8 @@ export const exactMatchSpecs = {
     schema: shape.free,
     transform: isFreeMicros,
   },
-  summary: {
-    paths: [[16, 2, 73, 0, 1]],
-    missing: OPTIONAL,
-    schema: shape.summary,
-    transform: plainText,
-  },
+  summary: { ...EXACT_MATCH_SUMMARY_CELL, schema: shape.summary, transform: plainText },
+  summaryHTML: { ...EXACT_MATCH_SUMMARY_CELL, schema: shape.summaryHTML, transform: htmlText },
   scoreText: { paths: [[16, 2, 51, 0, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[16, 2, 51, 0, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;

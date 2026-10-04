@@ -3,7 +3,11 @@ import { plainText } from '../src/core/htmlText.ts';
 import { app } from '../src/features/app/app.ts';
 import { createSearch } from '../src/features/search/search.ts';
 import type { AppItem } from '../src/index.ts';
-import { expectConvertedOnce, expectConvertedSummaries } from '../test/helpers/plainText.ts';
+import {
+  expectConvertedOnce,
+  expectConvertedSummaries,
+  expectHtmlSummaries,
+} from '../test/helpers/plainText.ts';
 import { expectListingContract } from './contracts.ts';
 import { liveClient, liveDescribe, memoizingResolveClient } from './helpers.ts';
 import { findSearchContinuationAnchor } from './searchAnchors.ts';
@@ -44,6 +48,7 @@ liveDescribe('plain text summaries live contract', () => {
     });
 
     expectConvertedSummaries(plainTextSpy, items, 'action chart');
+    expectHtmlSummaries(items, 'action chart');
     expect(multiLineShare(items)).toBeGreaterThan(MULTI_LINE_SHARE);
   });
 
@@ -51,6 +56,7 @@ liveDescribe('plain text summaries live contract', () => {
     const results = await liveClient.search({ term: 'chess', num: 30 });
 
     expectConvertedSummaries(plainTextSpy, results, 'chess search');
+    expectHtmlSummaries(results, 'chess search');
     expect(multiLineShare(results)).toBeGreaterThan(MULTI_LINE_SHARE);
   });
 
@@ -88,6 +94,7 @@ liveDescribe('plain text summaries live contract', () => {
     const items = await liveClient.similar({ appId: PREREGISTERED_GAME });
 
     expectConvertedSummaries(plainTextSpy, items, 'preregistered cluster');
+    expectHtmlSummaries(items, 'preregistered cluster');
     expect(items.length).toBeGreaterThan(0);
   });
 
@@ -95,6 +102,7 @@ liveDescribe('plain text summaries live contract', () => {
     const items = await liveClient.developer({ devId: GOOGLE_DEVELOPER_ID, num: 60 });
 
     expectConvertedSummaries(plainTextSpy, items, 'numeric developer');
+    expectHtmlSummaries(items, 'numeric developer');
     expect(items.length).toBeGreaterThan(0);
   });
 
@@ -102,6 +110,7 @@ liveDescribe('plain text summaries live contract', () => {
     const items = await liveClient.developer({ devId: GOOGLE_DEVELOPER_NAME, num: 60 });
 
     expectConvertedSummaries(plainTextSpy, items, 'name developer');
+    expectHtmlSummaries(items, 'name developer');
     expect(items.length).toBeGreaterThan(0);
   });
 
@@ -117,6 +126,7 @@ liveDescribe('plain text summaries live contract', () => {
       });
 
       expectConvertedSummaries(plainTextSpy, items, `${country} chart`);
+      expectHtmlSummaries(items, `${country} chart`);
     }
   });
 

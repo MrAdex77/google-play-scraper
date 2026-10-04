@@ -11,6 +11,7 @@ export const appItemSchema = z.object({
   price: z.number(),
   free: z.boolean(),
   summary: z.optional(z.string()),
+  summaryHTML: z.optional(z.string()),
   scoreText: z.optional(z.string()),
   score: z.optional(z.number().check(z.gte(0), z.lte(5))),
 });

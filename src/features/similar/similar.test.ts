@@ -10,7 +10,7 @@ import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 import { plainText } from '../../core/htmlText.ts';
-import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
+import { expectConvertedSummaries, expectHtmlSummaries } from '../../../test/helpers/plainText.ts';
 import { clusterOfferItems } from '../../../test/helpers/clusterOfferItems.ts';
 
 vi.mock(import('../../core/htmlText.ts'), { spy: true });
@@ -90,6 +90,7 @@ describe('similar fixture parsing', () => {
     })) as SimilarApp[];
 
     expectConvertedSummaries(plainTextSpy, items, 'translate cluster');
+    expectHtmlSummaries(items, 'translate cluster');
   });
 
   it('never returns the source app among the similar results', async () => {
