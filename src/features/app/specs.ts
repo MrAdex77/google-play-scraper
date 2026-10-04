@@ -2,7 +2,7 @@ import { developerIdFromUrl, microsToUnits } from '../../core/appItemTransforms.
 import { getPath, isRecord } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
 import { deriveScriptDataSelection } from '../../core/scriptData.ts';
-import { plainText } from '../../core/htmlText.ts';
+import { htmlText, plainText } from '../../core/htmlText.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
 import * as z from 'zod/mini';
 import { appSchema } from './schema.ts';
@@ -96,6 +96,12 @@ export const appSpecs = {
     missing: OPTIONAL,
     schema: shape.summary,
     transform: plainText,
+  },
+  summaryHTML: {
+    paths: [[1, 2, 73, 0, 1]],
+    missing: OPTIONAL,
+    schema: shape.summaryHTML,
+    transform: htmlText,
   },
   installs: { paths: [[1, 2, 13, 0]], missing: OPTIONAL, schema: shape.installs },
   minInstalls: { paths: [[1, 2, 13, 1]], missing: OPTIONAL, schema: shape.minInstalls },
@@ -318,6 +324,15 @@ export const appSpecs = {
     missing: OPTIONAL,
     schema: shape.recentChanges,
     transform: plainText,
+  },
+  recentChangesHTML: {
+    paths: [
+      [1, 2, 144, 1, 1],
+      [1, 2, -1, '145', 1, 1],
+    ],
+    missing: OPTIONAL,
+    schema: shape.recentChangesHTML,
+    transform: htmlText,
   },
   preregister: {
     paths: [[1, 2, 18, 0]],

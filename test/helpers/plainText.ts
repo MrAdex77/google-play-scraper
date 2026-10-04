@@ -50,6 +50,28 @@ export function expectConvertedOnce(
   }
 }
 
+export function expectHtmlTwin(
+  text: string | undefined,
+  html: string | undefined,
+  label: string,
+): void {
+  expect(text === undefined, `${label}: text and markup must be present together`).toBe(
+    html === undefined,
+  );
+  if (html !== undefined) {
+    expect(text, `${label}: must be its markup decoded once`).toBe(oraclePlainText(html));
+  }
+}
+
+export function expectHtmlSummaries(
+  items: readonly { summary?: string; summaryHTML?: string }[],
+  label: string,
+): void {
+  for (const item of items) {
+    expectHtmlTwin(item.summary, item.summaryHTML, `${label} summary`);
+  }
+}
+
 export function expectConvertedSummaries(
   spy: PlainTextSpy,
   items: readonly { summary?: string }[],

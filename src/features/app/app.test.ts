@@ -6,6 +6,7 @@ import { getPath } from '../../core/path.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { NotFoundError, SpecError, ValidationError } from '../../core/errors.ts';
 import { APP_DETAILS_RPC_ID, appCommentsRootSchema, appDetailsRootSchema } from './specs.ts';
+import { expectHtmlTwin } from '../../../test/helpers/plainText.ts';
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -208,7 +209,11 @@ describe('app', () => {
     });
 
     expect(result.summary).toBe('Hunt & Explore the "wild"');
+    expect(result.summaryHTML).toBe('Hunt &amp; <b>Explore</b> the &quot;wild&quot;');
     expect(result.recentChanges).toBe("\u2022 Modern Android & TV UI\n\u2022 It's faster");
+    expect(result.recentChangesHTML).toBe(
+      '&#8226; Modern Android &amp; TV UI<br>&#8226; It&#39;s <i>faster</i>',
+    );
   });
 
   it('decodes the changelog entities recorded in the minecraft and where am i fixtures', async () => {
@@ -225,6 +230,10 @@ describe('app', () => {
     expect(whereAmI.recentChanges).toContain('Ranked System & ELO Matchmaking');
     expect(whereAmI.recentChanges).toContain('\nNew Campaigns');
     expect(whereAmI.recentChanges).not.toMatch(/<br>|&amp;/);
+    expect(whereAmI.recentChangesHTML).toContain('Ranked System &amp; ELO Matchmaking');
+    expectHtmlTwin(minecraft.recentChanges, minecraft.recentChangesHTML, 'minecraft changelog');
+    expectHtmlTwin(whereAmI.recentChanges, whereAmI.recentChangesHTML, 'where am i changelog');
+    expectHtmlTwin(whereAmI.summary, whereAmI.summaryHTML, 'where am i summary');
   });
 
   it('rejects a summary that is not a string', async () => {
