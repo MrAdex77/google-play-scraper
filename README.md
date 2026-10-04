@@ -665,16 +665,16 @@ Returns `AppPermission[]` (or `string[]` when `short` is `true`):
 
 ```javascript
 [
-  { permission: 'take pictures and videos', type: 0, group: 'Camera' },
   { permission: 'read the contents of your USB storage', type: 0, group: 'Photos/Media/Files' },
   { permission: 'read the contents of your USB storage', type: 0, group: 'Storage' },
+  { permission: 'take pictures and videos', type: 0, group: 'Camera' },
   { permission: 'view network connections', type: 1, group: 'Other' },
 ];
 ```
 
 The `type` is `permission.COMMON` (`0`) or `permission.OTHER` (`1`).
 
-The `group` is the name of the permission group Google Play files the permission under, in the language of the requested `lang`. A few legacy permissions belong to two groups (for example the USB storage permissions sit under both `Photos/Media/Files` and `Storage`), so the detailed list repeats such a permission once per group. Every `(group, permission)` pair is unique. To list each permission once, drop the group:
+The `group` is the name of the permission group Google Play files the permission under, in the language of the requested `lang`, or an empty string when Google Play omits the name. A few legacy permissions belong to two groups (for example the USB storage permissions sit under both `Photos/Media/Files` and `Storage`), so the detailed list repeats such a permission once per group and `group` tells the rows apart. To list each permission once, drop the group:
 
 ```typescript
 const unique = [
