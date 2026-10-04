@@ -1,6 +1,6 @@
 import { appItemSchema } from './appItem.ts';
 import { isFreeMicros, microsToUnits, resolveAppUrl } from './appItemTransforms.ts';
-import { plainText } from './htmlText.ts';
+import { htmlText, plainText } from './htmlText.ts';
 import { defaulted, optional, required, type SpecMap } from './spec.ts';
 
 const shape = appItemSchema.shape;
@@ -30,6 +30,12 @@ export const clusterItemSpecs = {
     missing: optional(),
     schema: shape.summary,
     transform: plainText,
+  },
+  summaryHTML: {
+    paths: [[4, 1, 1, 1, 1]],
+    missing: optional(),
+    schema: shape.summaryHTML,
+    transform: htmlText,
   },
   scoreText: { paths: [[6, 0, 2, 1, 0]], missing: optional(), schema: shape.scoreText },
   score: { paths: [[6, 0, 2, 1, 1]], missing: optional(), schema: shape.score },

@@ -10,7 +10,7 @@ import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 import { plainText } from '../../core/htmlText.ts';
-import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
+import { expectConvertedSummaries, expectHtmlSummaries } from '../../../test/helpers/plainText.ts';
 
 vi.mock(import('../../core/htmlText.ts'), { spy: true });
 
@@ -273,7 +273,9 @@ describe('developer fixture parsing', () => {
     })) as DeveloperApp[];
 
     expectConvertedSummaries(plainTextSpy, mojang, 'mojang');
+    expectHtmlSummaries(mojang, 'mojang');
     expectConvertedSummaries(plainTextSpy, google, 'google');
+    expectHtmlSummaries(google, 'google');
     const education = mojang.find((item) => item.summary?.startsWith('THIS APP IS FOR SCHOOL'));
     expect(education?.summary).toContain('USE. \n\nMinecraft Education');
   });

@@ -45,6 +45,7 @@ describe('cluster item extraction', () => {
     const result = extract(item, clusterItemSpecs, 'cluster-test');
 
     expect(result.summary).toBe('Hunt & Explore\nIt\'s "fun"');
+    expect(result.summaryHTML).toBe('Hunt &amp; <b>Explore</b><br>It&#39;s &quot;fun&quot;');
   });
 
   it('rejects a summary that is not a string', () => {

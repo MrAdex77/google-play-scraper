@@ -1,6 +1,6 @@
 import { BASE_URL } from '../../constants.ts';
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
-import { plainText } from '../../core/htmlText.ts';
+import { htmlText, plainText } from '../../core/htmlText.ts';
 import type { ClusterLayout } from '../../core/pagination.ts';
 import { getPath, type Path } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
@@ -103,6 +103,12 @@ export const nameItemSpecs = {
     transform: isFreeMicros,
   },
   summary: { paths: [[0, 13, 1]], missing: OPTIONAL, schema: shape.summary, transform: plainText },
+  summaryHTML: {
+    paths: [[0, 13, 1]],
+    missing: OPTIONAL,
+    schema: shape.summaryHTML,
+    transform: htmlText,
+  },
   scoreText: { paths: [[0, 4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[0, 4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
@@ -127,6 +133,12 @@ export const numericItemSpecs = {
     transform: isFreeMicros,
   },
   summary: { paths: [[13, 1]], missing: OPTIONAL, schema: shape.summary, transform: plainText },
+  summaryHTML: {
+    paths: [[13, 1]],
+    missing: OPTIONAL,
+    schema: shape.summaryHTML,
+    transform: htmlText,
+  },
   scoreText: { paths: [[4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;

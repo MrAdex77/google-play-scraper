@@ -1,7 +1,7 @@
 import { BATCH_URL } from '../../core/batchexecute.ts';
 import type { Category, Collection } from '../../constants.ts';
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
-import { plainText } from '../../core/htmlText.ts';
+import { htmlText, plainText } from '../../core/htmlText.ts';
 import { rawArrayPathSchema } from '../../core/raw.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
 import { appItemSchema } from '../../core/appItem.ts';
@@ -77,6 +77,12 @@ export const listItemSpecs = {
     transform: isFreeMicros,
   },
   summary: { paths: [[0, 13, 1]], missing: OPTIONAL, schema: shape.summary, transform: plainText },
+  summaryHTML: {
+    paths: [[0, 13, 1]],
+    missing: OPTIONAL,
+    schema: shape.summaryHTML,
+    transform: htmlText,
+  },
   scoreText: { paths: [[0, 4, 0]], missing: OPTIONAL, schema: shape.scoreText },
   score: { paths: [[0, 4, 1]], missing: OPTIONAL, schema: shape.score },
 } satisfies SpecMap;
