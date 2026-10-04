@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { htmlToPlainText } from './htmlText.ts';
-import { sanitizeText } from './text.ts';
 import { getPath } from './path.ts';
 import { parseScriptData } from './scriptData.ts';
 import { resolveScriptRoot } from './scriptRoot.ts';
@@ -111,7 +110,7 @@ describe('htmlToPlainText parity with the cheerio implementation', () => {
 
   for (const reference of WINDOWS_1252_RANGE) {
     it(`matches cheerio for the windows-1252 reference ${reference}`, () => {
-      expect(sanitizeText(htmlToPlainText(reference))).toBe(sanitizeText(cheerioText(reference)));
+      expect(htmlToPlainText(reference)).toBe(cheerioText(reference));
     });
   }
 

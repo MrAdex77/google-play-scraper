@@ -67,6 +67,11 @@ describe('expectConvertedOnce', () => {
 });
 
 describe('oraclePlainText', () => {
+  it('parses in the body context the converter assumes', () => {
+    expect(oraclePlainText('x<col>y')).toBe('xy');
+    expect(oraclePlainText('a</div>b')).toBe('ab');
+  });
+
   it('reads nested division markup once', () => {
     const html = '<div><p>Real ones</p><br><div>nested</div></div><br>tail';
 

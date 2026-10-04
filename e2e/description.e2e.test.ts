@@ -45,7 +45,7 @@ const DESCRIPTION_BASKET = [
 
 liveDescribe('description live parity without cheerio', () => {
   for (const { appId, lang, country, script } of DESCRIPTION_BASKET) {
-    it(`matches the legacy cheerio pipeline for ${appId} (${script}, ${lang}-${country})`, async () => {
+    it(`matches cheerio for ${appId} (${script}, ${lang}-${country})`, async () => {
       const result = await liveClient.app({ appId, lang, country });
       const html = result.descriptionHTML;
 

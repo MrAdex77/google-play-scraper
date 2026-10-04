@@ -13,8 +13,8 @@ const PREVIEW_LENGTH = 80;
 export type PlainTextSpy = MockInstance<(value: unknown) => unknown>;
 
 export function cheerioText(html: string): string {
-  const fragment = cheerio.load(html.replace(BR_TAGS, '\r\n'), null, false);
-  return fragment.root().text();
+  const document = cheerio.load(`<div>${html.replace(BR_TAGS, '\r\n')}</div>`);
+  return document('body').text();
 }
 
 export function oraclePlainText(html: string): string | undefined {
