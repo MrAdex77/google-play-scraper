@@ -254,6 +254,8 @@ Returns an `App` with 55 fields. Trimmed:
 }
 ```
 
+`description`, `summary` and `recentChanges` are plain text: tags are removed, HTML entities are decoded and each `<br>` becomes a newline. Google serves all three as HTML fragments, so `descriptionHTML` is the one field that keeps the markup.
+
 A listing that has not been released yet carries no offer at all. For those apps
 `preregister` is `true`, and `price`, `free` and `priceText` fall back to `0`, `false` and
 `'Free'` rather than describing a real offer. Rating, install and release fields are
@@ -433,6 +435,8 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
   },
 ];
 ```
+
+The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters, not a one line tagline), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. Call [app](#app) for `descriptionHTML` when you need the markup.
 
 Google Play serves a first result page of roughly 20 to 30 apps (50 for single character terms), and fewer for narrow terms. For a minority of queries it also serves a continuation token (verified October 2026: single character terms and digits, and some app names such as `minecraft` or `reddit`), and `search()` and `searchIterator()` follow it until Google ends the results, measured at no more than 250 in total. Continuation results are looser matches than the first page, and they carry `currency` only for paid apps. For every other term the first page is all Google serves, so a `num` above it is best-effort: the returned array may be shorter than requested, never longer, and never repeats an app.
 
@@ -1181,6 +1185,7 @@ Integrity diagnostics use the additive API choice (Option B): the existing `Degr
 | Adding a new method, option, or optional result field             | minor   |
 | Adding a reason to `IntegrityReason`                              | minor   |
 | Restoring extraction of a field after a Google Play layout change | patch   |
+| Correcting the text a documented string field carries, same type  | patch   |
 
 What semver cannot cover is the content behind those shapes. Google Play changes its markup a few times a year, and a field can start coming back `undefined`, empty, or degraded without any release of this package. The policy for that case:
 
@@ -1195,6 +1200,7 @@ To watch for drift in your own production use, wire up [`onDegradation`](#monito
 The method names, options, and constants are the same, so most code keeps working after swapping the import. Watch for these differences:
 
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
+- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google, with tags such as `<br>`, `<b>` and `<font color=...>` and entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Code that decoded or stripped markup itself keeps working because there is nothing left to strip, but code that renders these fields as HTML should switch to `descriptionHTML` from `app` or render the text with line breaks preserved.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
