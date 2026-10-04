@@ -1,3 +1,5 @@
+import { sanitizeText } from './text.ts';
+
 const BR_TAGS = /<br>/g;
 const CARRIAGE_RETURNS = /\r\n?/g;
 const TAGS = /<[^>]*>/g;
@@ -51,4 +53,8 @@ function stripTags(html: string): string {
 export function htmlToPlainText(html: string): string {
   const normalized = html.replace(BR_TAGS, '\r\n').replace(CARRIAGE_RETURNS, '\n');
   return stripTags(normalized).replace(ENTITIES, decodeEntity);
+}
+
+export function plainText(value: unknown): unknown {
+  return typeof value === 'string' ? sanitizeText(htmlToPlainText(value)) : value;
 }

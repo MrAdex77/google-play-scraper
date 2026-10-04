@@ -2,6 +2,7 @@ import { developerIdFromUrl, microsToUnits } from '../../core/appItemTransforms.
 import { getPath, isRecord } from '../../core/path.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
 import { deriveScriptDataSelection } from '../../core/scriptData.ts';
+import { plainText } from '../../core/htmlText.ts';
 import { sanitizeText } from '../../core/text.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
 import * as z from 'zod/mini';
@@ -10,7 +11,6 @@ import {
   buildHistogram,
   categoriesFromDetail,
   descriptionHtmlLocalized,
-  descriptionText,
   extractScreenshots,
   normalizeAndroidVersion,
   priceText,
@@ -84,7 +84,7 @@ export const appSpecs = {
     paths: [[1, 2]],
     missing: REQUIRED,
     schema: shape.description,
-    transform: (value) => descriptionText(descriptionHtmlLocalized(value)),
+    transform: (value) => plainText(descriptionHtmlLocalized(value)),
   },
   descriptionHTML: {
     paths: [[1, 2]],

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { htmlToPlainText } from './htmlText.ts';
+import { htmlToPlainText, plainText } from './htmlText.ts';
 
 describe('htmlToPlainText', () => {
   it('decodes each supported named entity', () => {
@@ -69,5 +69,23 @@ describe('htmlToPlainText', () => {
     expect(htmlToPlainText('<scr<b>ipt>alert(1)</b>')).toBe('ipt>alert(1)');
     expect(htmlToPlainText('<scr<b>ipt>payload</scr<b>ipt>')).not.toContain('<script');
     expect(htmlToPlainText('<<b>script>')).not.toContain('<script');
+  });
+});
+
+describe('plainText', () => {
+  it('strips markup, decodes entities, and turns br into line breaks', () => {
+    expect(plainText('line one<br>line <b>two</b> &amp; &#39;three&#39;')).toBe(
+      "line one\nline two & 'three'",
+    );
+  });
+
+  it('removes control characters after decoding', () => {
+    expect(plainText('good\u0000 text&#7;')).toBe('good text');
+  });
+
+  it('passes a non string value through so the field schema can reject it', () => {
+    expect(plainText(undefined)).toBeUndefined();
+    expect(plainText(42)).toBe(42);
+    expect(plainText(null)).toBeNull();
   });
 });
