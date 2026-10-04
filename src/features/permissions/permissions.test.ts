@@ -9,10 +9,13 @@ import { ParseError, ValidationError } from '../../core/errors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
-const fixture = readFileSync(
-  fileURLToPath(new URL('../../../test/fixtures/permissions/translate.txt', import.meta.url)),
-  'utf8',
-);
+const readFixture = (name: string): string =>
+  readFileSync(
+    fileURLToPath(new URL(`../../../test/fixtures/permissions/${name}.txt`, import.meta.url)),
+    'utf8',
+  );
+
+const fixture = readFixture('translate');
 
 const NULL_RESPONSE = `)]}'\n[["wrb.fr","xdSrCf",null,null,null,null,"1"]]`;
 
@@ -45,7 +48,7 @@ describe('permissions fixture parsing', () => {
     }
   });
 
-  it('returns deduplication-free permission strings when short', async () => {
+  it('returns each common permission string once when short', async () => {
     const full = (await permissions({
       appId: TRANSLATE,
       requestOptions: { fetchImpl: fetchReturning(fixture) },
@@ -61,11 +64,50 @@ describe('permissions fixture parsing', () => {
       .filter((entry) => entry.type === permission.COMMON)
       .map((entry) => entry.permission);
 
-    expect(short).toEqual(commonStrings);
-    expect(short.length).toBeGreaterThan(3);
-    for (const name of short) {
-      expect(typeof name).toBe('string');
-    }
+    expect(commonStrings).toHaveLength(11);
+    expect(short).toEqual([...new Set(commonStrings)]);
+    expect(short).toHaveLength(8);
+  });
+});
+
+describe('permissions short output across recorded listings', () => {
+  const shortFor = async (name: string): Promise<string[]> =>
+    (await permissions({
+      appId: 'com.example.app',
+      short: true,
+      requestOptions: { fetchImpl: fetchReturning(readFixture(name)) },
+    })) as string[];
+
+  it('lists a permission shared by two groups once, keeping first seen order', async () => {
+    const short = await shortFor('whatsapp');
+
+    expect(short).toHaveLength(18);
+    expect(new Set(short).size).toBe(short.length);
+    expect(short.filter((name) => name === 'read the contents of your USB storage')).toHaveLength(
+      1,
+    );
+    expect(short.indexOf('read the contents of your USB storage')).toBeLessThan(
+      short.indexOf('modify or delete the contents of your USB storage'),
+    );
+  });
+
+  it('removes duplicates in a localized storefront', async () => {
+    const short = await shortFor('translate-ja');
+
+    expect(short).toHaveLength(5);
+    expect(new Set(short).size).toBe(5);
+  });
+
+  it('removes duplicates when only the common section exists', async () => {
+    expect(await shortFor('common-only')).toHaveLength(2);
+  });
+
+  it('returns nothing for an app that declares only other permissions', async () => {
+    expect(await shortFor('other-only')).toEqual([]);
+  });
+
+  it('returns nothing for an app that declares no permissions', async () => {
+    expect(await shortFor('none')).toEqual([]);
   });
 });
 
