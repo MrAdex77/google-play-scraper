@@ -1197,6 +1197,7 @@ The method names, options, and constants are the same, so most code keeps workin
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
+- `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
 - The package is ESM first with a CommonJS build; the default export is the aggregate client and named exports are also available.
 
 ### Deriving from the exported schemas
