@@ -2,20 +2,32 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { dataSafety, type DataSafetyOptions } from './datasafety.ts';
+import { createCountryFetch } from '../../core/countryFetch.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 import { DATA_SAFETY_RPC_ID } from './specs.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
-const fixture = readFileSync(
-  fileURLToPath(new URL('../../../test/fixtures/datasafety/translate.html', import.meta.url)),
-  'utf8',
-);
+const readFixture = (name: string): string =>
+  readFileSync(
+    fileURLToPath(new URL(`../../../test/fixtures/datasafety/${name}`, import.meta.url)),
+    'utf8',
+  );
 
-const missingFixture = readFileSync(
-  fileURLToPath(new URL('../../../test/fixtures/datasafety/missing.html', import.meta.url)),
-  'utf8',
-);
+const fixture = readFixture('translate.html');
+
+const missingFixture = readFixture('missing.html');
+
+const MISSING_APP_ID = 'com.adex77.definitely.not.a.real.app';
+
+const localizedMissingPages = [
+  { lang: 'pt', title: 'Não encontrado', body: readFixture('missing-pt.html') },
+  { lang: 'de', title: 'Nicht gefunden', body: readFixture('missing-de.tail.html') },
+  { lang: 'ja', title: '見つかりませんでした', body: readFixture('missing-ja.tail.html') },
+  { lang: 'ar', title: 'لم يتم العثور على الصفحة', body: readFixture('missing-ar.tail.html') },
+  { lang: 'ru', title: 'Не найдено', body: readFixture('missing-ru.tail.html') },
+  { lang: 'zh', title: '未找到', body: readFixture('missing-zh.tail.html') },
+];
 
 const fetchReturning =
   (body: string): typeof fetch =>
@@ -96,6 +108,65 @@ describe('datasafety degraded pages', () => {
     expect(result.collectedData).toEqual([]);
     expect(result.securityPractices).toEqual([]);
     expect(result.privacyPolicyUrl).toBeUndefined();
+  });
+
+  it.each(localizedMissingPages)(
+    'returns an empty report for the recorded $lang missing-app page',
+    async ({ lang, title, body }) => {
+      expect(body).toContain(title);
+      expect(body).not.toContain('<title>Not Found</title>');
+
+      const result = await dataSafety({
+        appId: MISSING_APP_ID,
+        lang,
+        requestOptions: { fetchImpl: fetchReturning(body) },
+      });
+
+      expect(result).toEqual({
+        sharedData: [],
+        collectedData: [],
+        securityPractices: [],
+        privacyPolicyUrl: undefined,
+      });
+    },
+  );
+
+  it('does not treat the english not found title alone as a missing app', async () => {
+    const html = `<html><head><title>Not Found</title></head><body></body></html>`;
+
+    await expect(
+      dataSafety({
+        appId: TRANSLATE,
+        requestOptions: { fetchImpl: fetchReturning(html) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
+  });
+
+  it('still rejects a localized page whose error markup is gone', async () => {
+    const withoutMarker = readFixture('missing-pt.html').replaceAll(
+      'id="error-section"',
+      'id="renamed-section"',
+    );
+
+    await expect(
+      dataSafety({
+        appId: MISSING_APP_ID,
+        lang: 'pt',
+        requestOptions: { fetchImpl: fetchReturning(withoutMarker) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
+  });
+
+  it('keeps parsing a real page when it contains no error markup', async () => {
+    expect(fixture).not.toContain('id="error-section"');
+
+    const result = await dataSafety({
+      appId: TRANSLATE,
+      lang: 'pt',
+      requestOptions: { fetchImpl: fetchReturning(fixture) },
+    });
+
+    expect(result.collectedData.length).toBeGreaterThan(0);
   });
 
   it('returns empty defaults when the safety blocks are missing', async () => {
@@ -212,6 +283,63 @@ describe('datasafety degraded pages', () => {
         }),
       ).rejects.toBeInstanceOf(ParseError);
     }
+  });
+});
+
+const urlOf = (input: Parameters<typeof fetch>[0]): string => {
+  if (typeof input === 'string') {
+    return input;
+  }
+  return input instanceof URL ? input.href : input.url;
+};
+
+describe('datasafety storefront request', () => {
+  const recordUrls = (urls: string[]): typeof fetch => {
+    return (input) => {
+      urls.push(urlOf(input));
+      return Promise.resolve(new Response(fixture, { status: 200 }));
+    };
+  };
+
+  it('sends the default language and country with the app id', async () => {
+    const urls: string[] = [];
+
+    await dataSafety({ appId: TRANSLATE, requestOptions: { fetchImpl: recordUrls(urls) } });
+
+    expect(urls).toHaveLength(1);
+    const params = new URL(urls[0] ?? '').searchParams;
+    expect(Object.fromEntries(params)).toEqual({ id: TRANSLATE, hl: 'en', gl: 'us' });
+  });
+
+  it('sends the requested language and country', async () => {
+    const urls: string[] = [];
+
+    await dataSafety({
+      appId: TRANSLATE,
+      lang: 'pt',
+      country: 'br',
+      requestOptions: { fetchImpl: recordUrls(urls) },
+    });
+
+    const params = new URL(urls[0] ?? '').searchParams;
+    expect(Object.fromEntries(params)).toEqual({ id: TRANSLATE, hl: 'pt', gl: 'br' });
+  });
+
+  it('routes through a per-country fetch by the country it sends', async () => {
+    const routed: string[] = [];
+    const fetchImpl = createCountryFetch({
+      perCountry: {
+        de: (input) => {
+          routed.push(urlOf(input));
+          return Promise.resolve(new Response(fixture, { status: 200 }));
+        },
+      },
+      fallback: () => Promise.reject(new Error('fallback route must not be used')),
+    });
+
+    await dataSafety({ appId: TRANSLATE, country: 'de', requestOptions: { fetchImpl } });
+
+    expect(routed).toHaveLength(1);
   });
 });
 
