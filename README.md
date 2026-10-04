@@ -212,7 +212,7 @@ import { app } from '@mradex77/google-play-scraper';
 const details = await app({ appId: 'com.google.android.apps.translate' });
 ```
 
-Returns an `App` with 55 fields. Trimmed:
+Returns an `App` with 59 fields. Trimmed:
 
 ```javascript
 {
@@ -220,6 +220,7 @@ Returns an `App` with 55 fields. Trimmed:
   description: 'Translate between up to 133 languages...',
   descriptionHTML: 'Translate between up to 133 languages...<br>...',
   summary: 'Instantly translate text, speech and images in over 100 languages',
+  summaryHTML: 'Instantly translate text, speech and images in over 100 languages',
   installs: '1,000,000,000+',
   minInstalls: 1000000000,
   score: 4.48,
@@ -248,13 +249,17 @@ Returns an `App` with 55 fields. Trimmed:
   adSupported: false,
   updated: 1719878400000,
   version: 'Varies with device',
+  recentChanges: 'Bug fixes and improvements.\nNew offline languages',
+  recentChangesHTML: 'Bug fixes and improvements.<br>New offline languages',
   comments: [],
   appId: 'com.google.android.apps.translate',
   url: 'https://play.google.com/store/apps/details?id=com.google.android.apps.translate'
 }
 ```
 
-`description`, `summary` and `recentChanges` are plain text: tags are removed, the entities Google uses (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;` and numeric references) are decoded and each `<br>` becomes a newline. Google serves them with markup or entity encoding, so `descriptionHTML` is the one field that keeps the markup. Escape these fields like any other text before inserting them into HTML.
+`description`, `summary` and `recentChanges` are plain text: tags are removed, the entities Google uses (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;` and numeric references) are decoded and each `<br>` becomes a newline. Escape these fields like any other text before inserting them into HTML.
+
+Each of them has a markup twin read from the same Google cell: `descriptionHTML`, `summaryHTML` and `recentChangesHTML` keep the tags and entities exactly as Google serves them (control characters removed), and a twin is present exactly when its plain text field is. Use the twins when you render markup yourself. The markup is written by the app developer and filtered by Google, not by this library, so pass it through your own HTML sanitizer before inserting it into a page.
 
 A listing that has not been released yet carries no offer at all. For those apps
 `preregister` is `true`, and `price`, `free` and `priceText` fall back to `0`, `false` and
@@ -430,13 +435,14 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
     price: 0,
     free: true,
     summary: 'Fast and secure VPN',
+    summaryHTML: 'Fast and secure VPN',
     scoreText: '4.3',
     score: 4.3,
   },
 ];
 ```
 
-The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters, not a one line tagline), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. Call [app](#app) for `descriptionHTML` when you need the markup.
+The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters, not a one line tagline), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. `summaryHTML` carries the same cell with its markup, for callers that render HTML (sanitize it first, as for [app](#app)).
 
 Google Play serves a first result page of roughly 20 to 30 apps (50 for single character terms), and fewer for narrow terms. For a minority of queries it also serves a continuation token (verified October 2026: single character terms and digits, and some app names such as `minecraft` or `reddit`), and `search()` and `searchIterator()` follow it until Google ends the results, measured at no more than 250 in total. Continuation results are looser matches than the first page, and they carry `currency` only for paid apps. For every other term the first page is all Google serves, so a `num` above it is best-effort: the returned array may be shorter than requested, never longer, and never repeats an app.
 
@@ -693,13 +699,17 @@ Returns `DataSafety`. Trimmed:
     { data: 'Email address', optional: false, purpose: 'Account management', type: 'Personal info' }
   ],
   securityPractices: [
-    { practice: 'Data is encrypted in transit', description: 'Your data is transferred over a secure connection' }
+    {
+      practice: 'Data is encrypted in transit',
+      description: 'Your data is transferred over a secure connection',
+      descriptionHTML: 'Your data is transferred over a secure connection'
+    }
   ],
   privacyPolicyUrl: 'https://policies.google.com/privacy'
 }
 ```
 
-Every string in the report is plain text. Google ends some practice descriptions with a link to the Play Families Policy or to the App Defense Alliance security standard; the library removes the tag and keeps its text, so the description reads `...against a global security standard. See details`, the same way links are handled in the `app` `description`.
+Every string in the report is plain text. Google ends some practice descriptions with a link to the Play Families Policy or to the App Defense Alliance security standard; the library removes the tag and keeps its text, so the description reads `...against a global security standard. See details`, the same way links are handled in the `app` `description`. `descriptionHTML` keeps the description as Google serves it, link included.
 
 ### categories
 
@@ -1206,8 +1216,8 @@ To watch for drift in your own production use, wire up [`onDegradation`](#monito
 The method names, options, and constants are the same, so most code keeps working after swapping the import. Watch for these differences:
 
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
-- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google: item summaries and changelogs carry tags such as `<br>`, `<b>` and `<font color=...>`, and all of them carry entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Treat the values as decoded text: do not decode entities or strip tags a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that rendered these fields with `innerHTML` should switch to `descriptionHTML` from `app`, or to escaped text styled with `white-space: pre-line`.
-- `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept.
+- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google: item summaries and changelogs carry tags such as `<br>`, `<b>` and `<font color=...>`, and all of them carry entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Treat the values as decoded text: do not decode entities or strip tags a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that rendered these fields with `innerHTML` should read the markup twins `summaryHTML` and `recentChangesHTML` instead (they hold what the original returned), passed through an HTML sanitizer, or render the escaped text styled with `white-space: pre-line`.
+- `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept, and `descriptionHTML` keeps the original markup.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
