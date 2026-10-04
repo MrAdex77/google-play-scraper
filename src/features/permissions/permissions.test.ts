@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import * as z from 'zod/mini';
 import { permissions, type PermissionsOptions } from './permissions.ts';
 import { mapPermissions } from './specs.ts';
 import { permissionSchema, type AppPermission } from './schema.ts';
@@ -8,6 +9,9 @@ import { permission } from '../../constants.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
+
+const permissionEntriesSchema = z.array(permissionSchema);
+const permissionNamesSchema = z.array(z.string());
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -49,16 +53,20 @@ describe('permissions fixture parsing', () => {
   });
 
   it('returns each common permission string once when short', async () => {
-    const full = (await permissions({
-      appId: TRANSLATE,
-      requestOptions: { fetchImpl: fetchReturning(fixture) },
-    })) as AppPermission[];
+    const full = permissionEntriesSchema.parse(
+      await permissions({
+        appId: TRANSLATE,
+        requestOptions: { fetchImpl: fetchReturning(fixture) },
+      }),
+    );
 
-    const short = (await permissions({
-      appId: TRANSLATE,
-      short: true,
-      requestOptions: { fetchImpl: fetchReturning(fixture) },
-    })) as string[];
+    const short = permissionNamesSchema.parse(
+      await permissions({
+        appId: TRANSLATE,
+        short: true,
+        requestOptions: { fetchImpl: fetchReturning(fixture) },
+      }),
+    );
 
     const commonStrings = full
       .filter((entry) => entry.type === permission.COMMON)
@@ -72,11 +80,13 @@ describe('permissions fixture parsing', () => {
 
 describe('permissions short output across recorded listings', () => {
   const shortFor = async (name: string): Promise<string[]> =>
-    (await permissions({
-      appId: 'com.example.app',
-      short: true,
-      requestOptions: { fetchImpl: fetchReturning(readFixture(name)) },
-    })) as string[];
+    permissionNamesSchema.parse(
+      await permissions({
+        appId: 'com.example.app',
+        short: true,
+        requestOptions: { fetchImpl: fetchReturning(readFixture(name)) },
+      }),
+    );
 
   it('lists a permission shared by two groups once, keeping first seen order', async () => {
     const short = await shortFor('whatsapp');
@@ -186,10 +196,12 @@ describe('mapPermissions fallbacks', () => {
 
 describe('permissions group field', () => {
   const entriesFor = async (name: string): Promise<AppPermission[]> =>
-    (await permissions({
-      appId: 'com.example.app',
-      requestOptions: { fetchImpl: fetchReturning(readFixture(name)) },
-    })) as AppPermission[];
+    permissionEntriesSchema.parse(
+      await permissions({
+        appId: 'com.example.app',
+        requestOptions: { fetchImpl: fetchReturning(readFixture(name)) },
+      }),
+    );
 
   const groupsOf = (entries: AppPermission[], text: string): string[] =>
     entries.filter((entry) => entry.permission === text).map((entry) => entry.group);
