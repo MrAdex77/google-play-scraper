@@ -6,6 +6,7 @@ const TRANSLATE = 'com.google.android.apps.translate';
 const MISSING_APP = 'com.adex77.definitely.not.a.real.app';
 const UNAVAILABLE_EVERYWHERE_APP = 'br.com.itau';
 const STOREFRONT_RESTRICTED_APP = 'com.vkontakte.android';
+const REGIONAL_PRACTICE_APP = 'com.phonepe.app';
 const SECTIONLESS_APPS = ['com.google.android.gms', 'com.chucklefish.stardewvalley'];
 const MISSING_APP_LANGUAGES = ['en', 'pt', 'de', 'ja', 'ar', 'ru', 'fr', 'zh', 'pl', 'ko'];
 const REAL_APP_LANGUAGES = ['pt', 'ja', 'ar', 'ru'];
@@ -179,5 +180,20 @@ liveDescribe('datasafety live contract', () => {
 
     expect(asEntries(german.collectedData)).toEqual(asEntries(american.collectedData));
     expect(asEntries(german.securityPractices)).toEqual(asEntries(american.securityPractices));
+  });
+
+  it('adds the regional security practices of the requested storefront', async () => {
+    const practicesIn = async (country: string): Promise<string[]> => {
+      const report = await liveClient.dataSafety({ appId: REGIONAL_PRACTICE_APP, country });
+      return report.securityPractices.map((entry) => entry.practice);
+    };
+    const american = await practicesIn('us');
+    const indian = await practicesIn('in');
+
+    expect(american.length).toBeGreaterThan(0);
+    expect(indian).toEqual(expect.arrayContaining(american));
+    expect(indian.filter((practice) => !american.includes(practice))).toContain(
+      'UPI payments verified',
+    );
   });
 });
