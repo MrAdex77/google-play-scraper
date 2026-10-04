@@ -1,4 +1,5 @@
 import { expect } from 'vitest';
+import type { DataSafety } from '../../src/index.ts';
 
 const TAG_NAMES = 'a|b|br|div|em|font|h[1-6]|i|li|ol|p|span|strong|sup|u|ul';
 const ATTRIBUTE = String.raw`\s+[a-z-]+=(?:"[^"\n]*"|'[^'\n]*'|[^\s>]+)`;
@@ -20,5 +21,17 @@ export function expectPlainSummaries(items: readonly { appId: string; summary?: 
   ).toBe(true);
   for (const item of items) {
     expectPlainText(item.summary, `${item.appId} summary`);
+  }
+}
+
+export function expectPlainSafetyReport(report: DataSafety, label: string): void {
+  for (const entry of [...report.sharedData, ...report.collectedData]) {
+    expectPlainText(entry.data, `${label} ${entry.type} data`);
+    expectPlainText(entry.purpose, `${label} ${entry.data} purpose`);
+    expectPlainText(entry.type, `${label} ${entry.data} type`);
+  }
+  for (const practice of report.securityPractices) {
+    expectPlainText(practice.practice, `${label} practice`);
+    expectPlainText(practice.description, `${label} ${practice.practice} description`);
   }
 }

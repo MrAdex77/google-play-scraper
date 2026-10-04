@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { dataSafety, type DataSafetyOptions } from './datasafety.ts';
 import { createCountryFetch } from '../../core/countryFetch.ts';
-import { ParseError, ValidationError } from '../../core/errors.ts';
+import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
+import { expectPlainSafetyReport } from '../../../test/helpers/plainText.ts';
 import { DATA_SAFETY_RPC_ID } from './specs.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -72,6 +73,20 @@ describe('datasafety fixture parsing', () => {
 
     expect(result.privacyPolicyUrl).toBeDefined();
     expect(() => new URL(result.privacyPolicyUrl ?? '')).not.toThrow();
+  });
+
+  it('returns every recorded report string as plain text', async () => {
+    const result = await dataSafety({
+      appId: TRANSLATE,
+      requestOptions: { fetchImpl: fetchReturning(fixture) },
+    });
+
+    expectPlainSafetyReport(result, 'translate');
+    expect(result.securityPractices).toContainEqual({
+      practice: 'Independent security review',
+      description:
+        'This app has been independently validated against a global security standard. See details',
+    });
   });
 });
 
@@ -228,6 +243,51 @@ describe('datasafety degraded pages', () => {
       { practice: 'Data is encrypted', description: 'Encrypted in transit' },
     ]);
     expect(result.privacyPolicyUrl).toBe('https://example.com/privacy');
+  });
+
+  it('turns a security practice description into plain text', async () => {
+    const node138: unknown[] = [];
+    node138[9] = [
+      null,
+      null,
+      [
+        [
+          null,
+          'Committed to follow the Play Families Policy',
+          [
+            null,
+            'The developer has committed to follow the Play Families Policy &amp; more. <a href="https://support.google.com/googleplay/android-developer/answer/9893335" target="_blank">See the policy</a>',
+          ],
+        ],
+      ],
+    ];
+    const html = buildDataSafetyHtml(wrapSafetyNode({ '138': node138 }));
+
+    const result = await dataSafety({
+      appId: TRANSLATE,
+      requestOptions: { fetchImpl: fetchReturning(html) },
+    });
+
+    expect(result.securityPractices).toEqual([
+      {
+        practice: 'Committed to follow the Play Families Policy',
+        description:
+          'The developer has committed to follow the Play Families Policy & more. See the policy',
+      },
+    ]);
+  });
+
+  it('rejects a security practice description that is not a string', async () => {
+    const node138: unknown[] = [];
+    node138[9] = [null, null, [[null, 'Data is encrypted', [null, 7]]]];
+    const html = buildDataSafetyHtml(wrapSafetyNode({ '138': node138 }));
+
+    await expect(
+      dataSafety({
+        appId: TRANSLATE,
+        requestOptions: { fetchImpl: fetchReturning(html) },
+      }),
+    ).rejects.toBeInstanceOf(SpecError);
   });
 
   it('parses a report moved behind the Ws7gDc route', async () => {
