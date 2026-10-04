@@ -252,7 +252,7 @@ async function showPermissions(client: Client): Promise<void> {
   const entries = await client.permissions({ appId: TEST_APP_ID });
   field('Permissions', entries.length);
   entries.slice(0, 8).forEach((entry) => {
-    field('•', typeof entry === 'string' ? entry : entry.permission);
+    field('•', typeof entry === 'string' ? entry : `${entry.group}: ${entry.permission}`);
   });
 }
 
