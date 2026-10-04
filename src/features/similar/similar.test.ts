@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createSimilar, similar, type SimilarOptions } from './similar.ts';
 import { similarAppSchema, type SimilarApp } from './schema.ts';
 import { findSimilarClusterPath } from './specs.ts';
@@ -9,8 +9,13 @@ import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
-import { expectPlainSummaries } from '../../../test/helpers/plainText.ts';
+import { plainText } from '../../core/htmlText.ts';
+import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
 import { clusterOfferItems } from '../../../test/helpers/clusterOfferItems.ts';
+
+vi.mock(import('../../core/htmlText.ts'), { spy: true });
+
+const plainTextSpy = vi.mocked(plainText);
 
 const SOURCE_APP_ID = 'com.google.android.apps.translate';
 
@@ -76,6 +81,7 @@ describe('similar fixture parsing', () => {
   });
 
   it('returns plain text summaries for the recorded cluster', async () => {
+    plainTextSpy.mockClear();
     const { fetchImpl } = sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]);
 
     const items = (await similar({
@@ -83,7 +89,7 @@ describe('similar fixture parsing', () => {
       requestOptions: { fetchImpl },
     })) as SimilarApp[];
 
-    expectPlainSummaries(items);
+    expectConvertedSummaries(plainTextSpy, items, 'translate cluster');
   });
 
   it('never returns the source app among the similar results', async () => {

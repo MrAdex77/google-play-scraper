@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createSearch, search, type SearchOptions } from './search.ts';
 import {
   filterByPrice,
@@ -22,8 +22,13 @@ import { searchResultSchema, type SearchResult } from './schema.ts';
 import type { App } from '../app/schema.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
-import { expectPlainSummaries } from '../../../test/helpers/plainText.ts';
+import { plainText } from '../../core/htmlText.ts';
+import { expectConvertedSummaries } from '../../../test/helpers/plainText.ts';
 import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
+
+vi.mock(import('../../core/htmlText.ts'), { spy: true });
+
+const plainTextSpy = vi.mocked(plainText);
 
 const readFixture = (name: string): string =>
   readFileSync(
@@ -120,13 +125,14 @@ describe('search fixture parsing', () => {
     const fixtures = [pandaHtml, whereAmIHtml, biedronkaHtml];
 
     for (const html of fixtures) {
+      plainTextSpy.mockClear();
       const results = (await search({
         term: 'recorded',
         num: 30,
         requestOptions: { fetchImpl: fetchReturning(html) },
       })) as SearchResult[];
 
-      expectPlainSummaries(results);
+      expectConvertedSummaries(plainTextSpy, results, 'recorded search');
     }
   });
 
