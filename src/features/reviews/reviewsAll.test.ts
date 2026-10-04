@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { reviewsAll } from './reviewsAll.ts';
 import { REVIEWS_RPC_ID } from './specs.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ValidationError } from '../../core/errors.ts';
 import type { IntegrityEvent } from '../../core/integrity.ts';
 
@@ -77,6 +78,18 @@ describe('reviewsAll', () => {
     const result = await reviewsAll({ appId: TRANSLATE, requestOptions: { fetchImpl } });
 
     expect(result.map((review) => review.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('rejects every malformed appId before any request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(reviewsAll({ appId, requestOptions: { fetchImpl } })).rejects.toThrow(
+        /^reviewsAll: appId: must be/,
+      );
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid maxReviews through validation', async () => {

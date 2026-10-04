@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createReviewsIterator, reviewsIterator } from './reviewsIterator.ts';
 import { reviews } from './reviews.ts';
 import { REVIEWS_RPC_ID } from './specs.ts';
 import { reviewSchema } from './schema.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ValidationError } from '../../core/errors.ts';
 import type { IntegrityEvent } from '../../core/integrity.ts';
 
@@ -140,6 +141,18 @@ describe('reviewsIterator streaming', () => {
 describe('reviewsIterator validation', () => {
   it('throws a ValidationError synchronously for an empty appId', () => {
     expect(() => reviewsIterator({ appId: '' })).toThrow(ValidationError);
+  });
+
+  it('throws synchronously for every malformed appId without any request', () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    for (const appId of MALFORMED_APP_IDS) {
+      expect(() => reviewsIterator({ appId, requestOptions: { fetchImpl } })).toThrow(
+        /^reviewsIterator: appId: must be/,
+      );
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('routes through an injected resolveClient', async () => {

@@ -4,7 +4,7 @@ import { parseBatchResponse } from '../../core/batchexecute.ts';
 import { ParseError } from '../../core/errors.ts';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
 import { detectPaginationTokenCycle } from '../../core/integrity.ts';
-import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
 import { parseRaw } from '../../core/raw.ts';
 import { extract, type Extracted } from '../../core/spec.ts';
@@ -32,7 +32,7 @@ const sortSchema = z._default(
 export const reviewScoreSchema = z.literal([1, 2, 3, 4, 5]);
 
 export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
-  appId: z.string().check(z.minLength(1)),
+  appId: appIdSchema,
   sort: sortSchema,
   num: z._default(z.int().check(z.gte(1)), DEFAULT_REVIEWS_PAGE_SIZE),
   paginate: z._default(z.boolean(), false),

@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { app, type AppOptions } from './app.ts';
 import { getPath } from '../../core/path.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { NotFoundError, SpecError, ValidationError } from '../../core/errors.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { APP_DETAILS_RPC_ID, appCommentsRootSchema, appDetailsRootSchema } from './specs.ts';
 import { expectHtmlTwin } from '../../../test/helpers/plainText.ts';
 
@@ -500,5 +501,27 @@ describe('app', () => {
 
   it('rejects options without an appId through validation', async () => {
     await expect(app({} as AppOptions)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('rejects every malformed appId before any request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(app({ appId, requestOptions: { fetchImpl } })).rejects.toThrow(
+        /^app: appId: must be/,
+      );
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('keeps the exact appId, case included, in the url and the result', async () => {
+    const appId = 'com.adex77.WhereAmI';
+    const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response(whereAmIHtml)));
+
+    const result = await app({ appId, requestOptions: { fetchImpl } });
+
+    expect(result.appId).toBe(appId);
+    expect(result.url).toContain('id=com.adex77.WhereAmI&');
   });
 });

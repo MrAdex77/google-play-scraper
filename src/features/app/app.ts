@@ -1,7 +1,7 @@
 import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
-import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { resolveScriptRoot } from '../../core/scriptRoot.ts';
 import { extract } from '../../core/spec.ts';
@@ -15,7 +15,7 @@ import {
 import { extractComments } from './transforms.ts';
 
 export const appOptionsSchema = z.extend(baseOptionsSchema, {
-  appId: z.string().check(z.minLength(1)),
+  appId: appIdSchema,
 });
 
 export type AppOptions = z.input<typeof appOptionsSchema>;

@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GooglePlayError, NotFoundError } from '../core/errors.ts';
 import { runCli } from './cli.ts';
 import { commands } from './commands.ts';
@@ -59,6 +59,10 @@ function createStubApi(result: unknown = { stub: true }): {
   ) as unknown as CliApi;
   return { api, calls };
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('runCli success path', () => {
   it('prints the pretty JSON result with a trailing newline and returns 0', async () => {
@@ -180,6 +184,63 @@ describe('runCli usage errors', () => {
     expect(stdout()).toBe('');
     expect(stderr()).toContain('num');
     expect(stderr()).toContain('Usage: google-play-scraper search <term>');
+  });
+
+  it.each([
+    ['app', []],
+    ['similar', []],
+    ['reviews', []],
+    ['permissions', []],
+    ['data-safety', []],
+    ['availability', ['--countries', 'us']],
+  ])('rejects a malformed appId for %s before any request', async (name, flags) => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new Error('unexpected request'));
+    const { io, stdout, stderr } = createIo();
+
+    const code = await runCli([name, 'com.żółw.app', ...flags], io);
+
+    expect(code).toBe(2);
+    expect(stdout()).toBe('');
+    expect(stderr()).toContain('appId: must be an Android package name');
+    expect(stderr()).toContain(`Usage: google-play-scraper ${name} <appId>`);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('rejects an appId with trailing whitespace instead of trimming it', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new Error('unexpected request'));
+    const { io, stderr } = createIo();
+
+    const code = await runCli(['app', 'com.whatsapp '], io);
+
+    expect(code).toBe(2);
+    expect(stderr()).toContain('appId: must be an Android package name');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('reports a malformed appId in an apps list as a rejected entry without a request', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new Error('unexpected request'));
+    const { io, stdout } = createIo();
+
+    const code = await runCli(['apps', 'com.żółw.app'], io);
+
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout())).toMatchObject([{ appId: 'com.żółw.app', status: 'rejected' }]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('still trims whitespace around the commas of an apps list', async () => {
+    const { api, calls } = createStubApi();
+    const { io } = createIo();
+
+    await runCli(['apps', 'com.whatsapp , com.spotify.music'], io, api);
+
+    expect(calls[0]?.options).toMatchObject({ appIds: ['com.whatsapp', 'com.spotify.music'] });
   });
 
   it('returns 2 for an unknown sort naming the valid choices', async () => {

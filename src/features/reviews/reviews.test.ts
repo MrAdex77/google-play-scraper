@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { reviewPages, reviews, type ReviewPageQuery, type ReviewsOptions } from './reviews.ts';
 import { REVIEWS_RPC_ID } from './specs.ts';
 import { reviewSchema } from './schema.ts';
 import { createHttpClient } from '../../core/http.ts';
 import { sort } from '../../constants.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 import type { IntegrityEvent } from '../../core/integrity.ts';
 
@@ -485,6 +486,18 @@ describe('reviews options', () => {
 
   it('rejects a missing appId', async () => {
     await expect(reviews({} as ReviewsOptions)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('rejects every malformed appId before any request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(reviews({ appId, requestOptions: { fetchImpl } })).rejects.toThrow(
+        /^reviews: appId: must be/,
+      );
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
 

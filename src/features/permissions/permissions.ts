@@ -2,7 +2,7 @@ import * as z from 'zod/mini';
 import { permission } from '../../constants.ts';
 import { parseBatchResponse } from '../../core/batchexecute.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
-import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { parseRaw } from '../../core/raw.ts';
 import { permissionSchema, type AppPermission } from './schema.ts';
 import {
@@ -17,7 +17,7 @@ import {
 const PERMISSIONS_CONTEXT = 'permissions';
 
 export const permissionsOptionsSchema = z.extend(baseOptionsSchema, {
-  appId: z.string().check(z.minLength(1)),
+  appId: appIdSchema,
   short: z._default(z.boolean(), false),
 });
 

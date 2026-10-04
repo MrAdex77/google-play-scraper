@@ -4,6 +4,7 @@ import { mapWithConcurrency } from '../../core/concurrency.ts';
 import { NotFoundError } from '../../core/errors.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import {
+  appIdSchema,
   baseOptionsSchema,
   hasUniqueCountriesIgnoringCase,
   normalizeCountry,
@@ -19,7 +20,7 @@ import {
 const countryCodeSchema = z.string().check(z.regex(/^[a-z]{2}$/i));
 
 export const availabilityOptionsSchema = z.object({
-  appId: z.string().check(z.minLength(1)),
+  appId: appIdSchema,
   countries: z
     .array(countryCodeSchema)
     .check(

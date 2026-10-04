@@ -5,6 +5,7 @@ import { createClient } from '../../client.ts';
 import { memoized } from '../memoized/memoized.ts';
 import { createCountryFetch } from '../../core/countryFetch.ts';
 import { ValidationError } from '../../core/errors.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 
 const urlOf = (input: string | URL | Request): string =>
   typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -98,6 +99,18 @@ describe('availability', () => {
     await expect(availability({ appId: 'com.example.app', countries: [] })).rejects.toBeInstanceOf(
       ValidationError,
     );
+  });
+
+  it('rejects every malformed appId before any request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(
+        availability({ appId, countries: ['us'], requestOptions: { fetchImpl } }),
+      ).rejects.toThrow(/^availability: appId: must be/);
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('honors the concurrency ceiling', async () => {

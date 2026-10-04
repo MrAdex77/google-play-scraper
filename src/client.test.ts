@@ -6,6 +6,7 @@ import { app } from './features/app/app.ts';
 import type { App } from './features/app/schema.ts';
 import type { DegradationEvent } from './core/degradation.ts';
 import { ValidationError } from './core/errors.ts';
+import { MALFORMED_APP_IDS } from '../test/helpers/appIds.ts';
 
 const readFixture = (path: string): string =>
   readFileSync(fileURLToPath(new URL(`../test/fixtures/${path}`, import.meta.url)), 'utf8');
@@ -282,6 +283,34 @@ describe('createClient', () => {
   it('rejects invalid client options before any network work', () => {
     expect(() => createClient({ throttle: -1 })).toThrow(ValidationError);
     expect(() => createClient({ throttle: -1 })).toThrow(/^client:/);
+  });
+
+  it('rejects malformed app ids on every appId method before any request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const client = createClient({ requestOptions: { fetchImpl } });
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(client.app({ appId })).rejects.toBeInstanceOf(ValidationError);
+      await expect(client.similar({ appId })).rejects.toBeInstanceOf(ValidationError);
+      await expect(client.permissions({ appId })).rejects.toBeInstanceOf(ValidationError);
+      await expect(client.dataSafety({ appId })).rejects.toBeInstanceOf(ValidationError);
+      await expect(client.reviews({ appId })).rejects.toBeInstanceOf(ValidationError);
+      await expect(client.reviewsAll({ appId })).rejects.toBeInstanceOf(ValidationError);
+      expect(() => client.reviewsIterator({ appId })).toThrow(ValidationError);
+      await expect(client.availability({ appId, countries: ['us'] })).rejects.toBeInstanceOf(
+        ValidationError,
+      );
+    }
+
+    const entries = await client.apps({
+      appIds: MALFORMED_APP_IDS.filter((appId) => appId !== ''),
+    });
+    expect(entries).toHaveLength(MALFORMED_APP_IDS.length - 1);
+    for (const entry of entries) {
+      expect(entry.status === 'rejected' && entry.error).toBeInstanceOf(ValidationError);
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('fires lifecycle hooks on the throttled shared client', async () => {

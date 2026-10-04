@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
-import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
+import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
 import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { fetchClusterApps } from '../../core/pagination.ts';
@@ -25,7 +25,7 @@ import {
 } from './specs.ts';
 
 export const similarOptionsSchema = z.extend(baseOptionsSchema, {
-  appId: z.string().check(z.minLength(1)),
+  appId: appIdSchema,
   fullDetail: z._default(z.boolean(), false),
 });
 
