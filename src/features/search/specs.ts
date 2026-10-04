@@ -1,4 +1,9 @@
-import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
+import {
+  developerIdFromUrl,
+  isFreeMicros,
+  microsToUnits,
+  resolveAppUrl,
+} from '../../core/appItemTransforms.ts';
 import { getPath, type Path } from '../../core/path.ts';
 import { rawArrayPathSchema } from '../../core/raw.ts';
 import type { ScriptRootSpec } from '../../core/scriptRoot.ts';
@@ -15,10 +20,6 @@ const DEFAULT_NOT_FREE = defaulted(() => false);
 
 export type PriceFilter = 'all' | 'free' | 'paid';
 export const SEARCH_RPC_ID = 'lGYRle';
-
-function developerIdFromLink(value: unknown): string | undefined {
-  return typeof value === 'string' ? value.split('?id=')[1] : undefined;
-}
 
 export const INITIAL_MAPPINGS = {
   sections: [0, 1],
@@ -103,7 +104,7 @@ export const exactMatchSpecs = {
     paths: [[16, 2, 68, 1, 4, 2]],
     missing: OPTIONAL,
     schema: shape.developerId,
-    transform: developerIdFromLink,
+    transform: developerIdFromUrl,
   },
   currency: {
     paths: [EXACT_MATCH_OFFER_NODE.currency, EXACT_MATCH_DETAIL_NODE.currency],
