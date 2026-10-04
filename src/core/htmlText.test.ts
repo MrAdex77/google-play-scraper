@@ -72,6 +72,19 @@ describe('htmlToPlainText', () => {
   });
 });
 
+describe('htmlToPlainText windows-1252 references', () => {
+  it('maps numeric references 128 to 159 the way browsers do', () => {
+    expect(htmlToPlainText('wait&#133; it&#146;s &#x96; ok&#153;')).toBe(
+      'wait\u2026 it\u2019s \u2013 ok\u2122',
+    );
+    expect(htmlToPlainText('&#128;&#x9F;')).toBe('\u20ac\u0178');
+  });
+
+  it('keeps the unassigned references as the control characters plain text removes', () => {
+    expect(plainText('a&#129;b&#x8D;c&#143;d&#144;e&#157;f')).toBe('abcdef');
+  });
+});
+
 describe('plainText', () => {
   it('strips markup, decodes entities, and turns br into line breaks', () => {
     expect(plainText('line one<br>line <b>two</b> &amp; &#39;three&#39;')).toBe(

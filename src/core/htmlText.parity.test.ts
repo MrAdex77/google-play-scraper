@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { htmlToPlainText } from './htmlText.ts';
+import { sanitizeText } from './text.ts';
 import { getPath } from './path.ts';
 import { parseScriptData } from './scriptData.ts';
 import { resolveScriptRoot } from './scriptRoot.ts';
@@ -82,7 +83,14 @@ const SYNTHETIC_CORPUS = [
   'rtl a\u200fb mark',
   '',
   'mixed <b>Bold &amp; &#39;quoted&#39;</b><br>next &lt;line&gt;',
+  'wait&#133; it&#146;s here &#150; now&#153;',
+  '&#x80;&#x82;&#x8A;&#x8C;&#x8E;&#x9C;&#x9E;&#x9F;',
 ] as const;
+
+const WINDOWS_1252_RANGE = Array.from(
+  { length: 32 },
+  (_, offset) => `&#${(0x80 + offset).toString()};`,
+);
 
 describe('htmlToPlainText parity with the cheerio implementation', () => {
   for (const name of FIXTURE_NAMES) {
@@ -96,6 +104,14 @@ describe('htmlToPlainText parity with the cheerio implementation', () => {
     it(`matches cheerio on the ${name} fixture changelog`, () => {
       const changelogHtml = fixtureRecentChangesHtml(name);
       expect(htmlToPlainText(changelogHtml)).toBe(legacyDescriptionText(changelogHtml));
+    });
+  }
+
+  for (const reference of WINDOWS_1252_RANGE) {
+    it(`matches cheerio for the windows-1252 reference ${reference}`, () => {
+      expect(sanitizeText(htmlToPlainText(reference))).toBe(
+        sanitizeText(legacyDescriptionText(reference)),
+      );
     });
   }
 
