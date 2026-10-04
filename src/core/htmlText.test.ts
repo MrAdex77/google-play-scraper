@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { htmlToPlainText, plainText } from './htmlText.ts';
+import { htmlText, htmlToPlainText, plainText } from './htmlText.ts';
 
 describe('htmlToPlainText', () => {
   it('decodes each supported named entity', () => {
@@ -87,5 +87,22 @@ describe('plainText', () => {
     expect(plainText(undefined)).toBeUndefined();
     expect(plainText(42)).toBe(42);
     expect(plainText(null)).toBeNull();
+  });
+});
+
+describe('htmlText', () => {
+  it('keeps markup and entities as google serves them', () => {
+    const html = 'Hunt &amp; <b>Explore</b><br>It&#39;s <a href="https://example.com">here</a>';
+
+    expect(htmlText(html)).toBe(html);
+  });
+
+  it('removes control characters like the plain text twin', () => {
+    expect(htmlText('a\u0000b<br>\u0007c\u0085')).toBe('ab<br>c');
+  });
+
+  it('passes a non string value through to the schema', () => {
+    expect(htmlText(42)).toBe(42);
+    expect(htmlText(undefined)).toBeUndefined();
   });
 });

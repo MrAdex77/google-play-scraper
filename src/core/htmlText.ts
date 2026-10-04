@@ -58,3 +58,7 @@ export function htmlToPlainText(html: string): string {
 export function plainText(value: unknown): unknown {
   return typeof value === 'string' ? sanitizeText(htmlToPlainText(value)) : value;
 }
+
+export function htmlText(value: unknown): unknown {
+  return typeof value === 'string' ? sanitizeText(value) : value;
+}
