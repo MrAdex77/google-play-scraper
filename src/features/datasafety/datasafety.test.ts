@@ -8,21 +8,15 @@ import { DATA_SAFETY_RPC_ID } from './specs.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
-const fixture = readFileSync(
-  fileURLToPath(new URL('../../../test/fixtures/datasafety/translate.html', import.meta.url)),
-  'utf8',
-);
-
-const missingFixture = readFileSync(
-  fileURLToPath(new URL('../../../test/fixtures/datasafety/missing.html', import.meta.url)),
-  'utf8',
-);
-
 const readFixture = (name: string): string =>
   readFileSync(
     fileURLToPath(new URL(`../../../test/fixtures/datasafety/${name}`, import.meta.url)),
     'utf8',
   );
+
+const fixture = readFixture('translate.html');
+
+const missingFixture = readFixture('missing.html');
 
 const MISSING_APP_ID = 'com.adex77.definitely.not.a.real.app';
 
