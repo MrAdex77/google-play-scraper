@@ -147,9 +147,10 @@ liveDescribe('sparse listings live contract', () => {
 
     expect(Array.isArray(result)).toBe(true);
     for (const entry of result) {
-      const item = entry as { permission: string; type: number };
+      const item = entry as { permission: string; type: number; group: string };
       expect(item.permission.length).toBeGreaterThan(0);
       expect([permission.COMMON, permission.OTHER]).toContain(item.type);
+      expect(item.group.length).toBeGreaterThan(0);
     }
   });
 
@@ -369,9 +370,10 @@ liveDescribe('preregistration listings live contract', () => {
     ]);
 
     for (const entry of permissions) {
-      const item = entry as { permission: string; type: number };
+      const item = entry as { permission: string; type: number; group: string };
       expect(item.permission.length).toBeGreaterThan(0);
       expect([permission.COMMON, permission.OTHER]).toContain(item.type);
+      expect(item.group.length).toBeGreaterThan(0);
     }
     if (safety.privacyPolicyUrl !== undefined) {
       expect(safety.privacyPolicyUrl.startsWith('http')).toBe(true);
