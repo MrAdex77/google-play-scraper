@@ -118,4 +118,18 @@ describe('htmlText', () => {
     expect(htmlText(42)).toBe(42);
     expect(htmlText(undefined)).toBeUndefined();
   });
+
+  it('gives plain text that is exactly its markup twin decoded once', () => {
+    const awkward = [
+      'Tom &\u0001amp; Jerry',
+      '&#\u000060;b&#\u000062;',
+      'a\ud83d<b></b>\ude00z',
+      'x\u0085&#133;<br>y',
+    ];
+
+    for (const raw of awkward) {
+      expect(plainText(raw)).toBe(plainText(htmlText(raw)));
+    }
+    expect(plainText('Tom &\u0001amp; Jerry')).toBe('Tom & Jerry');
+  });
 });

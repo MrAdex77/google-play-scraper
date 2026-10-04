@@ -18,7 +18,7 @@ export function legacyDescriptionText(html: string): string {
 }
 
 export function oraclePlainText(html: string): string | undefined {
-  return sanitizeText(legacyDescriptionText(html));
+  return sanitizeText(legacyDescriptionText(sanitizeText(html) ?? ''));
 }
 
 function preview(text: string): string {
