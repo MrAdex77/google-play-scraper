@@ -6,6 +6,7 @@ import { category, device } from '../../constants.ts';
 import type { DegradationEvent } from '../../core/degradation.ts';
 import { NotFoundError, ValidationError } from '../../core/errors.ts';
 import type { RequestOptions } from '../../core/options.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import type { App } from '../app/schema.ts';
 
 const readFixture = (dir: string, name: string): string =>
@@ -430,6 +431,18 @@ describe('memoized', () => {
     expect(client.cache.size).toBe(0);
     await client.app({ appId: 'com.b', requestOptions });
     expect(fetch.state.calls).toBe(4);
+  });
+
+  it('rejects a malformed appId without a request or a cache entry', async () => {
+    const fetch = countingAppFetch();
+    const client = memoized({ requestOptions: requestOptionsFor(fetch.fetchImpl) });
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(client.app({ appId })).rejects.toBeInstanceOf(ValidationError);
+    }
+
+    expect(fetch.state.calls).toBe(0);
+    expect(client.cache.size).toBe(0);
   });
 
   it('rejects invalid options before creating any cache or HTTP state', () => {

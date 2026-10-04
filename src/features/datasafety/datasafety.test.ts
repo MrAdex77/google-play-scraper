@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { dataSafety, type DataSafetyOptions } from './datasafety.ts';
 import { createCountryFetch } from '../../core/countryFetch.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 import { expectPlainSafetyReport } from '../../../test/helpers/plainText.ts';
 import { DATA_SAFETY_RPC_ID } from './specs.ts';
@@ -421,5 +422,17 @@ describe('datasafety storefront request', () => {
 describe('datasafety guards', () => {
   it('rejects a missing appId with a ValidationError', async () => {
     await expect(dataSafety({} as DataSafetyOptions)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('rejects every malformed appId before any request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(dataSafety({ appId, requestOptions: { fetchImpl } })).rejects.toThrow(
+        /^dataSafety: appId: must be/,
+      );
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

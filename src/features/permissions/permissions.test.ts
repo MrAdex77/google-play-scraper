@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { permissions, type PermissionsOptions } from './permissions.ts';
 import { mapPermissions } from './specs.ts';
 import { permissionSchema, type AppPermission } from './schema.ts';
 import { permission } from '../../constants.ts';
+import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -109,6 +110,18 @@ describe('mapPermissions fallbacks', () => {
 describe('permissions guards', () => {
   it('rejects a missing appId with a ValidationError', async () => {
     await expect(permissions({} as PermissionsOptions)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('rejects every malformed appId before any request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    for (const appId of MALFORMED_APP_IDS) {
+      await expect(permissions({ appId, requestOptions: { fetchImpl } })).rejects.toThrow(
+        /^permissions: appId: must be/,
+      );
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('returns an empty array when the payload is null', async () => {
