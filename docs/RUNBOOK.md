@@ -197,7 +197,9 @@ path therefore shows up as an error, an event, or an empty array, never as a few
 items fewer. The one surface that can lose part of its result silently is
 `permissions`, whose common and other sections resolve independently, and that
 is guarded by requiring both sections on the owned `com.adex77.WhereAmI`
-listing rather than by a count. A live count assertion may only take one of
+listing rather than by a count. The group name of each entry is read leniently
+(an unreadable name becomes an empty string), so the live suite also requires a
+non empty `group` on every entry. A live count assertion may only take one of
 these shapes:
 
 1. **Non empty.** `count > 0` where the anchor must carry data, which catches a

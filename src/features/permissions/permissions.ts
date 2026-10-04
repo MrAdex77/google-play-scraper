@@ -25,6 +25,13 @@ export type PermissionsOptions = z.input<typeof permissionsOptionsSchema>;
 
 const permissionsResultSchema = z.array(permissionSchema);
 
+function uniqueCommonPermissions(entries: readonly AppPermission[]): string[] {
+  const names = entries
+    .filter((entry) => entry.type === permission.COMMON)
+    .map((entry) => entry.permission);
+  return [...new Set(names)];
+}
+
 export function createPermissions(resolveClient: ResolveClient = clientFromOptions) {
   return async function permissions(
     options: PermissionsOptions,
@@ -46,9 +53,7 @@ export function createPermissions(resolveClient: ResolveClient = clientFromOptio
     if (!parsed.short) {
       return entries;
     }
-    return entries
-      .filter((entry) => entry.type === permission.COMMON)
-      .map((entry) => entry.permission);
+    return uniqueCommonPermissions(entries);
   };
 }
 
