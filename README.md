@@ -254,7 +254,7 @@ Returns an `App` with 55 fields. Trimmed:
 }
 ```
 
-`description`, `summary` and `recentChanges` are plain text: tags are removed, HTML entities are decoded and each `<br>` becomes a newline. Google serves all three as HTML fragments, so `descriptionHTML` is the one field that keeps the markup.
+`description`, `summary` and `recentChanges` are plain text: tags are removed, the entities Google uses (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;` and numeric references) are decoded and each `<br>` becomes a newline. Google serves them with markup or entity encoding, so `descriptionHTML` is the one field that keeps the markup. Escape these fields like any other text before inserting them into HTML.
 
 A listing that has not been released yet carries no offer at all. For those apps
 `preregister` is `true`, and `price`, `free` and `priceText` fall back to `0`, `false` and
@@ -1200,7 +1200,7 @@ To watch for drift in your own production use, wire up [`onDegradation`](#monito
 The method names, options, and constants are the same, so most code keeps working after swapping the import. Watch for these differences:
 
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
-- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google, with tags such as `<br>`, `<b>` and `<font color=...>` and entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Code that decoded or stripped markup itself keeps working because there is nothing left to strip, but code that renders these fields as HTML should switch to `descriptionHTML` from `app` or render the text with line breaks preserved.
+- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google: item summaries and changelogs carry tags such as `<br>`, `<b>` and `<font color=...>`, and all of them carry entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Treat the values as decoded text: do not decode entities or strip tags a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that rendered these fields with `innerHTML` should switch to `descriptionHTML` from `app`, or to escaped text styled with `white-space: pre-line`.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
