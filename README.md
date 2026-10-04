@@ -110,7 +110,7 @@ Results are pretty-printed JSON on stdout, so the output pipes straight into `jq
 npx @mradex77/google-play-scraper app com.spotify.music | jq '{title, score, installs}'
 ```
 
-Exit codes: `0` success, `1` scrape failure (not found, rate limited, blocked, network), `2` usage error (unknown command or flag, missing argument, invalid option value).
+Exit codes: `0` success, `1` scrape failure (not found, rate limited, blocked, network), `2` usage error (unknown command or flag, missing argument, invalid option value). A malformed app id (see [App ids](#app-ids)) is an invalid option value, so it exits `2` with the usage line and sends no request. The exception is `apps`, which prints the malformed entry as `rejected` and exits `0`, as it does for a missing app. In `apps`, whitespace around the commas is trimmed before validation, so `apps "com.whatsapp, com.spotify.music"` works.
 
 ## Quick start
 
@@ -198,13 +198,31 @@ Every method from the [reference below](#methods) is available on the client, al
 - [categories](#categories): the Google Play category taxonomy
 - [memoized](#memoized): a shared client that caches equivalent calls
 
+### App ids
+
+Every `appId` is validated before any request is made, on every method, iterator, client and CLI command. It must be an Android package name: at least two segments separated by dots, each segment starting with a letter and containing only letters, digits, and underscores, at most 255 characters in total. Case is significant (`com.adex77.WhereAmI` and `com.adex77.whereami` are different ids on Google Play), so ids are never lowercased.
+
+A malformed id throws `ValidationError` instead of reaching Google Play. The one exception is [`apps`](#batch-details), which never rejects a batch because of one malformed id: that entry comes back `rejected` with a `ValidationError`, the same way a missing app is reported, and no request is sent for it. An empty string in `appIds` still fails validation of the whole call. Leading or trailing whitespace is rejected rather than trimmed, so the id you pass is always the id that is requested and echoed back. The rule follows the [Android application ID rules](https://developer.android.com/build/configure-app-module), and every id Google Play served in the live checks behind this library satisfies it.
+
+```typescript
+import { app, ValidationError } from '@mradex77/google-play-scraper';
+
+try {
+  await app({ appId: 'com.whatsapp ' });
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(error.message);
+  }
+}
+```
+
 ### app
 
 Retrieves the full detail of an application.
 
-| Option  | Type     | Default  | Description                                    |
-| ------- | -------- | -------- | ---------------------------------------------- |
-| `appId` | `string` | required | The Google Play id (the `?id=` url parameter). |
+| Option  | Type     | Default  | Description                                                             |
+| ------- | -------- | -------- | ----------------------------------------------------------------------- |
+| `appId` | `string` | required | The Google Play id (the `?id=` url parameter), see [App ids](#app-ids). |
 
 ```typescript
 import { app } from '@mradex77/google-play-scraper';
@@ -283,10 +301,10 @@ Fetches the full detail of many apps in one call, with a concurrency limit and p
 failure capture. One missing app never rejects the whole batch, and results stay aligned
 with the input order.
 
-| Option        | Type       | Default  | Description                                                        |
-| ------------- | ---------- | -------- | ------------------------------------------------------------------ |
-| `appIds`      | `string[]` | required | Between `1` and `250` Google Play ids.                             |
-| `concurrency` | `number`   | `5`      | Maximum number of app lookups in flight at once, from `1` to `20`. |
+| Option        | Type       | Default  | Description                                                                        |
+| ------------- | ---------- | -------- | ---------------------------------------------------------------------------------- |
+| `appIds`      | `string[]` | required | Between `1` and `250` Google Play ids, see [App ids](#app-ids) for malformed ones. |
+| `concurrency` | `number`   | `5`      | Maximum number of app lookups in flight at once, from `1` to `20`.                 |
 
 ```typescript
 import { apps } from '@mradex77/google-play-scraper';
@@ -334,7 +352,7 @@ lookup. No other scraper offers this as a first-class call.
 
 | Option        | Type       | Default  | Description                                                      |
 | ------------- | ---------- | -------- | ---------------------------------------------------------------- |
-| `appId`       | `string`   | required | The Google Play id to probe.                                     |
+| `appId`       | `string`   | required | The Google Play id to probe, see [App ids](#app-ids).            |
 | `countries`   | `string[]` | required | Between `1` and `50` ISO 3166-1 alpha-2 codes, case insensitive. |
 | `lang`        | `string`   | `'en'`   | The `hl` language of each probe.                                 |
 | `concurrency` | `number`   | `5`      | Maximum number of probes in flight at once, from `1` to `20`.    |
@@ -523,10 +541,10 @@ const catalogue = await developer({ devId: whatsapp.developerId });
 
 Returns apps related to a given app.
 
-| Option       | Type      | Default  | Description                                         |
-| ------------ | --------- | -------- | --------------------------------------------------- |
-| `appId`      | `string`  | required | The Google Play id of the reference app.            |
-| `fullDetail` | `boolean` | `false`  | When `true`, return the full `App` for each result. |
+| Option       | Type      | Default  | Description                                                       |
+| ------------ | --------- | -------- | ----------------------------------------------------------------- |
+| `appId`      | `string`  | required | The Google Play id of the reference app, see [App ids](#app-ids). |
+| `fullDetail` | `boolean` | `false`  | When `true`, return the full `App` for each result.               |
 
 ```typescript
 import { similar } from '@mradex77/google-play-scraper';
@@ -542,7 +560,7 @@ Retrieves reviews for an app. Reviews always come back inside a `{ data, nextPag
 
 | Option                | Type       | Default       | Description                                                                                                    |
 | --------------------- | ---------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| `appId`               | `string`   | required      | The Google Play id of the app.                                                                                 |
+| `appId`               | `string`   | required      | The Google Play id of the app, see [App ids](#app-ids).                                                        |
 | `sort`                | `Sort`     | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`.                                                       |
 | `num`                 | `number`   | `150`         | Number of reviews to fetch.                                                                                    |
 | `paginate`            | `boolean`  | `false`       | When `true`, fetch a single page and return its token.                                                         |
@@ -651,7 +669,7 @@ Returns the permissions an app requests.
 
 | Option  | Type      | Default  | Description                                                       |
 | ------- | --------- | -------- | ----------------------------------------------------------------- |
-| `appId` | `string`  | required | The Google Play id of the app.                                    |
+| `appId` | `string`  | required | The Google Play id of the app, see [App ids](#app-ids).           |
 | `short` | `boolean` | `false`  | When `true`, return a flat `string[]` of common permission names. |
 
 ```typescript
@@ -676,9 +694,9 @@ The `type` is `permission.COMMON` (`0`) or `permission.OTHER` (`1`).
 
 Returns the data safety section of an app.
 
-| Option  | Type     | Default  | Description                    |
-| ------- | -------- | -------- | ------------------------------ |
-| `appId` | `string` | required | The Google Play id of the app. |
+| Option  | Type     | Default  | Description                                             |
+| ------- | -------- | -------- | ------------------------------------------------------- |
+| `appId` | `string` | required | The Google Play id of the app, see [App ids](#app-ids). |
 
 ```typescript
 import { dataSafety } from '@mradex77/google-play-scraper';
@@ -888,9 +906,9 @@ Every failure surfaces as a typed subclass of `GooglePlayError`, so you can bran
 | Error             | Extends           | Thrown when                                                                                 |
 | ----------------- | ----------------- | ------------------------------------------------------------------------------------------- |
 | `GooglePlayError` | `Error`           | Base class for every error the library throws.                                              |
-| `ValidationError` | `GooglePlayError` | The options you passed fail their zod schema.                                               |
+| `ValidationError` | `GooglePlayError` | The options you passed fail their zod schema, including a malformed `appId`.                |
 | `HttpError`       | `GooglePlayError` | A request fails with an unsuccessful status or a network error. Carries `status` and `url`. |
-| `NotFoundError`   | `HttpError`       | Google Play responds `404`, e.g. an unknown `appId`.                                        |
+| `NotFoundError`   | `HttpError`       | Google Play responds `404`, e.g. a well formed `appId` that no listing uses.                |
 | `RateLimitError`  | `HttpError`       | Google Play responds `429` after retries are exhausted.                                     |
 | `BlockedError`    | `GooglePlayError` | A consent wall redirect, or a captcha challenge redirect that retries cannot clear.         |
 | `ParseError`      | `GooglePlayError` | A batchexecute response cannot be parsed.                                                   |
@@ -914,7 +932,7 @@ try {
 
 ### Failure behavior
 
-An unknown `appId` or `devId` does not fail the same way everywhere, because Google Play itself does not: HTML details surfaces respond `404`, while report surfaces serve an empty payload. Both behaviors are pinned by the live test suite.
+A malformed `appId` never reaches Google Play: it throws `ValidationError` on every method, except that `apps` reports it as a rejected entry (see [App ids](#app-ids)). An unknown but well formed `appId` or `devId` does not fail the same way everywhere, because Google Play itself does not: HTML details surfaces respond `404`, while report surfaces serve an empty payload. Both behaviors are pinned by the live test suite.
 
 | Behavior for a missing app        | Methods                                                                                                                                                        |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1223,6 +1241,7 @@ The method names, options, and constants are the same, so most code keeps workin
 - `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept, and `descriptionHTML` keeps the original markup.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
+- `appId` must be a well formed Android package name (see [App ids](#app-ids)). The original only checks that it is present, so a malformed id throws `ValidationError` here before any request instead of answering `404`, an empty result, or for non ASCII ids the reviews of another app.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
 - The package is ESM first with a CommonJS build; the default export is the aggregate client and named exports are also available.
 
