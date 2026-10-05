@@ -32,7 +32,7 @@ Before opening a pull request, make sure `pnpm lint`, `pnpm typecheck`, `pnpm te
 
 ## Benchmarks
 
-`pnpm bench` runs `bench/scriptData.bench.ts` over the three recorded app fixtures. Each fixture measures the production parser in all-block mode, the production parser with the app's derived block selection, and the full offline `app()` pipeline. A name filter works as `pnpm bench -t 'selected blocks'` or `pnpm bench -t 'app() offline'`.
+`pnpm bench` runs `bench/scriptData.bench.ts` over the three recorded app fixtures. Each fixture measures the production parser in all-block mode, the production parser with the app's derived block selection, and the full offline `app()` pipeline. Each measurement is its own test named `<fixture> > <measurement>`, and `-t` takes a regular expression over that full name, so filters work as `pnpm bench -t 'selected blocks'`, `pnpm bench -t offline`, or `pnpm bench -t minecraft`. Escape regex characters when matching them literally, as in `pnpm bench -t 'app\(\) offline'`.
 
 Benchmarks never run in CI: shared runners have noisy neighbors and frequency scaling, so any hz threshold there would flake. For a pull request that touches `src/core/scriptData.ts`, `src/core/spec.ts`, `src/core/path.ts`, or `src/features/app/`, run `pnpm bench` locally on `main`, run it again on your branch, and paste both tables into the PR description.
 

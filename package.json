@@ -74,7 +74,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "bench": "vitest bench --run --project unit",
+    "bench": "vitest bench --run --project \"unit (bench)\" --reporter=verbose",
     "test": "vitest run --project unit",
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
@@ -106,7 +106,7 @@
     "@commitlint/config-conventional": "^21.2.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.2",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^5.0.3",
     "cheerio": "1.2.0",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
@@ -118,6 +118,6 @@
     "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.3"
   }
 }
