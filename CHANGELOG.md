@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.4.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.3.0...v1.4.0) (2026-10-05)
+
+
+### Features
+
+* **core:** return markup twins for plain text summaries and changelogs ([#151](https://github.com/MrAdex77/google-play-scraper/issues/151)) ([c9f5534](https://github.com/MrAdex77/google-play-scraper/commit/c9f5534ea145103a18ea74000f8b729ddca25ea9))
+* **permissions:** add permission groups and unique short output ([#152](https://github.com/MrAdex77/google-play-scraper/issues/152)) ([59d3933](https://github.com/MrAdex77/google-play-scraper/commit/59d3933fd9bdc5fa44aa0fb6ba1a602b01bfbaad))
+* **reviews:** add server-side filters and sized page requests ([#139](https://github.com/MrAdex77/google-play-scraper/issues/139)) ([ec18d70](https://github.com/MrAdex77/google-play-scraper/commit/ec18d70b891bcef1e45691a5d7e79a85c4d8c512))
+
+
+### Bug Fixes
+
+* **core:** decode developer ids read from developer links ([#147](https://github.com/MrAdex77/google-play-scraper/issues/147)) ([0d159f6](https://github.com/MrAdex77/google-play-scraper/commit/0d159f6634d6a654c9b0834b0078f46c1dc78229))
+* **core:** keep the final cluster page when its token node is null ([#143](https://github.com/MrAdex77/google-play-scraper/issues/143)) ([8f0980a](https://github.com/MrAdex77/google-play-scraper/commit/8f0980a809f2bbc4447ce0089116c0c684d11ee9))
+* **core:** read cluster item offers from micros ([#145](https://github.com/MrAdex77/google-play-scraper/issues/145)) ([97a7591](https://github.com/MrAdex77/google-play-scraper/commit/97a75914eea23b348bd3c14cb1d4e63ebfe762aa))
+* **core:** return plain text summaries and changelogs ([#149](https://github.com/MrAdex77/google-play-scraper/issues/149)) ([ba34f97](https://github.com/MrAdex77/google-play-scraper/commit/ba34f9740cb5ec12b80ff73728a1a6c6f728966d))
+* **core:** validate app ids as Android package names before any request ([#153](https://github.com/MrAdex77/google-play-scraper/issues/153)) ([726d924](https://github.com/MrAdex77/google-play-scraper/commit/726d92447c63f61e1678163d0d70d0902e911e25))
+* **datasafety:** detect missing apps in every language ([#148](https://github.com/MrAdex77/google-play-scraper/issues/148)) ([5aab7aa](https://github.com/MrAdex77/google-play-scraper/commit/5aab7aad65558268da9cddf50091a30cd5219ea4))
+* **developer:** paginate name developers through the shared cluster layout ([#144](https://github.com/MrAdex77/google-play-scraper/issues/144)) ([bcb7778](https://github.com/MrAdex77/google-play-scraper/commit/bcb77787636cb26c318cf5fcdaecaa56aecf9218))
+* **search:** follow search continuation pages ([#146](https://github.com/MrAdex77/google-play-scraper/issues/146)) ([3edf1c2](https://github.com/MrAdex77/google-play-scraper/commit/3edf1c28cc31dd005b2d9d4413ad54a0de4f413a))
+
 ## [1.3.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.2.0...v1.3.0) (2026-09-24)
 
 
