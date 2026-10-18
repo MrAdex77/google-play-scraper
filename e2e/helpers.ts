@@ -7,6 +7,8 @@ import { fieldCoverage } from './coverage.ts';
 const LIVE_TESTS_DISABLED = process.env.GP_E2E === '0';
 
 const REQUESTS_PER_SECOND = 1;
+const PRICED_SAMPLE_SIZE = 4;
+const FREE_SAMPLE_SIZE = 2;
 
 export const liveDescribe = describe.skipIf(LIVE_TESTS_DISABLED);
 
@@ -59,19 +61,21 @@ export interface Storefront {
   lang: string;
 }
 
-export function evenlySpaced<T>(items: readonly T[], count: number): T[] {
-  const step = Math.max(1, Math.ceil(items.length / count));
-  return items.filter((_, index) => index % step === 0).slice(0, count);
+function pricedFirstSample(items: readonly AppItem[]): AppItem[] {
+  const priced = items.filter((item) => item.currency !== undefined);
+  const free = items.filter((item) => item.currency === undefined);
+  return [...priced.slice(0, PRICED_SAMPLE_SIZE), ...free.slice(0, FREE_SAMPLE_SIZE)];
 }
 
 export async function expectListingOffersAgree(
-  sample: readonly AppItem[],
+  items: readonly AppItem[],
   storefront: Storefront,
   label: string,
 ): Promise<void> {
+  const sample = pricedFirstSample(items);
   expect(
     sample.some((item) => item.price > 0),
-    `${label}: the sample must hold a paid item to compare prices`,
+    `${label}: no paid item among ${items.length.toString()} apps, re-anchor the paid sample`,
   ).toBe(true);
   for (const item of sample) {
     const listing = await liveClient.app({ appId: item.appId, ...storefront });

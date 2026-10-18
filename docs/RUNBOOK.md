@@ -162,8 +162,14 @@ Outside those two registered exceptions, never assert third-party catalogue
 state. Concretely, do not pin how many apps Google recommends for a listing,
 how many apps a developer publishes, whether a specific app currently has zero
 reviews or zero ratings, whether a category is currently empty, whether a game
-is still in preregistration, or where an app ranks for a search term. Assert the
-invariant that holds in either state and let the test follow the catalogue.
+is still in preregistration, where an app ranks for a search term, or whether a
+class of item is currently served inside a Google served set: an unrated legacy
+review behind the watch filter, a tablet review inside a recent date window, a
+shared data entry that declares a purpose. Issue #161 came from the first of
+those: the parser accepted every review Google served, and the run failed
+because Google served a watch window without one of its 2011 era unrated
+reviews, which it served again an hour later. Assert the invariant that holds
+in either state and let the test follow the catalogue.
 
 When a state still deserves live coverage, branch on what the page actually
 reports instead of assuming a state:
@@ -222,6 +228,29 @@ Everything else is catalogue state: a floor such as "more than ten results", a
 ceiling such as "at most forty on the first page", or an equality such as "the
 chart holds 200 apps". None of them is allowed, whatever the measured margin.
 
+Request counts are counts too. The library issues `ceil(num / pageSize)`
+requests only while Google fills every sized page; a short page makes it follow
+the token once more, so `requests === 1` and `requests === 3` pin the page fill
+rather than the code. Two shapes keep what a request count can prove:
+
+1. **Sized floor.** `requests >= ceil(count / pageSize)` through
+   `expectSizedRequestFloor`, where `count` is what the call returned. No single
+   request may serve more than `pageSize` items, so the bound holds whether the
+   stream filled `num` or ran out before it. A page size that never reached
+   Google serves the library's fallback page size (150 for a manual page, 4500
+   for a `num` read), covers the count in fewer requests, and fails the bound,
+   while a short page only adds requests.
+
+2. **Stop after the first item.** An iterator that must not prefetch is proven
+   lazy by breaking after the first yielded item and requiring one request,
+   which holds for any non empty page.
+
+The offline suite proves that the request body carries the size, so a live
+test never needs an exact request count for that. The one exact request count
+left in the suite sits on the owned `com.adex77.WhereAmI` exhaustion probe,
+which rule 5 above allows: its whole catalogue fits one page by the
+maintainer's own choice.
+
 "A continuation was followed" is expressed against the first page of the same
 surface, never against a constant. Fetch that page with
 `fetchDeveloperFirstPage`, `fetchSearchFirstPage` or `fetchSimilarFirstPage`, or
@@ -257,15 +286,20 @@ turns up:
   invariants.
 - `expectReviewContract` and `expectReviewsContract` for review pages.
 - `expectRequestedCountContract` for any result requested with a `num`.
+- `expectSizedRequestFloor` for a request counter measured against `num` and
+  `pageSize`.
+- `expectTaxonomyMembership` for a listing's `genreId` and category ids, which
+  are immutable facts of the taxonomy constant rather than a publisher's current
+  category.
 - `expectContinuationContract` for a paginated aggregate measured against the
   first page it continued from.
 - `expectSearchListingAgreement` for a search item measured against the same
   app's listing, which catches drift on either surface.
 - `expectOfferAgreement` for a cluster item measured against the same app's
-  listing within one run. `expectListingOffersAgree` in `e2e/helpers.ts` runs it
-  over a sample and requires an item priced above zero in that sample, so a
-  surface that reads the price from anything but the offer micros cannot pass
-  on free apps or sales to zero alone.
+  listing within one run. `expectListingOffersAgree` in `e2e/helpers.ts` samples
+  priced items first, then free ones, and requires an item priced above zero in
+  that sample, so a surface that reads the price from anything but the offer
+  micros cannot pass on free apps or sales to zero alone.
 
 The offer fields deserve their own note, because they are the one place where
 absence carries meaning. `price`, `currency` and `priceText` are three sibling
@@ -330,7 +364,7 @@ owned listing can reach it. `com.adex77.WhereAmI` carries `adSupported`,
 `released`, `contentRatingDescription`, `recentChanges`), so those gates sit on
 it directly rather than on a pool of third-party apps.
 
-Two states have no owned anchor, because Google decides both and neither can be
+Three states have no owned anchor, because Google decides them and none can be
 arranged for a maintainer's own app:
 
 - `EXACT_MATCH_CARD_CANDIDATES` in `e2e/search.e2e.test.ts` must keep one
@@ -339,6 +373,12 @@ arranged for a maintainer's own app:
 - `PLAY_PASS_CANDIDATES` in `e2e/edgeCases.e2e.test.ts` must keep one title in
   Play Pass. It runs against four titles and fails only when all four have left,
   which is the only live gate on the `[1, 2, 62]` path.
+- `PAID_CATALOGUE_DEV_ID` in `e2e/developer.e2e.test.ts`, the German cluster of
+  `GAME_APP_ID` in `e2e/similar.e2e.test.ts` and the German paid search
+  continuation in `e2e/search.e2e.test.ts` must each keep serving a priced item
+  past the first page, because `expectListingOffersAgree` can only prove that a
+  continuation price was read from the offer micros on an item that costs
+  something. Its failure message ends in "re-anchor the paid sample".
 
 The play pass failure message says "re-anchor the pool". That is a maintenance
 task, not a

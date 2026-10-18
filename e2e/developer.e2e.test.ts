@@ -16,7 +16,6 @@ import {
   type ContinuationAnchor,
 } from './contracts.ts';
 import {
-  evenlySpaced,
   expectFieldCoverage,
   expectListingOffersAgree,
   liveClient,
@@ -49,7 +48,6 @@ const ROUND_TRIP_ANCHORS = [
 ] as const;
 const PAID_CATALOGUE_DEV_ID = '8792077038568095073';
 const PAID_CATALOGUE_NUM = 60;
-const OFFER_SAMPLE_SIZE = 4;
 
 async function firstPageOf(query: DeveloperQuery): Promise<ContinuationAnchor> {
   const { apps, token } = await fetchDeveloperFirstPage(query, clientFromOptions);
@@ -78,7 +76,7 @@ async function continuationOffersAgreeing(storefront: Storefront): Promise<Devel
   expect(items.length, `${label} lost its continuation pages`).toBeGreaterThan(firstPageCount);
   expectAppItemsContract(items, label);
   const continuation = items.slice(firstPageCount);
-  await expectListingOffersAgree(evenlySpaced(continuation, OFFER_SAMPLE_SIZE), storefront, label);
+  await expectListingOffersAgree(continuation, storefront, label);
   return continuation;
 }
 

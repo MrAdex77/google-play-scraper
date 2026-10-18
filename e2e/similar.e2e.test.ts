@@ -39,8 +39,6 @@ const TOKEN_NODE_PATH = PAGINATION_MAPPINGS.token.slice(0, -1);
 
 const GAME_APP_ID = 'com.mojang.minecraftpe';
 const GERMAN_STOREFRONT: Storefront = { country: 'de', lang: 'de' };
-const PRICED_SAMPLE_SIZE = 4;
-const FREE_SAMPLE_SIZE = 2;
 
 function describeTokenNode(tokenNode: unknown): string {
   if (tokenNode === null) {
@@ -150,10 +148,11 @@ liveDescribe('similar live contract', () => {
     expectAppItemsContract(items, 'german game similar cluster');
 
     const continuation = items.slice(apps.length);
-    const priced = continuation.filter((item) => item.currency !== undefined);
-    const free = continuation.filter((item) => item.currency === undefined);
-    const sample = [...priced.slice(0, PRICED_SAMPLE_SIZE), ...free.slice(0, FREE_SAMPLE_SIZE)];
-    await expectListingOffersAgree(sample, GERMAN_STOREFRONT, 'german game similar continuation');
+    await expectListingOffersAgree(
+      continuation,
+      GERMAN_STOREFRONT,
+      'german game similar continuation',
+    );
   });
 
   it('rejects a nonexistent source app with a NotFoundError', async () => {

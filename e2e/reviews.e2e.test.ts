@@ -1,6 +1,12 @@
 import { expect, it } from 'vitest';
 import { device, sort, type Device, type IntegrityEvent, type Review } from '../src/index.ts';
-import { expectContinuationContract, expectReviewsContract, reviewsAnchor } from './contracts.ts';
+import {
+  expectContinuationContract,
+  expectRequestedCountContract,
+  expectReviewsContract,
+  expectSizedRequestFloor,
+  reviewsAnchor,
+} from './contracts.ts';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -197,21 +203,6 @@ liveDescribe('reviews live contract', () => {
     expectReviewsContract(result.data, 'exhausted reviews');
   });
 
-  it('sizes a ten review fetch to exactly one request of ten', async () => {
-    const counter = requestCounter();
-
-    const result = await liveClient.reviews({
-      appId: TRANSLATE,
-      num: SMALL_PAGE,
-      requestOptions: { onRequest: counter.onRequest },
-    });
-
-    expect(counter.count()).toBe(1);
-    expect(result.data).toHaveLength(SMALL_PAGE);
-    expect(result.nextPaginationToken).toBeNull();
-    expectReviewsContract(result.data, 'ten review fetch');
-  });
-
   it('follows continuations sized to the remaining count under an explicit pageSize', async () => {
     const counter = requestCounter();
     const events: IntegrityEvent[] = [];
@@ -224,8 +215,9 @@ liveDescribe('reviews live contract', () => {
       requestOptions: { onRequest: counter.onRequest },
     });
 
-    expect(counter.count()).toBe(Math.ceil(SIZED_CONTINUATION_NUM / SMALL_PAGE));
-    expect(result.data).toHaveLength(SIZED_CONTINUATION_NUM);
+    expectSizedRequestFloor(counter.count(), result.data.length, SMALL_PAGE, 'sized continuation');
+
+    expectRequestedCountContract(result.data.length, SIZED_CONTINUATION_NUM, 'sized continuation');
     expectReviewsContract(result.data, 'sized continuation');
     expect(events).toEqual([]);
   });
@@ -243,8 +235,8 @@ liveDescribe('reviews live contract', () => {
       nextPaginationToken: tokenOf(first, 'manual page size'),
     });
 
-    expect(first.data).toHaveLength(MANUAL_PAGE_SIZE);
-    expect(second.data).toHaveLength(MANUAL_PAGE_SIZE);
+    expectRequestedCountContract(first.data.length, MANUAL_PAGE_SIZE, 'manual page size page one');
+    expectRequestedCountContract(second.data.length, MANUAL_PAGE_SIZE, 'manual page size page two');
     expect(sharedIds(second.data, first.data)).toBe(0);
     expectReviewsContract([...first.data, ...second.data], 'manual page size');
   });
@@ -284,9 +276,9 @@ liveDescribe('reviews live contract', () => {
     },
   );
 
-  it.each(SECONDARY_DEVICES)(
+  it.for(SECONDARY_DEVICES)(
     'excludes $deviceName reviews from the mobile filter inside the unfiltered window of $appId',
-    async ({ deviceName, appId }) => {
+    async ({ deviceName, appId }, { annotate }) => {
       const label = `${appId} ${deviceName} filter`;
       const unfiltered = await liveClient.reviews({
         appId,
@@ -310,23 +302,32 @@ liveDescribe('reviews live contract', () => {
         (review) => Date.parse(review.date) >= windowStart,
       );
 
-      expectReviewsContract(secondary.data, label);
       expect(
-        insideWindow.length,
-        `${label}: no review falls inside the unfiltered and mobile windows, so neither check means anything`,
+        secondary.data.length,
+        `${label}: the ${deviceName} filter served no reviews`,
       ).toBeGreaterThan(0);
-      expect(
-        sharedIds(insideWindow, unfiltered.data),
-        `${label}: its reviews inside the window must be part of the unfiltered stream`,
-      ).toBeGreaterThanOrEqual(insideWindow.length * SUBSET_RATIO);
+      expectReviewsContract(secondary.data, label);
       expect(
         sharedIds(secondary.data, mobile.data),
         `mobile filter: a ${deviceName} review leaked into the mobile stream`,
       ).toBe(0);
+      if (insideWindow.length === 0) {
+        await annotate(
+          `${label}: no review inside the unfiltered window, subset check skipped`,
+          'notice',
+        );
+        return;
+      }
+      expect(
+        sharedIds(insideWindow, unfiltered.data),
+        `${label}: its reviews inside the window must be part of the unfiltered stream`,
+      ).toBeGreaterThanOrEqual(insideWindow.length * SUBSET_RATIO);
     },
   );
 
-  it('keeps unrated legacy reviews behind the watch filter as score zero', async () => {
+  it('serves the watch filter and dates any unrated review before Wear OS', async ({
+    annotate,
+  }) => {
     const watch = await liveClient.reviews({
       appId: MAPS,
       device: device.WATCH,
@@ -334,14 +335,21 @@ liveDescribe('reviews live contract', () => {
     });
     const unrated = watch.data.filter((review) => review.score === 0);
 
+    expect(
+      watch.data.length,
+      'maps watch filter: the filtered stream served no reviews',
+    ).toBeGreaterThan(0);
     expectReviewsContract(watch.data, 'maps watch filter');
-    expect(unrated.length, 'maps watch filter: no unrated legacy review served').toBeGreaterThan(0);
     for (const review of unrated) {
       expect(
         Date.parse(review.date),
         `maps watch filter: unrated review ${review.id} is not a pre Wear OS legacy review`,
       ).toBeLessThan(WEAR_OS_LAUNCH);
     }
+    await annotate(
+      `maps watch filter: ${unrated.length.toString()} unrated legacy reviews among ${watch.data.length.toString()}`,
+      'notice',
+    );
   });
 
   it.each(MINORITY_DEVICES)(

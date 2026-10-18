@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import type { App, AppItem, Review, ReviewsResult } from '../src/index.ts';
+import { category, type App, type AppItem, type Review, type ReviewsResult } from '../src/index.ts';
 import { expectHtmlTwin, oraclePlainText } from '../test/helpers/plainText.ts';
 
 const PLAY_ORIGIN = 'https://play.google.com';
@@ -17,6 +17,9 @@ const ISO_4217_CURRENCY = /^[A-Z]{3}$/;
 const ANDROID_MARKET_LAUNCH_MS = 1_223_856_000_000;
 const CLOCK_SKEW_TOLERANCE_MS = 172_800_000;
 const OFFERLESS_PRICE_TEXT = 'Free';
+const CATEGORY_TAXONOMY: ReadonlySet<string> = new Set(Object.values(category));
+const TAXONOMY_HINT =
+  'is not in the category constant, add the code to category in src/constants.ts if google introduced it';
 
 export interface OfferFields {
   price: number;
@@ -123,6 +126,19 @@ export function expectRequestedCountContract(count: number, num: number, label: 
   ).toBeLessThanOrEqual(num);
 }
 
+export function expectSizedRequestFloor(
+  requests: number,
+  count: number,
+  pageSize: number,
+  label: string,
+): void {
+  const floor = Math.ceil(count / pageSize);
+  expect(
+    requests,
+    `${label}: ${requests.toString()} requests cannot have served ${count.toString()} items at pageSize ${pageSize.toString()}, at least ${floor.toString()} are needed, so the page size never reached google`,
+  ).toBeGreaterThanOrEqual(floor);
+}
+
 export interface ContinuationAnchor {
   firstPageCount: number;
   token: string | undefined;
@@ -188,6 +204,23 @@ export function expectOfferAgreement(item: AppItem, listing: App, label: string)
     expect(item.currency, `${scoped}: the item currency must equal the listing currency`).toBe(
       listing.currency,
     );
+  }
+}
+
+export function expectTaxonomyMembership(listing: App, label: string): void {
+  const scoped = `${label} ${listing.appId}`;
+
+  expect(
+    CATEGORY_TAXONOMY.has(listing.genreId),
+    `${scoped}: genreId "${listing.genreId}" ${TAXONOMY_HINT}`,
+  ).toBe(true);
+  for (const entry of listing.categories) {
+    if (entry.id !== null) {
+      expect(
+        CATEGORY_TAXONOMY.has(entry.id),
+        `${scoped}: category id "${entry.id}" ${TAXONOMY_HINT}`,
+      ).toBe(true);
+    }
   }
 }
 

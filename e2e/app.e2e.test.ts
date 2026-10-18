@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { NotFoundError, type App, type IntegrityEvent } from '../src/index.ts';
-import { expectListingContract } from './contracts.ts';
+import { expectListingContract, expectTaxonomyMembership } from './contracts.ts';
 import { expectFieldFilledSomewhere, liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -79,9 +79,8 @@ liveDescribe('app live contract', () => {
     const result = await liveClient.app({ appId: 'com.instagram.android' });
 
     expectListingContract(result, 'social listing');
+    expectTaxonomyMembership(result, 'social listing');
     expect(result.title).toContain('Instagram');
-    expect(result.genreId).toBe('SOCIAL');
-    expect(result.categories.some((category) => category.id === 'SOCIAL')).toBe(true);
     expect(result.installs?.endsWith('+')).toBe(true);
   });
 
