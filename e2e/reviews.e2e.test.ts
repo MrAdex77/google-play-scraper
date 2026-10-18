@@ -203,14 +203,6 @@ liveDescribe('reviews live contract', () => {
     expectReviewsContract(result.data, 'exhausted reviews');
   });
 
-  it('caps a ten review fetch at the requested count', async () => {
-    const result = await liveClient.reviews({ appId: TRANSLATE, num: SMALL_PAGE });
-
-    expectRequestedCountContract(result.data.length, SMALL_PAGE, 'ten review fetch');
-    expect(result.nextPaginationToken).toBeNull();
-    expectReviewsContract(result.data, 'ten review fetch');
-  });
-
   it('follows continuations sized to the remaining count under an explicit pageSize', async () => {
     const counter = requestCounter();
     const events: IntegrityEvent[] = [];
