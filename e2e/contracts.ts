@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import type { App, AppItem, Review, ReviewsResult } from '../src/index.ts';
+import { category, type App, type AppItem, type Review, type ReviewsResult } from '../src/index.ts';
 import { expectHtmlTwin, oraclePlainText } from '../test/helpers/plainText.ts';
 
 const PLAY_ORIGIN = 'https://play.google.com';
@@ -17,6 +17,7 @@ const ISO_4217_CURRENCY = /^[A-Z]{3}$/;
 const ANDROID_MARKET_LAUNCH_MS = 1_223_856_000_000;
 const CLOCK_SKEW_TOLERANCE_MS = 172_800_000;
 const OFFERLESS_PRICE_TEXT = 'Free';
+const CATEGORY_TAXONOMY: ReadonlySet<string> = new Set(Object.values(category));
 
 export interface OfferFields {
   price: number;
@@ -200,6 +201,23 @@ export function expectOfferAgreement(item: AppItem, listing: App, label: string)
     expect(item.currency, `${scoped}: the item currency must equal the listing currency`).toBe(
       listing.currency,
     );
+  }
+}
+
+export function expectTaxonomyMembership(listing: App, label: string): void {
+  const scoped = `${label} ${listing.appId}`;
+
+  expect(
+    CATEGORY_TAXONOMY.has(listing.genreId),
+    `${scoped}: genreId "${listing.genreId}" must be part of the category taxonomy`,
+  ).toBe(true);
+  for (const entry of listing.categories) {
+    if (entry.id !== null) {
+      expect(
+        CATEGORY_TAXONOMY.has(entry.id),
+        `${scoped}: category id "${entry.id}" must be part of the category taxonomy`,
+      ).toBe(true);
+    }
   }
 }
 
