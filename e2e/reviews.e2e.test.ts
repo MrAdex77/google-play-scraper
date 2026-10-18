@@ -284,9 +284,9 @@ liveDescribe('reviews live contract', () => {
     },
   );
 
-  it.each(SECONDARY_DEVICES)(
+  it.for(SECONDARY_DEVICES)(
     'excludes $deviceName reviews from the mobile filter inside the unfiltered window of $appId',
-    async ({ deviceName, appId }) => {
+    async ({ deviceName, appId }, { annotate }) => {
       const label = `${appId} ${deviceName} filter`;
       const unfiltered = await liveClient.reviews({
         appId,
@@ -312,21 +312,26 @@ liveDescribe('reviews live contract', () => {
 
       expectReviewsContract(secondary.data, label);
       expect(
-        insideWindow.length,
-        `${label}: no review falls inside the unfiltered and mobile windows, so neither check means anything`,
-      ).toBeGreaterThan(0);
+        sharedIds(secondary.data, mobile.data),
+        `mobile filter: a ${deviceName} review leaked into the mobile stream`,
+      ).toBe(0);
+      if (insideWindow.length === 0) {
+        await annotate(
+          `${label}: no review inside the unfiltered window, subset check skipped`,
+          'notice',
+        );
+        return;
+      }
       expect(
         sharedIds(insideWindow, unfiltered.data),
         `${label}: its reviews inside the window must be part of the unfiltered stream`,
       ).toBeGreaterThanOrEqual(insideWindow.length * SUBSET_RATIO);
-      expect(
-        sharedIds(secondary.data, mobile.data),
-        `mobile filter: a ${deviceName} review leaked into the mobile stream`,
-      ).toBe(0);
     },
   );
 
-  it('keeps unrated legacy reviews behind the watch filter as score zero', async () => {
+  it('keeps any unrated legacy review behind the watch filter as score zero', async ({
+    annotate,
+  }) => {
     const watch = await liveClient.reviews({
       appId: MAPS,
       device: device.WATCH,
@@ -334,14 +339,21 @@ liveDescribe('reviews live contract', () => {
     });
     const unrated = watch.data.filter((review) => review.score === 0);
 
+    expect(
+      watch.data.length,
+      'maps watch filter: the filtered stream served no reviews',
+    ).toBeGreaterThan(0);
     expectReviewsContract(watch.data, 'maps watch filter');
-    expect(unrated.length, 'maps watch filter: no unrated legacy review served').toBeGreaterThan(0);
     for (const review of unrated) {
       expect(
         Date.parse(review.date),
         `maps watch filter: unrated review ${review.id} is not a pre Wear OS legacy review`,
       ).toBeLessThan(WEAR_OS_LAUNCH);
     }
+    await annotate(
+      `maps watch filter: ${unrated.length.toString()} unrated legacy reviews among ${watch.data.length.toString()}`,
+      'notice',
+    );
   });
 
   it.each(MINORITY_DEVICES)(

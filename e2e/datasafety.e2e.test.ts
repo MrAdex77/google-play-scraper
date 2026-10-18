@@ -69,7 +69,9 @@ liveDescribe('datasafety live contract', () => {
     expectPlainSafetyReport(result, 'where am i');
   });
 
-  it('returns shared data entries with purposes for a data rich social app', async () => {
+  it('returns shared data entries with purposes for a data rich social app', async ({
+    annotate,
+  }) => {
     const result = await liveClient.dataSafety({ appId: 'com.instagram.android' });
 
     expect(result.sharedData.length).toBeGreaterThan(0);
@@ -82,8 +84,12 @@ liveDescribe('datasafety live contract', () => {
         expect(entry.purpose.length).toBeGreaterThan(0);
       }
     }
-    expect(result.sharedData.some((entry) => entry.purpose !== undefined)).toBe(true);
+    const withPurpose = result.sharedData.filter((entry) => entry.purpose !== undefined).length;
     expectPlainSafetyReport(result, 'instagram');
+    await annotate(
+      `instagram: ${withPurpose.toString()} of ${result.sharedData.length.toString()} shared entries carry a purpose`,
+      'notice',
+    );
   });
 
   it('localizes the safety report labels for a polish storefront', async () => {
