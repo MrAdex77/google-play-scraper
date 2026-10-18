@@ -314,6 +314,10 @@ liveDescribe('reviews live contract', () => {
         (review) => Date.parse(review.date) >= windowStart,
       );
 
+      expect(
+        secondary.data.length,
+        `${label}: the ${deviceName} filter served no reviews`,
+      ).toBeGreaterThan(0);
       expectReviewsContract(secondary.data, label);
       expect(
         sharedIds(secondary.data, mobile.data),
