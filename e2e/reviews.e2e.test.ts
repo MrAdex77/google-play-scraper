@@ -215,12 +215,8 @@ liveDescribe('reviews live contract', () => {
       requestOptions: { onRequest: counter.onRequest },
     });
 
-    expectSizedRequestFloor(
-      counter.count(),
-      SIZED_CONTINUATION_NUM,
-      SMALL_PAGE,
-      'sized continuation',
-    );
+    expectSizedRequestFloor(counter.count(), result.data.length, SMALL_PAGE, 'sized continuation');
+
     expectRequestedCountContract(result.data.length, SIZED_CONTINUATION_NUM, 'sized continuation');
     expectReviewsContract(result.data, 'sized continuation');
     expect(events).toEqual([]);

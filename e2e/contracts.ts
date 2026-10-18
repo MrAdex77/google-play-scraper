@@ -128,14 +128,14 @@ export function expectRequestedCountContract(count: number, num: number, label: 
 
 export function expectSizedRequestFloor(
   requests: number,
-  num: number,
+  count: number,
   pageSize: number,
   label: string,
 ): void {
-  const floor = Math.ceil(num / pageSize);
+  const floor = Math.ceil(count / pageSize);
   expect(
     requests,
-    `${label}: ${requests.toString()} requests cannot satisfy num ${num.toString()} at pageSize ${pageSize.toString()}, at least ${floor.toString()} are needed, so the page size never reached google`,
+    `${label}: ${requests.toString()} requests cannot have served ${count.toString()} items at pageSize ${pageSize.toString()}, at least ${floor.toString()} are needed, so the page size never reached google`,
   ).toBeGreaterThanOrEqual(floor);
 }
 

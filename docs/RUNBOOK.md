@@ -233,11 +233,14 @@ requests only while Google fills every sized page; a short page makes it follow
 the token once more, so `requests === 1` and `requests === 3` pin the page fill
 rather than the code. Two shapes keep what a request count can prove:
 
-1. **Sized floor.** `requests >= ceil(num / pageSize)` through
-   `expectSizedRequestFloor`. A page size that never reached Google serves the
-   library's fallback page size (150 for a manual page, 4500 for a `num` read),
-   satisfies `num` in fewer requests, and fails the bound, while a short page
-   only adds requests.
+1. **Sized floor.** `requests >= ceil(count / pageSize)` through
+   `expectSizedRequestFloor`, where `count` is what the call returned. No single
+   request may serve more than `pageSize` items, so the bound holds whether the
+   stream filled `num` or ran out before it. A page size that never reached
+   Google serves the library's fallback page size (150 for a manual page, 4500
+   for a `num` read), covers the count in fewer requests, and fails the bound,
+   while a short page only adds requests.
+
 2. **Stop after the first item.** An iterator that must not prefetch is proven
    lazy by breaking after the first yielded item and requiring one request,
    which holds for any non empty page.
