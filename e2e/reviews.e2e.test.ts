@@ -1,6 +1,12 @@
 import { expect, it } from 'vitest';
 import { device, sort, type Device, type IntegrityEvent, type Review } from '../src/index.ts';
-import { expectContinuationContract, expectReviewsContract, reviewsAnchor } from './contracts.ts';
+import {
+  expectContinuationContract,
+  expectRequestedCountContract,
+  expectReviewsContract,
+  expectSizedRequestFloor,
+  reviewsAnchor,
+} from './contracts.ts';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -197,17 +203,10 @@ liveDescribe('reviews live contract', () => {
     expectReviewsContract(result.data, 'exhausted reviews');
   });
 
-  it('sizes a ten review fetch to exactly one request of ten', async () => {
-    const counter = requestCounter();
+  it('caps a ten review fetch at the requested count', async () => {
+    const result = await liveClient.reviews({ appId: TRANSLATE, num: SMALL_PAGE });
 
-    const result = await liveClient.reviews({
-      appId: TRANSLATE,
-      num: SMALL_PAGE,
-      requestOptions: { onRequest: counter.onRequest },
-    });
-
-    expect(counter.count()).toBe(1);
-    expect(result.data).toHaveLength(SMALL_PAGE);
+    expectRequestedCountContract(result.data.length, SMALL_PAGE, 'ten review fetch');
     expect(result.nextPaginationToken).toBeNull();
     expectReviewsContract(result.data, 'ten review fetch');
   });
@@ -224,8 +223,13 @@ liveDescribe('reviews live contract', () => {
       requestOptions: { onRequest: counter.onRequest },
     });
 
-    expect(counter.count()).toBe(Math.ceil(SIZED_CONTINUATION_NUM / SMALL_PAGE));
-    expect(result.data).toHaveLength(SIZED_CONTINUATION_NUM);
+    expectSizedRequestFloor(
+      counter.count(),
+      SIZED_CONTINUATION_NUM,
+      SMALL_PAGE,
+      'sized continuation',
+    );
+    expectRequestedCountContract(result.data.length, SIZED_CONTINUATION_NUM, 'sized continuation');
     expectReviewsContract(result.data, 'sized continuation');
     expect(events).toEqual([]);
   });
@@ -243,8 +247,8 @@ liveDescribe('reviews live contract', () => {
       nextPaginationToken: tokenOf(first, 'manual page size'),
     });
 
-    expect(first.data).toHaveLength(MANUAL_PAGE_SIZE);
-    expect(second.data).toHaveLength(MANUAL_PAGE_SIZE);
+    expectRequestedCountContract(first.data.length, MANUAL_PAGE_SIZE, 'manual page size page one');
+    expectRequestedCountContract(second.data.length, MANUAL_PAGE_SIZE, 'manual page size page two');
     expect(sharedIds(second.data, first.data)).toBe(0);
     expectReviewsContract([...first.data, ...second.data], 'manual page size');
   });

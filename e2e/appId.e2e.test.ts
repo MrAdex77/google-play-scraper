@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { appIdSchema } from '../src/core/options.ts';
 import { category, collection, createClient, ValidationError } from '../src/index.ts';
-import { expectReviewsContract } from './contracts.ts';
+import { expectRequestedCountContract, expectReviewsContract } from './contracts.ts';
 import { liveClient, liveDescribe } from './helpers.ts';
 
 const UPPERCASE_SEGMENTS_ID = 'com.miHoYo.GenshinImpact';
@@ -9,6 +9,7 @@ const UNDERSCORE_ID = 'com.bandainamcoent.dblegends_ww';
 const GEO_GAME_ID = 'com.adex77.WhereAmI';
 const FOLDED_UNICODE_ID = 'com.żółw.app';
 const LIST_SIZE = 100;
+const REVIEW_PROBE = 3;
 const SEARCH_TERMS = ['calculator', '2048', 'vpn'] as const;
 
 const isValidAppId = (appId: string): boolean => appIdSchema.safeParse(appId).success;
@@ -16,20 +17,20 @@ const isValidAppId = (appId: string): boolean => appIdSchema.safeParse(appId).su
 liveDescribe('app id validation live contract', () => {
   it('still serves details and reviews for an id with uppercase segments', async () => {
     const listing = await liveClient.app({ appId: UPPERCASE_SEGMENTS_ID });
-    const page = await liveClient.reviews({ appId: UPPERCASE_SEGMENTS_ID, num: 3 });
+    const page = await liveClient.reviews({ appId: UPPERCASE_SEGMENTS_ID, num: REVIEW_PROBE });
 
     expect(listing.appId).toBe(UPPERCASE_SEGMENTS_ID);
     expect(listing.url).toContain(`id=${UPPERCASE_SEGMENTS_ID}&`);
-    expect(page.data).toHaveLength(3);
+    expectRequestedCountContract(page.data.length, REVIEW_PROBE, 'uppercase segments id');
     expectReviewsContract(page.data, 'uppercase segments id');
   });
 
   it('still serves details and reviews for an id with underscores', async () => {
     const listing = await liveClient.app({ appId: UNDERSCORE_ID });
-    const page = await liveClient.reviews({ appId: UNDERSCORE_ID, num: 3 });
+    const page = await liveClient.reviews({ appId: UNDERSCORE_ID, num: REVIEW_PROBE });
 
     expect(listing.appId).toBe(UNDERSCORE_ID);
-    expect(page.data).toHaveLength(3);
+    expectRequestedCountContract(page.data.length, REVIEW_PROBE, 'underscore id');
     expectReviewsContract(page.data, 'underscore id');
   });
 

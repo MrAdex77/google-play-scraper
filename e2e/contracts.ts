@@ -123,6 +123,18 @@ export function expectRequestedCountContract(count: number, num: number, label: 
   ).toBeLessThanOrEqual(num);
 }
 
+export function expectSizedRequestFloor(
+  requests: number,
+  num: number,
+  pageSize: number,
+  label: string,
+): void {
+  expect(
+    requests,
+    `${label}: fewer requests than num ${num.toString()} at pageSize ${pageSize.toString()} implies, the page size never reached google`,
+  ).toBeGreaterThanOrEqual(Math.ceil(num / pageSize));
+}
+
 export interface ContinuationAnchor {
   firstPageCount: number;
   token: string | undefined;

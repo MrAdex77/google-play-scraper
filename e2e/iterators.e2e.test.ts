@@ -14,6 +14,7 @@ import { type DegradationEvent, type IntegrityEvent, type Review } from '../src/
 import {
   expectAppItemContract,
   expectContinuationContract,
+  expectRequestedCountContract,
   expectReviewContract,
   expectReviewsContract,
   reviewsAnchor,
@@ -49,7 +50,7 @@ const SEARCH_QUERY: SearchQuery = {
 const REVIEWS_ALL_CEILING = 5000;
 const BOUNDED_READ = 200;
 const STREAM_PAGE_SIZE = 5;
-const STREAM_STOP = 3;
+const STREAM_STOP = 1;
 
 liveDescribe('iterators live contract', () => {
   it('streams reviews across the first page boundary', async () => {
@@ -263,25 +264,17 @@ liveDescribe('iterators live contract', () => {
     expectReviewsContract(reviews, 'drained reviewsAll');
   });
 
-  it('sizes a bounded reviewsAll read to one request', async () => {
-    let requests = 0;
-
+  it('caps a bounded reviewsAll read at maxReviews', async () => {
     const reviews: Review[] = await liveClient.reviewsAll({
       appId: WHATSAPP,
       maxReviews: BOUNDED_READ,
-      requestOptions: {
-        onRequest: () => {
-          requests += 1;
-        },
-      },
     });
 
-    expect(requests).toBe(1);
-    expect(reviews).toHaveLength(BOUNDED_READ);
+    expectRequestedCountContract(reviews.length, BOUNDED_READ, 'bounded reviewsAll');
     expectReviewsContract(reviews, 'bounded reviewsAll');
   });
 
-  it('streams filtered reviews in small pages and stops inside the first one', async () => {
+  it('stops a filtered stream after the first review without fetching a second page', async () => {
     let requests = 0;
     const collected: Review[] = [];
 

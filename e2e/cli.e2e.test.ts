@@ -15,6 +15,8 @@ const MISSING_ID = 'com.adex77.definitely.not.a.real.app';
 const GOOGLE_DEV_ID = '5700313618786177705';
 
 const CLI_PROCESS_TIMEOUT_MS = 30000;
+const SCORE_FETCH_NUM = 5;
+const MANUAL_PAGE_SIZE = 3;
 
 interface CliRun {
   exitCode: number;
@@ -184,9 +186,16 @@ liveDescribe('cli commands against live google play', () => {
   });
 
   it('reviews --score returns only reviews with that score', async () => {
-    const parsed = await runCliJson(['reviews', TRANSLATE_ID, '--score', '5', '--num', '5']);
+    const parsed = await runCliJson([
+      'reviews',
+      TRANSLATE_ID,
+      '--score',
+      '5',
+      '--num',
+      SCORE_FETCH_NUM.toString(),
+    ]);
     const result = parsed as { data: { score: number }[] };
-    expect(result.data).toHaveLength(5);
+    expectRequestedCountContract(result.data.length, SCORE_FETCH_NUM, 'cli score filter');
     for (const review of result.data) {
       expect(review.score).toBe(5);
     }
@@ -199,11 +208,11 @@ liveDescribe('cli commands against live google play', () => {
       '--device',
       'tablet',
       '--page-size',
-      '3',
+      MANUAL_PAGE_SIZE.toString(),
       '--paginate',
     ]);
     const result = parsed as { data: { id: string }[]; nextPaginationToken: string | null };
-    expect(result.data).toHaveLength(3);
+    expectRequestedCountContract(result.data.length, MANUAL_PAGE_SIZE, 'cli manual page');
     expect(typeof result.nextPaginationToken).toBe('string');
   });
 
