@@ -235,14 +235,18 @@ rather than the code. Two shapes keep what a request count can prove:
 
 1. **Sized floor.** `requests >= ceil(num / pageSize)` through
    `expectSizedRequestFloor`. A page size that never reached Google serves the
-   default page, satisfies `num` in fewer requests, and fails the bound, while a
-   short page only adds requests.
+   library's fallback page size (150 for a manual page, 4500 for a `num` read),
+   satisfies `num` in fewer requests, and fails the bound, while a short page
+   only adds requests.
 2. **Stop after the first item.** An iterator that must not prefetch is proven
    lazy by breaking after the first yielded item and requiring one request,
    which holds for any non empty page.
 
 The offline suite proves that the request body carries the size, so a live
-test never needs an exact request count for that.
+test never needs an exact request count for that. The one exact request count
+left in the suite sits on the owned `com.adex77.WhereAmI` exhaustion probe,
+which rule 5 above allows: its whole catalogue fits one page by the
+maintainer's own choice.
 
 "A continuation was followed" is expressed against the first page of the same
 surface, never against a constant. Fetch that page with
@@ -289,10 +293,10 @@ turns up:
 - `expectSearchListingAgreement` for a search item measured against the same
   app's listing, which catches drift on either surface.
 - `expectOfferAgreement` for a cluster item measured against the same app's
-  listing within one run. `expectListingOffersAgree` in `e2e/helpers.ts` runs it
-  over a sample and requires an item priced above zero in that sample, so a
-  surface that reads the price from anything but the offer micros cannot pass
-  on free apps or sales to zero alone.
+  listing within one run. `expectListingOffersAgree` in `e2e/helpers.ts` samples
+  priced items first, then free ones, and requires an item priced above zero in
+  that sample, so a surface that reads the price from anything but the offer
+  micros cannot pass on free apps or sales to zero alone.
 
 The offer fields deserve their own note, because they are the one place where
 absence carries meaning. `price`, `currency` and `priceText` are three sibling
@@ -357,7 +361,7 @@ owned listing can reach it. `com.adex77.WhereAmI` carries `adSupported`,
 `released`, `contentRatingDescription`, `recentChanges`), so those gates sit on
 it directly rather than on a pool of third-party apps.
 
-Two states have no owned anchor, because Google decides both and neither can be
+Three states have no owned anchor, because Google decides them and none can be
 arranged for a maintainer's own app:
 
 - `EXACT_MATCH_CARD_CANDIDATES` in `e2e/search.e2e.test.ts` must keep one
@@ -366,6 +370,12 @@ arranged for a maintainer's own app:
 - `PLAY_PASS_CANDIDATES` in `e2e/edgeCases.e2e.test.ts` must keep one title in
   Play Pass. It runs against four titles and fails only when all four have left,
   which is the only live gate on the `[1, 2, 62]` path.
+- `PAID_CATALOGUE_DEV_ID` in `e2e/developer.e2e.test.ts`, the German cluster of
+  `GAME_APP_ID` in `e2e/similar.e2e.test.ts` and the German paid search
+  continuation in `e2e/search.e2e.test.ts` must each keep serving a priced item
+  past the first page, because `expectListingOffersAgree` can only prove that a
+  continuation price was read from the offer micros on an item that costs
+  something. Its failure message ends in "re-anchor the paid sample".
 
 The play pass failure message says "re-anchor the pool". That is a maintenance
 task, not a
