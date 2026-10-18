@@ -18,6 +18,8 @@ const ANDROID_MARKET_LAUNCH_MS = 1_223_856_000_000;
 const CLOCK_SKEW_TOLERANCE_MS = 172_800_000;
 const OFFERLESS_PRICE_TEXT = 'Free';
 const CATEGORY_TAXONOMY: ReadonlySet<string> = new Set(Object.values(category));
+const TAXONOMY_HINT =
+  'is not in the category constant, add the code to category in src/constants.ts if google introduced it';
 
 export interface OfferFields {
   price: number;
@@ -210,13 +212,13 @@ export function expectTaxonomyMembership(listing: App, label: string): void {
 
   expect(
     CATEGORY_TAXONOMY.has(listing.genreId),
-    `${scoped}: genreId "${listing.genreId}" is not in the category constant, add the code to category in src/constants.ts if google introduced it`,
+    `${scoped}: genreId "${listing.genreId}" ${TAXONOMY_HINT}`,
   ).toBe(true);
   for (const entry of listing.categories) {
     if (entry.id !== null) {
       expect(
         CATEGORY_TAXONOMY.has(entry.id),
-        `${scoped}: category id "${entry.id}" is not in the category constant, add the code to category in src/constants.ts if google introduced it`,
+        `${scoped}: category id "${entry.id}" ${TAXONOMY_HINT}`,
       ).toBe(true);
     }
   }
