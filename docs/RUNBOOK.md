@@ -162,8 +162,14 @@ Outside those two registered exceptions, never assert third-party catalogue
 state. Concretely, do not pin how many apps Google recommends for a listing,
 how many apps a developer publishes, whether a specific app currently has zero
 reviews or zero ratings, whether a category is currently empty, whether a game
-is still in preregistration, or where an app ranks for a search term. Assert the
-invariant that holds in either state and let the test follow the catalogue.
+is still in preregistration, where an app ranks for a search term, or whether a
+class of item is currently served inside a Google served set: an unrated legacy
+review behind the watch filter, a tablet review inside a recent date window, a
+shared data entry that declares a purpose. Issue #161 came from the first of
+those: the parser accepted every review Google served, and the run failed
+because Google served a watch window without one of its 2011 era unrated
+reviews, which it served again an hour later. Assert the invariant that holds
+in either state and let the test follow the catalogue.
 
 When a state still deserves live coverage, branch on what the page actually
 reports instead of assuming a state:
@@ -222,6 +228,22 @@ Everything else is catalogue state: a floor such as "more than ten results", a
 ceiling such as "at most forty on the first page", or an equality such as "the
 chart holds 200 apps". None of them is allowed, whatever the measured margin.
 
+Request counts are counts too. The library issues `ceil(num / pageSize)`
+requests only while Google fills every sized page; a short page makes it follow
+the token once more, so `requests === 1` and `requests === 3` pin the page fill
+rather than the code. Two shapes keep what a request count can prove:
+
+1. **Sized floor.** `requests >= ceil(num / pageSize)` through
+   `expectSizedRequestFloor`. A page size that never reached Google serves the
+   default page, satisfies `num` in fewer requests, and fails the bound, while a
+   short page only adds requests.
+2. **Stop after the first item.** An iterator that must not prefetch is proven
+   lazy by breaking after the first yielded item and requiring one request,
+   which holds for any non empty page.
+
+The offline suite proves that the request body carries the size, so a live
+test never needs an exact request count for that.
+
 "A continuation was followed" is expressed against the first page of the same
 surface, never against a constant. Fetch that page with
 `fetchDeveloperFirstPage`, `fetchSearchFirstPage` or `fetchSimilarFirstPage`, or
@@ -257,6 +279,11 @@ turns up:
   invariants.
 - `expectReviewContract` and `expectReviewsContract` for review pages.
 - `expectRequestedCountContract` for any result requested with a `num`.
+- `expectSizedRequestFloor` for a request counter measured against `num` and
+  `pageSize`.
+- `expectTaxonomyMembership` for a listing's `genreId` and category ids, which
+  are immutable facts of the taxonomy constant rather than a publisher's current
+  category.
 - `expectContinuationContract` for a paginated aggregate measured against the
   first page it continued from.
 - `expectSearchListingAgreement` for a search item measured against the same
