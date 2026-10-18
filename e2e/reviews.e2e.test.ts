@@ -337,7 +337,7 @@ liveDescribe('reviews live contract', () => {
     },
   );
 
-  it('keeps any unrated legacy review behind the watch filter as score zero', async ({
+  it('serves the watch filter and dates any unrated review before Wear OS', async ({
     annotate,
   }) => {
     const watch = await liveClient.reviews({

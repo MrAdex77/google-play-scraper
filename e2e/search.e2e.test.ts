@@ -17,6 +17,7 @@ import {
 } from './contracts.ts';
 import {
   expectFieldCoverage,
+  expectListingOffersAgree,
   liveClient,
   liveDescribe,
   memoizingResolveClient,
@@ -136,8 +137,13 @@ liveDescribe('search live contract', () => {
     })) as SearchResult[];
 
     expectRequestedCountContract(results.length, num, 'german search');
-    expect(results.some((item) => item.title.toLowerCase().includes('übersetzer'))).toBe(true);
     expectAppItemsContract(results, 'german search');
+    const [first] = results;
+    if (first === undefined) {
+      throw new Error('german search: the page served no results');
+    }
+    const listing = await liveClient.app({ appId: first.appId, lang: 'de', country: 'de' });
+    expectSearchListingAgreement(first, listing, 'german search');
   });
 
   it('returns exactly the first page when num exceeds a first page without a token', async () => {
@@ -334,11 +340,12 @@ liveDescribe('search live contract', () => {
       continued.length,
       `${query.term}: the german continuation must add apps past the first page`,
     ).toBeGreaterThan(0);
-    expect(
-      continued.some((item) => !Number.isInteger(item.price)),
-      `${query.term}: a german continuation price such as 4,99 must keep its decimals`,
-    ).toBe(true);
     expect(new Set(continued.flatMap((item) => item.currency ?? []))).toEqual(new Set(['EUR']));
+    await expectListingOffersAgree(
+      continued,
+      { lang: storefront.lang, country: storefront.country },
+      `${query.term} german paid continuation`,
+    );
     expect(events).toEqual([]);
   });
 

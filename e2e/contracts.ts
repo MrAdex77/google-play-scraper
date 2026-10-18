@@ -130,10 +130,11 @@ export function expectSizedRequestFloor(
   pageSize: number,
   label: string,
 ): void {
+  const floor = Math.ceil(num / pageSize);
   expect(
     requests,
-    `${label}: fewer requests than num ${num.toString()} at pageSize ${pageSize.toString()} implies, the page size never reached google`,
-  ).toBeGreaterThanOrEqual(Math.ceil(num / pageSize));
+    `${label}: ${requests.toString()} requests cannot satisfy num ${num.toString()} at pageSize ${pageSize.toString()}, at least ${floor.toString()} are needed, so the page size never reached google`,
+  ).toBeGreaterThanOrEqual(floor);
 }
 
 export interface ContinuationAnchor {
@@ -209,13 +210,13 @@ export function expectTaxonomyMembership(listing: App, label: string): void {
 
   expect(
     CATEGORY_TAXONOMY.has(listing.genreId),
-    `${scoped}: genreId "${listing.genreId}" must be part of the category taxonomy`,
+    `${scoped}: genreId "${listing.genreId}" is not in the category constant, add the code to category in src/constants.ts if google introduced it`,
   ).toBe(true);
   for (const entry of listing.categories) {
     if (entry.id !== null) {
       expect(
         CATEGORY_TAXONOMY.has(entry.id),
-        `${scoped}: category id "${entry.id}" must be part of the category taxonomy`,
+        `${scoped}: category id "${entry.id}" is not in the category constant, add the code to category in src/constants.ts if google introduced it`,
       ).toBe(true);
     }
   }
