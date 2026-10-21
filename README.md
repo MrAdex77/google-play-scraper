@@ -4,46 +4,44 @@
 [![npm downloads](https://img.shields.io/npm/dm/@mradex77/google-play-scraper.svg)](https://www.npmjs.com/package/@mradex77/google-play-scraper)
 [![CI](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml)
 [![Live contract tests](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/e2e.yml)
-[![API docs](https://github.com/MrAdex77/google-play-scraper/actions/workflows/docs.yml/badge.svg)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/docs.yml)
 [![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/MrAdex77/5aa7b737d6fb2adae68cb61693cfa123/raw/google-play-scraper-coverage.json)](https://github.com/MrAdex77/google-play-scraper/actions/workflows/ci.yml)
-[![types](https://img.shields.io/npm/types/@mradex77/google-play-scraper.svg)](https://www.npmjs.com/package/@mradex77/google-play-scraper)
 [![node](https://img.shields.io/node/v/@mradex77/google-play-scraper.svg)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/@mradex77/google-play-scraper.svg)](LICENSE)
 
-📖 **[API reference](https://mradex77.github.io/google-play-scraper/)** — browsable, always-current typed signatures for every method, option and error class, generated from the source on each release.
+**Scrape Google Play app data in Node.js with a fully typed TypeScript API.** Fetch app details, search results, top charts, developer pages, similar apps, reviews, permissions and data safety reports straight from the Play Store, validated at runtime and returned as typed objects.
 
-**Scrape Google Play app data in Node.js with a fully typed TypeScript API.** Fetch app details, search results, top charts, developer pages, similar apps, user reviews, permissions and data safety information directly from the Play Store. Built for ASO research, app market analysis, competitor tracking, review monitoring and data pipelines.
+This is a TypeScript rewrite of the unmaintained [`google-play-scraper`](https://github.com/facundoolano/google-play-scraper) package. Method names, options and constants match the original, so most migrations are an import swap.
 
-This is a modern TypeScript rewrite of the popular but unmaintained [`google-play-scraper`](https://github.com/facundoolano/google-play-scraper) package. The public method names, options and constants match the original, so migrating is usually just a matter of swapping the import.
+[API reference](https://mradex77.github.io/google-play-scraper/) · [Examples](https://github.com/MrAdex77/google-play-scraper/tree/main/examples) · [Changelog](CHANGELOG.md) · [Migration guide](#migrating-from-google-play-scraper)
 
-## Why this library
+## Highlights
 
-- **Fully typed results.** Every method returns a precise TypeScript type derived from a [zod](https://zod.dev) schema that validates the scraped data at runtime.
-- **No HTTP dependency.** Runs on the native `fetch` of Node.js 22 and newer.
-- **Resilient by design.** Every fragile Google Play array path lives behind a spec layer with ordered fallback paths, so a single moved index does not take a whole call down.
-- **Verified against live Google Play daily.** Contract tests run against play.google.com on a daily schedule in CI and open a labeled issue the moment Google changes its layout.
-- **Typed errors.** Branch on `NotFoundError`, `RateLimitError` or `SpecError` instead of parsing message strings.
-- **Throttling, retries and caching included.** Rate limiting, exponential backoff with `Retry-After` support and an optional memoized client come standard.
-- **ESM and CommonJS.** Ships both module formats plus type declarations from a single package.
+- Typed results. Every method returns a TypeScript type derived from the [zod](https://zod.dev) schema that validates the scraped data at runtime.
+- No HTTP dependency. Runs on the native `fetch` of Node.js 22 and newer.
+- Survives layout changes. Every Google Play array path sits behind ordered fallback paths, so one moved index does not break a call.
+- Checked against live Google Play daily. Contract tests run in CI on a schedule and open a labeled issue when Google changes its layout.
+- Typed errors. Branch on `NotFoundError`, `RateLimitError` or `SpecError` instead of parsing message strings.
+- Throttling, retries and caching built in. Rate limiting, exponential backoff with `Retry-After` support and an optional memoized client.
+- ESM and CommonJS builds with type declarations from a single package.
 
-## Comparison with the original google-play-scraper
+## Comparison with the original
 
-| Capability           | @mradex77/google-play-scraper               | facundoolano/google-play-scraper           |
-| -------------------- | ------------------------------------------- | ------------------------------------------ |
-| Language             | TypeScript in strict mode                   | JavaScript                                 |
-| Type definitions     | Generated from zod schemas                  | Community typings                          |
-| Runtime validation   | zod/mini on every input and output boundary | None                                       |
-| Error handling       | Typed error classes                         | Plain `Error`                              |
-| Module formats       | ESM and CommonJS with `.d.ts`               | ESM only                                   |
-| Runtime dependencies | `zod`, `lru-cache`                          | `cheerio`, `got`, `memoizee`, `ramda`, ... |
-| Breakage detection   | Daily live contract tests in CI             | None                                       |
-| Maintenance          | Actively maintained                         | Unmaintained                               |
+| Capability           | @mradex77/google-play-scraper      | facundoolano/google-play-scraper           |
+| -------------------- | ---------------------------------- | ------------------------------------------ |
+| Language             | TypeScript in strict mode          | JavaScript                                 |
+| Type definitions     | Generated from zod schemas         | Community typings                          |
+| Runtime validation   | zod/mini on every input and output | None                                       |
+| Error handling       | Typed error classes                | Plain `Error`                              |
+| Module formats       | ESM and CommonJS with `.d.ts`      | ESM only                                   |
+| Runtime dependencies | `zod`, `lru-cache`                 | `cheerio`, `got`, `memoizee`, `ramda`, ... |
+| Breakage detection   | Daily live contract tests in CI    | None                                       |
+| Maintenance          | Active                             | Unmaintained                               |
 
 ## Table of contents
 
 - [Installation](#installation)
-- [CLI](#cli)
 - [Quick start](#quick-start)
+- [CLI](#cli)
 - [Common options](#common-options)
 - [Shared client](#shared-client)
 - [Methods](#methods)
@@ -63,54 +61,17 @@ This is a modern TypeScript rewrite of the popular but unmaintained [`google-pla
 
 ## Installation
 
-```
+```sh
 npm install @mradex77/google-play-scraper
 ```
 
 Requires Node.js 22.12 or newer.
 
-Every release is published from GitHub Actions with [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the package on npm is cryptographically linked to the exact commit and workflow that built it. Verify your installed tree with:
+Every release is published from GitHub Actions with [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the package on npm is linked to the commit and workflow that built it:
 
 ```sh
 npm audit signatures
 ```
-
-## CLI
-
-Every method with a JSON-friendly surface is also available from the command line, no install required:
-
-```sh
-npx @mradex77/google-play-scraper app com.spotify.music
-npx @mradex77/google-play-scraper search "sleep tracker" --num 5 --country de
-npx @mradex77/google-play-scraper reviews com.mojang.minecraftpe --sort rating --num 20
-npx @mradex77/google-play-scraper reviews com.whatsapp --score 1 --device tablet --num 50
-npx @mradex77/google-play-scraper availability com.adex77.WhereAmI --countries us,pl,de
-```
-
-| Command                | Positional              | Own flags                                                                        |
-| ---------------------- | ----------------------- | -------------------------------------------------------------------------------- |
-| `app <appId>`          | app id                  |                                                                                  |
-| `apps <appIds>`        | comma-separated app ids | `--concurrency`                                                                  |
-| `search <term>`        | search term             | `--num`, `--price`, `--full-detail`                                              |
-| `suggest <term>`       | search term             |                                                                                  |
-| `list`                 |                         | `--collection`, `--category`, `--age`, `--num`, `--full-detail`                  |
-| `developer <devId>`    | developer id            | `--num`, `--full-detail`                                                         |
-| `similar <appId>`      | app id                  | `--full-detail`                                                                  |
-| `reviews <appId>`      | app id                  | `--num`, `--sort`, `--score`, `--device`, `--page-size`, `--paginate`, `--token` |
-| `permissions <appId>`  | app id                  | `--short`                                                                        |
-| `data-safety <appId>`  | app id                  |                                                                                  |
-| `categories`           |                         |                                                                                  |
-| `availability <appId>` | app id                  | `--countries` (comma-separated, required), `--concurrency`                       |
-
-Every command also accepts `--lang <code>`, `--country <code>` and `--throttle <requestsPerSecond>`, plus `--help`/`-h` (global or per command) and the global `--version`.
-
-Results are pretty-printed JSON on stdout, so the output pipes straight into `jq`:
-
-```sh
-npx @mradex77/google-play-scraper app com.spotify.music | jq '{title, score, installs}'
-```
-
-Exit codes: `0` success, `1` scrape failure (not found, rate limited, blocked, network), `2` usage error (unknown command or flag, missing argument, invalid option value). A malformed app id (see [App ids](#app-ids)) is an invalid option value, so it exits `2` with the usage line and sends no request. The exception is `apps`, which prints the malformed entry as `rejected` and exits `0`, as it does for a missing app. In `apps`, whitespace around the commas is trimmed before validation, so `apps "com.whatsapp, com.spotify.music"` works.
 
 ## Quick start
 
@@ -142,24 +103,61 @@ gplay.search({ term: 'panda' }).then((results) => {
 
 More runnable examples live in [examples/](https://github.com/MrAdex77/google-play-scraper/tree/main/examples).
 
+## CLI
+
+Every method with a JSON-friendly surface is also available from the command line, no install required:
+
+```sh
+npx @mradex77/google-play-scraper app com.spotify.music
+npx @mradex77/google-play-scraper search "sleep tracker" --num 5 --country de
+npx @mradex77/google-play-scraper reviews com.mojang.minecraftpe --sort rating --num 20
+npx @mradex77/google-play-scraper reviews com.whatsapp --score 1 --device tablet --num 50
+npx @mradex77/google-play-scraper availability com.adex77.WhereAmI --countries us,pl,de
+```
+
+| Command                | Positional              | Own flags                                                                        |
+| ---------------------- | ----------------------- | -------------------------------------------------------------------------------- |
+| `app <appId>`          | app id                  |                                                                                  |
+| `apps <appIds>`        | comma-separated app ids | `--concurrency`                                                                  |
+| `search <term>`        | search term             | `--num`, `--price`, `--full-detail`                                              |
+| `suggest <term>`       | search term             |                                                                                  |
+| `list`                 |                         | `--collection`, `--category`, `--age`, `--num`, `--full-detail`                  |
+| `developer <devId>`    | developer id            | `--num`, `--full-detail`                                                         |
+| `similar <appId>`      | app id                  | `--full-detail`                                                                  |
+| `reviews <appId>`      | app id                  | `--num`, `--sort`, `--score`, `--device`, `--page-size`, `--paginate`, `--token` |
+| `permissions <appId>`  | app id                  | `--short`                                                                        |
+| `data-safety <appId>`  | app id                  |                                                                                  |
+| `categories`           |                         |                                                                                  |
+| `availability <appId>` | app id                  | `--countries` (comma-separated, required), `--concurrency`                       |
+
+Every command also accepts `--lang <code>`, `--country <code>` and `--throttle <requestsPerSecond>`, plus `--help`/`-h` (global or per command) and the global `--version`.
+
+Results are pretty-printed JSON on stdout, so the output pipes into `jq`:
+
+```sh
+npx @mradex77/google-play-scraper app com.spotify.music | jq '{title, score, installs}'
+```
+
+Exit codes: `0` success, `1` scrape failure (not found, rate limited, blocked, network), `2` usage error (unknown command or flag, missing argument, invalid option value). A malformed app id (see [App ids](#app-ids)) exits `2` with the usage line and sends no request. `apps` is the exception: it prints the malformed entry as `rejected` and exits `0`, as it does for a missing app. Whitespace around the commas in `apps` is trimmed before validation, so `apps "com.whatsapp, com.spotify.music"` works.
+
 ## Common options
 
 Every method accepts a single options object. These options are available on all of them:
 
-| Option             | Type       | Default | Description                                                                                                    |
-| ------------------ | ---------- | ------- | -------------------------------------------------------------------------------------------------------------- |
-| `lang`             | `string`   | `'en'`  | Two letter language code used to fetch the page.                                                               |
-| `country`          | `string`   | `'us'`  | Two letter country code. Needed for apps available only in some regions.                                       |
-| `throttle`         | `number`   | none    | Maximum requests per second across a single call.                                                              |
-| `requestOptions`   | `object`   | none    | HTTP overrides. See [Throttling and requestOptions](#throttling-and-requestoptions).                           |
-| `onDegradation`    | `function` | none    | Callback fired when a call degrades gracefully. See [Monitoring drift](#monitoring-drift).                     |
-| `onIntegrityEvent` | `function` | none    | Callback fired when routing, parsing or pagination needs attention. See [Monitoring drift](#monitoring-drift). |
+| Option             | Type       | Default | Description                                                                                            |
+| ------------------ | ---------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| `lang`             | `string`   | `'en'`  | Two letter language code used to fetch the page.                                                       |
+| `country`          | `string`   | `'us'`  | Two letter country code. Needed for apps available only in some regions.                               |
+| `throttle`         | `number`   | none    | Maximum requests per second across a single call.                                                      |
+| `requestOptions`   | `object`   | none    | HTTP overrides. See [Throttling and requestOptions](#throttling-and-requestoptions).                   |
+| `onDegradation`    | `function` | none    | Called when a call degrades gracefully. See [Monitoring drift](#monitoring-drift).                     |
+| `onIntegrityEvent` | `function` | none    | Called when routing, parsing or pagination needs attention. See [Monitoring drift](#monitoring-drift). |
 
 ## Shared client
 
-The top-level functions each build their own HTTP client, so a `throttle` passed to one call only limits the requests made inside that single call, such as the pagination pages of one `search()`, `list()`, `developer()`, or `reviews()`. Ten parallel `app()` calls with `throttle: 1` each get their own limiter and still reach Google Play at the same time.
+Each top-level function builds its own HTTP client, so a `throttle` passed to one call only limits the requests made inside that call, such as the pagination pages of one `search()`. Ten parallel `app()` calls with `throttle: 1` each get their own limiter and still reach Google Play at the same time.
 
-`createClient` fixes this by sharing one rate limiter, one set of request options, and one pair of `lang`/`country` defaults across every method of the client:
+`createClient` shares one rate limiter, one set of request options and one pair of `lang`/`country` defaults across every method of the client:
 
 ```typescript
 import { createClient } from '@mradex77/google-play-scraper';
@@ -170,23 +168,23 @@ const ids = ['com.foo', 'com.bar', 'com.baz'];
 const details = await Promise.all(ids.map((appId) => client.app({ appId })));
 ```
 
-That whole batch never exceeds five requests per second in total, across every method of the client, including the `fullDetail` app lookups made by `search`, `list`, `developer`, and `similar`.
+That batch never exceeds five requests per second in total, including the `fullDetail` app lookups made by `search`, `list`, `developer` and `similar`.
 
 Precedence rules:
 
-1. A client-level `throttle` creates one shared limiter that every method call goes through, including pagination pages and `fullDetail` lookups.
-2. A per-call `throttle` passed to a client method is superseded by the client limiter. When the client was created without `throttle`, a per-call value behaves exactly like the top-level functions do today (a call-scoped limiter).
+1. A client-level `throttle` is one shared limiter for every call, including pagination pages and `fullDetail` lookups.
+2. A per-call `throttle` on a client method is superseded by the client limiter. Without a client `throttle`, it creates a call-scoped limiter, as on the top-level functions.
 3. `requestOptions` merge shallowly, with per-call keys winning: `{ ...client, ...call }`.
 4. Per-call `lang` and `country` win over the client defaults; the built-in `en`/`us` defaults apply last.
-5. A client-level `onDegradation` or `onIntegrityEvent` applies to every call, including the `fullDetail` and batch lookups the client makes on your behalf. A per-call callback replaces the client-level one for that call; callbacks do not chain.
+5. A client-level `onDegradation` or `onIntegrityEvent` applies to every call, including the lookups the client makes for you. A per-call callback replaces it for that call; callbacks do not chain.
 
-Every method from the [reference below](#methods) is available on the client, alongside the exported constants. Two clients created with `createClient` are fully independent and never share a limiter. [`memoized`](#memoized) accepts the same options and adds an LRU cache on top.
-
-> A per-call `throttle` on the top-level functions only rate-limits the requests within that single call, such as its pagination pages. Reach for `createClient` when you need one limit to span many calls.
+Every method from the [reference below](#methods) is available on the client, alongside the exported constants. Two clients never share a limiter. [`memoized`](#memoized) accepts the same options and adds an LRU cache on top.
 
 ## Methods
 
 - [app](#app): full detail of a single application
+- [apps](#apps): full detail of many applications in one call
+- [availability](#availability): the countries an app is published in
 - [search](#search): apps matching a search term
 - [suggest](#suggest): search term autocompletions
 - [list](#list): a ranked collection of apps
@@ -200,9 +198,9 @@ Every method from the [reference below](#methods) is available on the client, al
 
 ### App ids
 
-Every `appId` is validated before any request is made, on every method, iterator, client and CLI command. It must be an Android package name: at least two segments separated by dots, each segment starting with a letter and containing only letters, digits, and underscores, at most 255 characters in total. Case is significant (`com.adex77.WhereAmI` and `com.adex77.whereami` are different ids on Google Play), so ids are never lowercased.
+Every `appId` is validated before any request, on every method, iterator, client and CLI command. It must be an Android package name: at least two dot-separated segments, each starting with a letter and containing only letters, digits and underscores, at most 255 characters in total. Case is significant (`com.adex77.WhereAmI` and `com.adex77.whereami` are different ids on Google Play), so ids are never lowercased. Leading or trailing whitespace is rejected rather than trimmed, so the id you pass is the id that is requested and echoed back. The rule follows the [Android application ID rules](https://developer.android.com/build/configure-app-module).
 
-A malformed id throws `ValidationError` instead of reaching Google Play. The one exception is [`apps`](#batch-details), which never rejects a batch because of one malformed id: that entry comes back `rejected` with a `ValidationError`, the same way a missing app is reported, and no request is sent for it. An empty string in `appIds` still fails validation of the whole call. Leading or trailing whitespace is rejected rather than trimmed, so the id you pass is always the id that is requested and echoed back. The rule follows the [Android application ID rules](https://developer.android.com/build/configure-app-module), and every id Google Play served in the live checks behind this library satisfies it.
+A malformed id throws `ValidationError` without reaching Google Play. The one exception is [`apps`](#apps), which reports that entry as `rejected` with a `ValidationError`, the same way it reports a missing app, and sends no request for it. An empty string in `appIds` still fails validation of the whole call.
 
 ```typescript
 import { app, ValidationError } from '@mradex77/google-play-scraper';
@@ -277,12 +275,9 @@ Returns an `App` with 59 fields. Trimmed:
 
 `description`, `summary` and `recentChanges` are plain text: tags are removed, the entities Google uses (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;` and numeric references) are decoded and each `<br>` becomes a newline. Escape these fields like any other text before inserting them into HTML.
 
-Each of them has a markup twin read from the same Google cell: `descriptionHTML`, `summaryHTML` and `recentChangesHTML` keep the tags and entities exactly as Google serves them (control characters removed), and a twin is present exactly when its plain text field is. Use the twins when you render markup yourself. The markup is written by the app developer and filtered by Google, not by this library, so pass it through your own HTML sanitizer before inserting it into a page.
+Each of them has a markup twin read from the same Google cell: `descriptionHTML`, `summaryHTML` and `recentChangesHTML` keep the tags and entities as Google serves them (control characters removed), and a twin is present exactly when its plain text field is. The markup is written by the app developer and filtered by Google, so pass it through your own HTML sanitizer before inserting it into a page.
 
-A listing that has not been released yet carries no offer at all. For those apps
-`preregister` is `true`, and `price`, `free` and `priceText` fall back to `0`, `false` and
-`'Free'` rather than describing a real offer. Rating, install and release fields are
-absent too. Read `preregister` before trusting any price field:
+A listing that has not been released yet carries no offer. For those apps `preregister` is `true`, and `price`, `free` and `priceText` fall back to `0`, `false` and `'Free'` without describing a real offer. Rating, install and release fields are absent too. Read `preregister` before trusting any price field:
 
 ```ts
 const details = await app({ appId: 'com.ironhidegames.android.kingdomrush6.genesis' });
@@ -292,14 +287,11 @@ if (details.preregister) {
 }
 ```
 
-The same applies to a `search()` row for an unreleased app: it is returned with
-`price: 0` and `free: false`, so a `price: 'free'` filter will not match it.
+A `search()` row for an unreleased app is returned with `price: 0` and `free: false` in the same way, so a `price: 'free'` filter will not match it.
 
-### Batch details
+### apps
 
-Fetches the full detail of many apps in one call, with a concurrency limit and per-id
-failure capture. One missing app never rejects the whole batch, and results stay aligned
-with the input order.
+Fetches the full detail of many apps in one call, with a concurrency limit and per-id failure capture. One missing app never rejects the whole batch, and results stay aligned with the input order.
 
 | Option        | Type       | Default  | Description                                                                        |
 | ------------- | ---------- | -------- | ---------------------------------------------------------------------------------- |
@@ -315,8 +307,7 @@ const result = await apps({
 });
 ```
 
-Each entry is a discriminated union keyed on `status`; narrow on it to read the parsed
-`App` or the typed error:
+Each entry is a discriminated union keyed on `status`; narrow on it to read the parsed `App` or the typed error:
 
 ```typescript
 for (const entry of result) {
@@ -334,21 +325,13 @@ type AppsEntry =
   | { appId: string; status: 'rejected'; error: GooglePlayError };
 ```
 
-`apps` does not deduplicate `appIds` within a call: a list with the same id twice fetches
-it twice. Use a [`memoized`](#memoized) client when you want repeated ids, across or within
-batches, served from cache.
+`apps` does not deduplicate `appIds`: a list with the same id twice fetches it twice. Use a [`memoized`](#memoized) client to serve repeated ids from cache.
 
-`concurrency` bounds parallelism; a client [`throttle`](#throttling-and-requestoptions)
-bounds the request rate. When both apply, the effective rate is the smaller of the two
-constraints, so `createClient({ throttle: 2 }).apps({ appIds, concurrency: 5 })` still
-issues at most two requests per second.
+`concurrency` bounds parallelism and a client [`throttle`](#throttling-and-requestoptions) bounds the request rate. When both apply, the smaller constraint wins, so `createClient({ throttle: 2 }).apps({ appIds, concurrency: 5 })` still issues at most two requests per second.
 
-### Country availability
+### availability
 
-Answers "in which countries is this app published?" by probing the Google Play details
-page once per country. Each probe is a plain `GET` whose HTTP status is the whole answer,
-so the body is never parsed and a probe is an order of magnitude cheaper than an `app`
-lookup. No other scraper offers this as a first-class call.
+Answers "in which countries is this app published?" by probing the Google Play details page once per country. Each probe is a plain `GET` whose HTTP status is the whole answer, so the body is never parsed and a probe costs far less than an `app` lookup.
 
 | Option        | Type       | Default  | Description                                                      |
 | ------------- | ---------- | -------- | ---------------------------------------------------------------- |
@@ -366,7 +349,7 @@ const result = await availability({
 });
 ```
 
-```typescript
+```javascript
 {
   appId: 'com.adex77.WhereAmI',
   countries: {
@@ -380,19 +363,13 @@ const result = await availability({
 
 Each country resolves to one of three statuses:
 
-- `available` — the probe returned `200`; the app is published in that storefront.
-- `unavailable` — the probe returned `404`; the app is not published there.
-- `error` — the probe could not tell: a block (consent wall or captcha), a rate limit, any
-  other HTTP failure, or a network error, with the original `message` preserved.
+- `available`: the probe returned `200`; the app is published in that storefront.
+- `unavailable`: the probe returned `404`; the app is not published there.
+- `error`: the probe could not tell. A block (consent wall or captcha), a rate limit, any other HTTP failure or a network error, with the original `message` preserved.
 
-`error` is deliberately never collapsed into `unavailable`. A blocked or rate-limited probe
-means "we could not determine availability", which must not masquerade as "not published"
-in data used for release decisions. Country codes are returned lowercased, duplicates
-(ignoring case) are rejected, and a single call probes at most `50` countries.
+`error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not published" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
 
-Because Google Play geoblocking depends on the caller's IP as much as on the `gl`
-parameter, pair `availability` with [`createCountryFetch`](#routing-by-country) so each
-probe exits through a proxy located in the country it probes:
+Google Play geoblocking depends on the caller's IP as much as on the `gl` parameter, so pair `availability` with [`createCountryFetch`](#routing-by-country) to send each probe through a proxy in the country it probes:
 
 ```typescript
 import { ProxyAgent, fetch as undiciFetch, type RequestInit } from 'undici';
@@ -418,8 +395,7 @@ const result = await availability({
 });
 ```
 
-Each probe carries `gl=<country>`, so `createCountryFetch` routes the `us` probe through
-the US proxy and the `de` probe through the German proxy.
+Each probe carries `gl=<country>`, so `createCountryFetch` routes the `us` probe through the US proxy and the `de` probe through the German proxy.
 
 ### search
 
@@ -460,9 +436,9 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
 ];
 ```
 
-The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters, not a one-line tagline), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. `summaryHTML` carries the same cell with its markup, for callers that render HTML (sanitize it first, as for [app](#app)).
+The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. `summaryHTML` carries the same cell with its markup, for callers that render HTML (sanitize it first, as for [app](#app)).
 
-Google Play serves a first result page of roughly 20 to 30 apps (50 for single character terms), and fewer for narrow terms. For a minority of queries it also serves a continuation token (verified October 2026: single character terms and digits, and some app names such as `minecraft` or `reddit`), and `search()` and `searchIterator()` follow it until Google ends the results, measured at no more than 250 in total. Continuation results are looser matches than the first page, and they carry `currency` only for paid apps. For every other term the first page is all Google serves, so a `num` above it is best-effort: the returned array may be shorter than requested, never longer, and never repeats an app.
+Google Play serves a first result page of roughly 20 to 30 apps (50 for single character terms), and fewer for narrow terms. For a minority of queries it also serves a continuation token (verified October 2026: single character terms and digits, and some app names such as `minecraft` or `reddit`), and `search()` and `searchIterator()` follow it until Google ends the results, measured at no more than 250 in total. Continuation results are looser matches than the first page and carry `currency` only for paid apps. For every other term the first page is all Google serves, so a `num` above it is best-effort: the returned array may be shorter than requested, never longer, and never repeats an app.
 
 ### suggest
 
@@ -588,12 +564,9 @@ if (first.nextPaginationToken) {
 }
 ```
 
-Without `paginate`, `reviews` keeps requesting until it holds `num` reviews and always returns
-`nextPaginationToken: null`, so only a `paginate: true` call hands back a token to continue from.
+Without `paginate`, `reviews` keeps requesting until it holds `num` reviews and always returns `nextPaginationToken: null`. Only a `paginate: true` call hands back a token to continue from.
 
-Filters are applied by Google Play, not by this library, so a filtered call downloads only
-the reviews it returns. Both filters can be combined and both are kept on every continuation
-request:
+Filters are applied by Google Play, so a filtered call downloads only the reviews it returns. Both filters can be combined and both are kept on every continuation request:
 
 ```typescript
 import { device, reviews } from '@mradex77/google-play-scraper';
@@ -606,36 +579,13 @@ const angryTabletUsers = await reviews({
 });
 ```
 
-The device filter selects the form factor the review was written on. `device.WATCH` reaches
-Wear OS reviews, which can be a large share of a watch face or fitness listing. Google also
-files some legacy reviews from before Wear OS existed under the watch value, so on older apps
-the watch stream ends with reviews from 2011 to 2013. Google does not
-always split a listing cleanly: on apps built for a single form factor, such as an Android TV
-launcher, every device value returns the same set. A review from a form factor without a
-`device` value only appears in the unfiltered stream, so the device sets are not guaranteed to
-add up to the unfiltered total.
+The device filter selects the form factor the review was written on. `device.WATCH` reaches Wear OS reviews, which can be a large share of a watch face or fitness listing; Google also files some reviews from 2011 to 2013, before Wear OS existed, under that value. Apps built for a single form factor, such as an Android TV launcher, return the same set for every device value, and reviews from a form factor without a `device` value appear only in the unfiltered stream, so the device sets do not add up to the unfiltered total.
 
-Request sizing follows two rules. When the library knows how many reviews you want, it asks
-Google for exactly that many, up to 4500 per request, so `num: 10` costs one request of ten
-reviews rather than a 150-review page that is mostly discarded, and `num: 5000` costs two
-requests instead of thirty-four. When it does not know, which is a manual `paginate: true`
-page or an open-ended `reviewsIterator`, it requests 150 reviews per page as before. Pass
-`pageSize` to override either default; Google honours any value from `1` to `4500` exactly
-and serves an empty payload above that, which is why larger values are rejected as a
-`ValidationError`.
+When the library knows how many reviews you want, it asks Google for exactly that many, up to 4500 per request: `num: 10` costs one request of ten reviews and `num: 5000` costs two requests. A manual `paginate: true` page or an open-ended `reviewsIterator` requests 150 per page. `pageSize` overrides either default. Google serves an empty payload above `4500`, so larger values are rejected as a `ValidationError`.
 
-Automatic accumulation, `reviews` with `num` and `reviewsAll` with `maxReviews`, carries a
-request budget of twice the ideal request count, derived from the requested count and the
-effective page size. If Google keeps serving tokens without filling pages, the call returns
-what it collected and emits `request-budget-exhausted` through `onIntegrityEvent`, with
-context `reviews`, instead of paging indefinitely. A walk of full pages never exhausts the
-budget.
+`reviews` with `num` and `reviewsAll` with `maxReviews` carry a request budget of twice the ideal request count. If Google keeps serving tokens without filling pages, the call returns what it collected and emits `request-budget-exhausted` through `onIntegrityEvent` with context `reviews`. A walk of full pages never exhausts the budget.
 
-A pagination token is a position cursor. It encodes where the previous page ended, not the
-filters or page size that produced it. Whatever `score`, `device`, and `pageSize` you pass on
-the continuation call are applied from that position, and a mismatch cannot be detected, so
-pass the same filters on every page of one walk. Replaying a token under a different `sort`
-restarts from the first page of that sort.
+A pagination token is a position cursor: it encodes where the previous page ended, not the filters or page size that produced it, so pass the same `score`, `device` and `pageSize` on every page of one walk. Replaying a token under a different `sort` restarts from the first page of that sort.
 
 Returns `ReviewsResult`. Trimmed:
 
@@ -659,9 +609,7 @@ Returns `ReviewsResult`. Trimmed:
 }
 ```
 
-`score` is the star rating from `1` to `5`. A few legacy reviews from the early years of
-Google Play carry no star rating, and those come back with `score: 0` rather than failing the
-page, matching the original `google-play-scraper`. The `score` filter never serves them.
+`score` is the star rating from `1` to `5`. A few legacy reviews from the early years of Google Play carry no star rating and come back with `score: 0`, matching the original `google-play-scraper`. The `score` filter never serves them.
 
 ### permissions
 
@@ -692,7 +640,7 @@ Returns `AppPermission[]` (or `string[]` when `short` is `true`):
 
 The `type` is `permission.COMMON` (`0`) or `permission.OTHER` (`1`).
 
-The `group` is the name of the permission group Google Play files the permission under, in the language of the requested `lang`, or an empty string when Google Play omits the name. A few legacy permissions belong to two groups (for example the USB storage permissions sit under both `Photos/Media/Files` and `Storage`), so the detailed list repeats such a permission once per group and `group` tells the rows apart. To list each permission once, drop the group:
+The `group` is the name of the permission group Google Play files the permission under, in the language of the requested `lang`, or an empty string when Google Play omits the name. A few legacy permissions belong to two groups (the USB storage permissions sit under both `Photos/Media/Files` and `Storage`), so the detailed list repeats such a permission once per group. To list each permission once, drop the group:
 
 ```typescript
 const unique = [
@@ -716,7 +664,7 @@ import { dataSafety } from '@mradex77/google-play-scraper';
 const safety = await dataSafety({ appId: 'com.google.android.apps.translate' });
 ```
 
-`lang` localizes the labels and `country` selects the storefront. Most reports are identical across countries, but a storefront can add regional entries (the Indian storefront adds a "UPI payments verified" security practice to payment apps), and an app that Google Play withholds from a country has no report there, so it resolves with the empty report described under [Failure behavior](#failure-behavior). An app that does not exist resolves the same way in every language.
+`lang` localizes the labels and `country` selects the storefront. Most reports are identical across countries, but a storefront can add regional entries (the Indian storefront adds a "UPI payments verified" security practice to payment apps). An app that Google Play withholds from a country has no report there and resolves with the empty report described under [Failure behavior](#failure-behavior). An app that does not exist resolves the same way in every language.
 
 Returns `DataSafety`. Trimmed:
 
@@ -739,7 +687,7 @@ Returns `DataSafety`. Trimmed:
 }
 ```
 
-Every string in the report except `descriptionHTML` is plain text. Google ends some practice descriptions with a link to the Play Families Policy or to the App Defense Alliance security standard; the library removes the tag and keeps its text, so the description reads `...against a global security standard. See details`, the same way links are handled in the `app` `description`. `descriptionHTML` keeps the description as Google serves it, link included.
+Every string in the report except `descriptionHTML` is plain text. Google ends some practice descriptions with a link to the Play Families Policy or to the App Defense Alliance security standard; the library removes the tag and keeps its text, so the description reads `...against a global security standard. See details`. `descriptionHTML` keeps the description as Google serves it, link included.
 
 ### categories
 
@@ -772,7 +720,7 @@ Returns `string[]`:
 
 ### memoized
 
-Returns a [shared client](#shared-client) whose promise-returning methods share an LRU cache held in memory, so equivalent calls made within the TTL resolve from cache instead of hitting Google Play again. It accepts every `createClient` option plus the two cache bounds:
+Returns a [shared client](#shared-client) whose promise-returning methods share an in-memory LRU cache, so equivalent calls made within the TTL resolve from cache. It accepts every `createClient` option plus the two cache bounds:
 
 | Option             | Type       | Default  | Description                                                                                                                                  |
 | ------------------ | ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -798,13 +746,13 @@ await client.app({ appId: 'com.google.android.apps.translate' });
 
 Invalid options throw `ValidationError` before any cache or HTTP state exists.
 
-**What counts as the same call.** Entries are keyed by the options _after_ validation and defaulting, so these all share one entry: `{}` and `{ lang: 'en', country: 'us' }`, `country: 'US'` and `country: 'us'`, and the same options in any property order. Anything that changes the response or how it is obtained separates entries: `lang`, `country`, every feature option, and the `headers`, `timeoutMs`, `retries`, `fetchImpl` and `signal` fields of `requestOptions` (the last two by object identity, so two callers sharing a signal share an entry and one caller's abort never rejects an unrelated caller; a fresh signal on every call therefore never hits, so prefer `timeoutMs` for per-call deadlines). Pacing and telemetry never fragment the cache: `throttle`, `concurrency`, `onDegradation`, `onIntegrityEvent`, `onRequest`, `onResponse` and `onRetry` are ignored by the key, so inline callbacks are fine.
+Entries are keyed by the options after validation and defaulting, so `{}` and `{ lang: 'en', country: 'us' }`, `country: 'US'` and `country: 'us'`, and the same options in any property order share one entry. `lang`, `country`, every feature option, and the `headers`, `timeoutMs`, `retries`, `fetchImpl` and `signal` fields of `requestOptions` separate entries. `fetchImpl` and `signal` are compared by identity: callers that share a signal share an entry, one caller's abort never rejects another, and a fresh signal on every call never hits, so prefer `timeoutMs` for per-call deadlines. `throttle`, `concurrency` and every callback are ignored by the key, so inline callbacks are fine.
 
-**What is cached.** `app`, `availability`, `search`, `suggest`, `list`, `categories`, `developer`, `similar`, `reviews`, `permissions` and `dataSafety`. Concurrent equivalent calls share one in-flight request. A hit resolves to the same object the filling call returned, so treat cached results as read-only. A rejected call is never cached, so the next call retries. `apps` and the `fullDetail` lookups of `search`, `list`, `developer` and `similar` are served from the `app` entries they warm. `reviewsIterator`, `searchIterator`, `developerIterator`, `reviewsAll` and `apps` are not cached themselves; they share the client's defaults, limiter and request options and pass through to Google Play.
+The cached methods are `app`, `availability`, `search`, `suggest`, `list`, `categories`, `developer`, `similar`, `reviews`, `permissions` and `dataSafety`. Concurrent equivalent calls share one in-flight request, a hit resolves to the same object the filling call returned (treat it as read-only), and a rejected call is never cached. `apps` and the `fullDetail` lookups of `search`, `list`, `developer` and `similar` are served from the `app` entries they warm. The iterators, `reviewsAll` and `apps` are not cached themselves; they share the client's defaults, limiter and request options.
 
-**Cache hits replay their events.** Degradation and integrity events recorded while an entry was fetched are delivered again, in their original order, to the callbacks of every later call that hits the entry. A hit performs no request, so `onRequest`, `onResponse` and `onRetry` are not replayed. A replayed callback that throws rejects only the call it was passed to; the entry stays valid for other callers. Events recorded before a call fails are still delivered to every caller that shared the failed request. Events raised by the app lookups a `fullDetail` call or an `apps` batch makes on your behalf belong to that outer call: they reach its callbacks, and a cached `fullDetail` result replays them with its entry.
+Cache hits replay their events. Degradation and integrity events recorded while an entry was fetched are delivered again, in order, to the callbacks of every call that hits it; lifecycle hooks are not, because a hit performs no request. A replayed callback that throws rejects only its own call. Events recorded before a shared request fails still reach every caller that shared it. Events from the app lookups a `fullDetail` call or an `apps` batch makes belong to that outer call and are replayed with its entry.
 
-**Cache controls.** The client exposes explicit control without global state:
+The client exposes cache controls without global state:
 
 ```typescript
 client.cache.size;
@@ -812,19 +760,13 @@ client.cache.invalidate('app', { appId: 'com.google.android.apps.translate' });
 client.cache.clear();
 ```
 
-`invalidate` takes the method name and the same options you would pass to that method, applies the client defaults and validation to them (throwing `ValidationError` for options the method itself would reject), and drops the matching entry, returning whether one existed. The next equivalent call requests again while unrelated entries survive. `size` counts live entries and falls as entries expire or are evicted.
+`invalidate` takes a method name and the options you would pass to it, applies the client defaults and validation (throwing `ValidationError` for options the method would reject), drops the matching entry and returns whether one existed. `size` counts live entries.
 
 ## Streaming and bulk reads
 
-`reviews()`, `search()`, and `developer()` collect a fixed `num` of items before they
-resolve. When you want to walk results lazily and stop exactly when you have seen enough,
-use the async iterators. They fetch nothing until the first `for await`, and they stop
-fetching the moment the consumer `break`s, so "first ten reviews then stop" costs exactly
-one page request. Open-ended streams request 150 reviews per page unless you pass `pageSize`,
-and `score` and `device` filters are honoured on every page.
+`reviews()`, `search()` and `developer()` collect a fixed `num` of items before they resolve. To walk results lazily and stop when you have seen enough, use the async iterators. They fetch nothing until the first `for await` and stop fetching the moment the consumer `break`s, so "first ten reviews then stop" costs one page request. Open-ended streams request 150 reviews per page unless you pass `pageSize`, and `score` and `device` filters are honoured on every page.
 
-The iterators are available both as standalone functions and as methods on
-[`createClient`](#shared-client), where they share the client's limiter and defaults.
+The iterators are available as standalone functions and as methods on [`createClient`](#shared-client), where they share the client's limiter and defaults.
 
 ### reviewsIterator
 
@@ -841,8 +783,7 @@ for await (const review of reviewsIterator({ appId: 'com.whatsapp' })) {
 }
 ```
 
-Pass `nextPaginationToken` to resume a stream where a previous run left off. The token
-comes from a prior `reviews({ paginate: true })` call or from persisted state:
+Pass `nextPaginationToken` to resume a stream where a previous run left off. The token comes from a prior `reviews({ paginate: true })` call or from persisted state:
 
 ```typescript
 const page = await reviews({ appId: 'com.whatsapp', paginate: true });
@@ -855,11 +796,7 @@ const resumed = reviewsIterator({
 
 ### reviewsAll
 
-Drains `reviewsIterator` into an array. Popular apps hold millions of reviews, so pass
-`maxReviews` to cap the read; the requests are sized to the remaining count, up to 4500 per
-request, so `maxReviews: 2000` costs one request. A capped read carries the same request
-budget as `reviews` and reports `request-budget-exhausted` when it runs out. Combine it with
-a client `throttle` to stay within Google Play's rate limits.
+Drains `reviewsIterator` into an array. Popular apps hold millions of reviews, so pass `maxReviews` to cap the read. Requests are sized to the remaining count, up to 4500 per request, so `maxReviews: 2000` costs one request. A capped read carries the same request budget as `reviews` and reports `request-budget-exhausted` when it runs out. Combine it with a client `throttle` to stay within Google Play's rate limits.
 
 ```typescript
 import { createClient } from '@mradex77/google-play-scraper';
@@ -868,7 +805,7 @@ const client = createClient({ throttle: 5 });
 const recent = await client.reviewsAll({ appId: 'com.whatsapp', maxReviews: 2000 });
 ```
 
-Without `maxReviews`, `reviewsAll` walks the entire review history, which can be very large.
+Without `maxReviews`, `reviewsAll` walks the entire review history.
 
 ### searchIterator and developerIterator
 
@@ -886,13 +823,8 @@ for await (const item of developerIterator({ devId: 'Google LLC' })) {
 
 ### Non-goals
 
-- **No `listIterator`.** `list()` sends a single batchexecute RPC that returns up to `num`
-  items in one response; there is no server-side pagination token to iterate. Faking an
-  iterator over one response would misrepresent the network behavior.
-- **Iterators do not accept `fullDetail` or `num`.** Streaming consumers call
-  `client.app()` per item when they need full details, and the consumer controls the end
-  by breaking; baking N+1 lookups or a fixed count into a generator hides its real cost.
-  Use `reviewsAll({ maxReviews })` for the bounded case.
+- There is no `listIterator`. `list()` sends a single batchexecute RPC that returns up to `num` items in one response, with no server-side pagination token to iterate.
+- Iterators do not accept `fullDetail` or `num`. Streaming consumers call `client.app()` per item when they need full details and control the end by breaking. Use `reviewsAll({ maxReviews })` for the bounded case.
 
 ## Constants
 
@@ -913,7 +845,7 @@ import { category, collection, sort, age, permission } from '@mradex77/google-pl
 
 ## Error handling
 
-Every failure surfaces as a typed subclass of `GooglePlayError`, so you can branch on the exact cause instead of parsing message strings.
+Every failure is a typed subclass of `GooglePlayError`, so you can branch on the cause instead of parsing message strings.
 
 | Error             | Extends           | Thrown when                                                                                 |
 | ----------------- | ----------------- | ------------------------------------------------------------------------------------------- |
@@ -952,9 +884,9 @@ A malformed `appId` never reaches Google Play: it throws `ValidationError` on ev
 | Resolves with a typed empty value | `search` and `suggest` (`[]`), `reviews` (`{ data: [], nextPaginationToken: null }`), `permissions` (`[]`), `dataSafety` (empty arrays, no `privacyPolicyUrl`) |
 | Maps the throw to a status        | `availability` reports `unavailable`                                                                                                                           |
 
-`dataSafety` recognizes a missing app from the structure of the error page Google Play serves, not from its wording, so the empty report is the same whichever `lang` you ask for. The same empty report comes back when the app is withheld from the requested `country`.
+`dataSafety` recognizes a missing app from the structure of the error page Google Play serves, so the empty report is the same whichever `lang` you ask for. The same empty report comes back when the app is withheld from the requested `country`.
 
-Typed empties are limited to the documented response shapes above and other schema-backed empty variants. A structurally missing or malformed response root throws `ParseError`; a missing required field inside a valid root throws `SpecError`. Neither case is converted into an empty result, `0`, `false`, `Free`, or `VARY` unless that exact fallback is part of the documented field contract.
+Typed empties are limited to the documented response shapes above and other schema-backed empty variants. A structurally missing or malformed response root throws `ParseError`; a missing required field inside a valid root throws `SpecError`. Neither case is converted into an empty result, `0`, `false`, `Free` or `VARY` unless that exact fallback is part of the documented field contract.
 
 ## Throttling and requestOptions
 
@@ -968,7 +900,7 @@ Pass `throttle` to cap requests per second, and `requestOptions` to override the
 | `retries`            | `number`                         | Retry count for `429`, `5xx` and captcha challenge redirects, `0` to `5`. Default `2`.                                                                                    |
 | `signal`             | `AbortSignal`                    | Cancels the call at once, including an in-flight request, a body read, retry backoff, a `Retry-After` wait and a queued throttle slot. See [Cancellation](#cancellation). |
 | `onRequest`          | `(event: RequestEvent) => void`  | Called before every attempt, including retries. See [Request lifecycle hooks](#request-lifecycle-hooks).                                                                  |
-| `onResponse`         | `(event: ResponseEvent) => void` | Called for each settled response — after the body is read on success — with `status` and `durationMs`.                                                                    |
+| `onResponse`         | `(event: ResponseEvent) => void` | Called for each settled response, after the body is read on success, with `status` and `durationMs`.                                                                      |
 | `onRetry`            | `(event: RetryEvent) => void`    | Called when a retry is scheduled, with `delayMs` and `reason`.                                                                                                            |
 
 ```typescript
@@ -986,13 +918,13 @@ const details = await app({
 });
 ```
 
-Retries use exponential backoff with jitter. A `Retry-After` response header overrides the backoff when it is well formed, in either form RFC 9110 allows: a count of seconds, or an HTTP date, which is resolved against the response `Date` header when the server sends one and against the local clock otherwise.
+Retries use exponential backoff with jitter. A well formed `Retry-After` header overrides the backoff, in either form RFC 9110 allows: a count of seconds, or an HTTP date resolved against the response `Date` header when the server sends one and against the local clock otherwise.
 
-A `Retry-After` longer than 60 seconds is not waited on. The call ends immediately with the mapped status error, `RateLimitError` for a `429` or `BlockedError` for a captcha challenge redirect, so a server cannot park a request for minutes. The ceiling is fixed and independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored and normal jittered backoff applies.
+A `Retry-After` longer than 60 seconds is not waited on. The call ends at once with the mapped status error, `RateLimitError` for a `429` or `BlockedError` for a captcha challenge redirect, so a server cannot park a request for minutes. The ceiling is fixed and independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored and normal jittered backoff applies.
 
 ### Request lifecycle hooks
 
-The three `on*` callbacks make request telemetry observable at every level — direct calls, `createClient`, and `memoized` — including what wrapping `fetchImpl` cannot see: retries and backoff decisions.
+The three `on*` callbacks expose request telemetry at every level (direct calls, `createClient` and `memoized`), including what a wrapping `fetchImpl` cannot see: retries and backoff decisions.
 
 ```typescript
 import { app } from '@mradex77/google-play-scraper';
@@ -1007,15 +939,15 @@ const details = await app({
 });
 ```
 
-Every event carries `url`, `method`, and a 1-based `attempt`: the first try is attempt 1, a `RetryEvent` carries the number of the attempt that just failed, and the subsequent `RequestEvent` is that attempt plus one. `ResponseEvent` adds `status` and `durationMs`, measured from just before the fetch (throttle wait excluded) and, on success, through the transfer of the full body. `RetryEvent` adds the scheduled `delayMs`, a `reason` of `'status'` or `'network'`, and the HTTP `status` when the reason is a retryable status. A retry-free happy path emits exactly one `RequestEvent` and one `ResponseEvent`.
+Every event carries `url`, `method` and a 1-based `attempt`: the first try is attempt 1, a `RetryEvent` carries the number of the attempt that failed, and the next `RequestEvent` is that attempt plus one. `ResponseEvent` adds `status` and `durationMs`, measured from immediately before the fetch (throttle wait excluded) and, on success, through the transfer of the full body. `RetryEvent` adds the scheduled `delayMs`, a `reason` of `'status'` or `'network'`, and the HTTP `status` when the reason is a retryable status. A retry-free happy path emits one `RequestEvent` and one `ResponseEvent`.
 
-Hooks are telemetry, never control flow. A hook that throws or returns a rejecting promise is swallowed and the request proceeds unchanged — the deliberate opposite of [`onDegradation` and `onIntegrityEvent`](#monitoring-drift), which rethrow because they are data-integrity signals. When a client-level and a call-level `requestOptions` set the same hook, the call-level one replaces it for that call; hooks do not chain.
+Hooks are telemetry only. A hook that throws or returns a rejecting promise is swallowed and the request proceeds unchanged, unlike [`onDegradation` and `onIntegrityEvent`](#monitoring-drift), which rethrow because they are data-integrity signals. When a client-level and a call-level `requestOptions` set the same hook, the call-level one replaces it for that call; hooks do not chain.
 
 ### Routing requests through a proxy
 
 The native `fetch` of Node.js ignores the `HTTP_PROXY` and `HTTPS_PROXY` environment variables by default. On Node.js 24 and newer, opt in when launching your process:
 
-```
+```sh
 NODE_USE_ENV_PROXY=1 node app.js
 ```
 
@@ -1040,7 +972,7 @@ const details = await app({
 
 ### Rotating proxies when blocked
 
-Google answers a burst of requests from one IP address with a redirect to its captcha challenge at `www.google.com/sorry`. The client retries that redirect like a `429`, and most challenges clear on the next attempt. When they keep coming until retries run out, or the challenge asks to wait longer than the `Retry-After` ceiling, the call rejects with a `BlockedError` whose message names the cause (`captcha challenge` or `consent wall`), which is the signal to slow down or switch to another exit IP:
+Google answers a burst of requests from one IP address with a redirect to its captcha challenge at `www.google.com/sorry`. The client retries that redirect like a `429`, and most challenges clear on the next attempt. When they keep coming until retries run out, or the challenge asks to wait longer than the `Retry-After` ceiling, the call rejects with a `BlockedError` whose message names the cause (`captcha challenge` or `consent wall`). That is the signal to slow down or switch to another exit IP:
 
 ```typescript
 import { ProxyAgent, fetch as undiciFetch, type RequestInit } from 'undici';
@@ -1073,11 +1005,11 @@ async function searchWithRotation(term: string) {
 }
 ```
 
-The challenge is driven by request rate per IP, so each route gets its own `createClient` whose limiter spans every call through that proxy, concurrent ones included, and prevents most blocks before rotation is needed. A per-call `throttle` on `search` would only pace the requests inside that one call. Detection reads only the final response URL, never page text, so a search term or review that quotes a captcha message is returned as data.
+The challenge is driven by request rate per IP, so each route gets its own `createClient` whose limiter spans every call through that proxy, concurrent ones included, which prevents most blocks before rotation is needed. Detection reads only the final response URL, never page text, so a search term or review that quotes a captcha message is returned as data.
 
 ### Routing by country
 
-`createCountryFetch` builds a `fetch` implementation that picks a route per storefront country, so requests for each `country` option go through their own proxy. It reads the `gl` query parameter that Google Play requests carry, matches it against `perCountry` (ISO 3166-1 alpha-2, case insensitive), and falls back to `fallback` or the global `fetch` when no route matches:
+`createCountryFetch` builds a `fetch` implementation that picks a route per storefront country. It reads the `gl` query parameter that Google Play requests carry, matches it against `perCountry` (ISO 3166-1 alpha-2, case insensitive), and falls back to `fallback` or the global `fetch` when no route matches:
 
 ```typescript
 import { ProxyAgent, fetch as undiciFetch, type RequestInit } from 'undici';
@@ -1123,7 +1055,7 @@ const result = await reviews({
 });
 ```
 
-Cancellation is immediate at every point in the request lifecycle, not only while a request is on the wire:
+Cancellation is immediate at every point in the request lifecycle:
 
 | Where the abort lands                        | What happens                                                                              |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -1156,15 +1088,15 @@ A custom `fetchImpl` should honor `init.signal` so an aborted request is cut sho
 
 ## Resilience
 
-Google Play serves its data as deeply nested, unlabeled arrays whose positions shift a few times a year. That is what breaks scrapers. Every positional path in this library lives as a typed constant in a `specs.ts` file per feature, never inline in logic, and each field is resolved through an ordered list of candidate paths so a single moved index does not take the whole call down. Extraction collects all field failures in one pass and throws a single `SpecError` naming every broken field and the paths that were tried, which is exactly the input the maintenance runbook needs. Unknown data enters as `unknown` and only leaves through a zod schema, so a layout change fails loudly at the boundary rather than three layers up.
+Google Play serves its data as deeply nested, unlabeled arrays whose positions shift a few times a year. Every positional path in this library lives as a typed constant in a `specs.ts` file per feature, and each field is resolved through an ordered list of candidate paths, so a single moved index does not take the whole call down. Extraction collects all field failures in one pass and throws a single `SpecError` naming every broken field and the paths that were tried, which is the input the maintenance runbook needs. Unknown data enters as `unknown` and only leaves through a zod schema, so a layout change fails at the boundary.
 
 To catch breakage before users do, the `e2e/` suite runs against live Google Play on a daily GitHub Actions schedule and opens a labeled issue on failure. Repairing a break is a spec diff confined to one file, walked through step by step in [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ## Monitoring drift
 
-Cluster pagination degrades gracefully: when a continuation page from Google stops parsing, the call keeps everything collected so far and returns instead of throwing. The `onDegradation` callback makes every swallowed continuation failure observable. The separate `onIntegrityEvent` callback reports routing fallbacks, skipped best-effort sections, and pagination token cycles without widening the existing `DegradationEvent` contract.
+When a continuation page from Google stops parsing, the call keeps everything collected so far and returns instead of throwing. `onDegradation` reports every swallowed continuation failure. `onIntegrityEvent` reports routing fallbacks, skipped best-effort sections, pagination token cycles and exhausted request budgets.
 
-The option exists on every method for uniformity, but only the methods that paginate through the cluster endpoint can emit: `search`, `searchIterator`, `similar`, `developer`, and `developerIterator`. Each event carries the feature `context`, the machine readable `reason` (`'cluster-page-parse'`), and the underlying `ParseError`:
+Only the methods that paginate through the cluster endpoint emit degradation events: `search`, `searchIterator`, `similar`, `developer` and `developerIterator`. Each event carries the feature `context`, the `reason` (`'cluster-page-parse'`) and the underlying `ParseError`:
 
 ```typescript
 import { search, type DegradationEvent } from '@mradex77/google-play-scraper';
@@ -1179,9 +1111,9 @@ const onDegradation = (event: DegradationEvent): void => {
 const results = await search({ term: 'panda', num: 100, onDegradation });
 ```
 
-A degraded call still resolves with the pages that parsed, so wire the callback to a metrics counter or log sink rather than treating it as an error path. If the callback itself throws, the error surfaces to the caller unchanged.
+A degraded call still resolves with the pages that parsed, so wire the callback to a metrics counter or log sink. If the callback itself throws, the error surfaces to the caller unchanged.
 
-An event means a continuation page could not be parsed, usually because the layout drifted and occasionally because Google served a malformed response. It never marks a normal end of results. Google marks the last continuation page by serving its token node as `null` (or leaving it out), and the library reads either as the end of the list and keeps every app on that page, so reaching the natural end of a cluster never emits an event.
+An event never marks a normal end of results. Google ends a cluster by serving its token node as `null` or leaving it out, and the library reads either as the end of the list and keeps every app on that page.
 
 Integrity events use the same shape but a separate type and callback:
 
@@ -1212,18 +1144,18 @@ const details = await app({
 
 Boundaries to know:
 
-- An empty continuation page emits nothing: that is the normal end-of-results signal and is indistinguishable from exhaustion. A continuation that Google answers with a null payload and a not found status (its way of saying there is nothing more to serve) is read the same way. Any other error status still emits `cluster-page-parse`.
-- `developer` reads a continuation page from the layout that matches the kind of `devId` (numeric id or name). When Google serves the other layout instead, the page is still read and an `rpc-anchor-fallback` event reports it, so treat that event as a scheduled repair rather than an outage.
-- `app` emits `optional-section-parse` with context `app comments` when the available comment roots are structurally invalid. A valid empty comment root returns an empty list without an event. Treat a rising event rate as a signal, not each event.
-- `reviews` pagination never swallows a parse failure. Malformed review pages reject with `ParseError`, while a repeated token stops safely and emits `pagination-token-cycle`, and an accumulation that runs out of request budget returns its partial set and emits `request-budget-exhausted`.
+- An empty continuation page emits nothing: that is the normal end-of-results signal. A continuation answered with a null payload and a not found status is read the same way. Any other error status emits `cluster-page-parse`.
+- `developer` reads a continuation page from the layout that matches the kind of `devId` (numeric id or name). When Google serves the other layout, the page is still read and `rpc-anchor-fallback` reports it, so treat that event as a scheduled repair.
+- `app` emits `optional-section-parse` with context `app comments` when the comment roots are structurally invalid. A valid empty comment root returns an empty list without an event. Treat a rising event rate as the signal.
+- `reviews` pagination never swallows a parse failure: malformed pages reject with `ParseError`, a repeated token stops the walk and emits `pagination-token-cycle`, and an exhausted request budget returns the partial set and emits `request-budget-exhausted`.
 
-With `memoized()`, callbacks never affect which entry a call hits. Degradation and integrity events are recorded with the entry and replayed, in order, to the callbacks of every call that hits it, so a cached degraded result is reported as degraded to each caller. Lifecycle hooks are not replayed, because a hit performs no request. See [memoized](#memoized).
+With `memoized()`, events are recorded with the cache entry and replayed to every call that hits it, so a cached degraded result is reported as degraded to each caller. See [memoized](#memoized).
 
 ## Versioning and API stability
 
-This package follows [Semantic Versioning](https://semver.org). For a scraper the contract needs one clarification: semver covers the code surface this library controls, not the data Google serves.
+This package follows [Semantic Versioning](https://semver.org). Semver covers the code surface this library controls, not the data Google serves.
 
-Integrity diagnostics use the additive API choice (Option B): the existing `DegradationEvent.reason` remains exactly `'cluster-page-parse'`, and the four new reasons live on the opt-in `onIntegrityEvent` callback. This keeps exhaustive switches over `DegradationEvent.reason` and narrowly typed `onDegradation` handlers intact while adding observability without a major release. `IntegrityReason` itself is a widening union, so a new reason is a minor release and an exhaustive switch over it needs a new arm.
+`DegradationEvent.reason` stays `'cluster-page-parse'`, so exhaustive switches over it keep compiling. `IntegrityReason` is a widening union: a new reason is a minor release, and an exhaustive switch over it needs a new arm.
 
 | Change                                                                   | Release                                    |
 | ------------------------------------------------------------------------ | ------------------------------------------ |
@@ -1236,7 +1168,7 @@ Integrity diagnostics use the additive API choice (Option B): the existing `Degr
 | Correcting how a documented plain text field is decoded, same type       | patch                                      |
 | Turning a documented markup string field into plain text, or the reverse | minor, with a security note in the release |
 
-What semver cannot cover is the content behind those shapes. Google Play changes its markup a few times a year, and a field can start coming back `undefined`, empty, or degraded without any release of this package. The policy for that case:
+What semver cannot cover is the content behind those shapes. Google Play changes its markup a few times a year, and a field can start coming back `undefined`, empty or degraded without any release of this package. The policy for that case:
 
 - The daily live test suite fails and an issue is filed automatically, usually before user reports arrive.
 - When extraction can be restored, the fix ships as a patch.
@@ -1246,10 +1178,10 @@ To watch for drift in your own production use, wire up [`onDegradation`](#monito
 
 ## Migrating from google-play-scraper
 
-The method names, options, and constants are the same, so most code keeps working after swapping the import. Watch for these differences:
+The method names, options and constants are the same, so most code keeps working after swapping the import. Watch for these differences:
 
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
-- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text. The original returns them as served by Google: item summaries and changelogs carry tags such as `<br>`, `<b>` and `<font color=...>`, and all of them carry entities such as `&amp;` and `&#39;`. Here `<br>` becomes `\n`, other tags are dropped and entities are decoded, exactly as for `description`. Treat the values as decoded text: do not decode entities or strip tags a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that rendered these fields with `innerHTML` should read the markup twins `summaryHTML` and `recentChangesHTML` instead (they hold the markup the original returned), passed through an HTML sanitizer, or render the escaped text styled with `white-space: pre-line`. **Security:** never pass `summary` or `recentChanges` to `innerHTML` after upgrading. Text that a developer typed as `<img src=x onerror=...>` now reaches you as that literal string, which `innerHTML` would execute, while the original returned it escaped.
+- `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text: `<br>` becomes `\n`, other tags are dropped and entities are decoded, as for `description`. The original returns them with the markup and entities Google serves. Do not decode or strip them a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that used `innerHTML` should read the markup twins `summaryHTML` and `recentChangesHTML` through an HTML sanitizer instead, or render the escaped text with `white-space: pre-line`. **Security:** never pass `summary` or `recentChanges` to `innerHTML` after upgrading. Text a developer typed as `<img src=x onerror=...>` now reaches you as that literal string, which `innerHTML` would execute, while the original returned it escaped.
 - `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept, and `descriptionHTML` keeps the original markup.
 - Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
 - Errors are the typed classes above instead of plain `Error`.
@@ -1260,7 +1192,7 @@ The method names, options, and constants are the same, so most code keeps workin
 
 ### Deriving from the exported schemas
 
-Every exported schema is a [zod/mini](https://zod.dev/packages/mini) schema. `.parse` and `.safeParse` behave exactly like their classic zod counterparts, but transform methods such as `.extend`, `.pick`, and `.omit` live as top-level functions on the `zod/mini` entry of the same `zod` package:
+Every exported schema is a [zod/mini](https://zod.dev/packages/mini) schema. `.parse` and `.safeParse` behave like their classic zod counterparts, but transform methods such as `.extend`, `.pick` and `.omit` live as top-level functions on the `zod/mini` entry of the same `zod` package:
 
 ```ts
 import * as z from 'zod/mini';
@@ -1276,21 +1208,21 @@ The zod/mini surface is what keeps the library small in your bundle. Measured wi
 | Classic zod (v0.4) | 414.8 kB | 85.8 kB |
 | zod/mini (current) | 115.1 kB | 29.9 kB |
 
-Install size on disk is unchanged by design: `zod/mini` is a subpath export of the same `zod` package, so `node_modules` stays identical while the consumer bundle shrinks about 3.6×.
+Install size on disk is unchanged: `zod/mini` is a subpath export of the same `zod` package, so `node_modules` stays identical while the consumer bundle shrinks about 3.6×.
 
 ## FAQ
 
 ### Is there an official Google Play API for app data?
 
-No. Google does not offer a public API for store listings, search results or reviews. Libraries like this one fill that gap by scraping the public web pages and internal endpoints that power play.google.com. This is the standard approach for ASO tools, market research and academic studies.
+No. Google does not offer a public API for store listings, search results or reviews. Libraries like this one scrape the public web pages and internal endpoints that power play.google.com, which is the usual approach for ASO tools, market research and academic studies.
 
 ### How do I scrape Google Play reviews for an app?
 
-Call [reviews](#reviews) with the app id. Use `paginate: true` and the returned `nextPaginationToken` to walk through all pages. Combine it with `throttle` to stay under the rate limits.
+Call [reviews](#reviews) with the app id. Use `paginate: true` and the returned `nextPaginationToken` to walk through all pages, or [reviewsIterator](#reviewsiterator) to stream them. Combine either with `throttle` to stay under the rate limits.
 
 ### How do I avoid getting rate limited or blocked?
 
-Set the `throttle` option to cap requests per second, keep the default retry behavior, and reuse results through the [memoized](#memoized) client. If you run large jobs, spread them out over time or [route them through a proxy](#routing-requests-through-a-proxy). A `RateLimitError` or `BlockedError` tells you exactly when Google started pushing back, and [rotating proxies](#rotating-proxies-when-blocked) shows how to react to a block.
+Set the `throttle` option to cap requests per second, keep the default retry behavior, and reuse results through the [memoized](#memoized) client. For large jobs, spread them out over time or [route them through a proxy](#routing-requests-through-a-proxy). A `RateLimitError` or `BlockedError` tells you when Google started pushing back, and [rotating proxies](#rotating-proxies-when-blocked) shows how to react to a block.
 
 ### Does this library work in the browser?
 
@@ -1304,13 +1236,14 @@ No. It is an independent open source project. All app data belongs to its respec
 
 - [facundoolano/google-play-scraper](https://github.com/facundoolano/google-play-scraper): the original Node.js library this project is a rewrite of.
 - [facundoolano/app-store-scraper](https://github.com/facundoolano/app-store-scraper): the same idea for the Apple App Store.
+- [plahteenlahti/app-store-scraper](https://github.com/plahteenlahti/app-store-scraper): a TypeScript rewrite of the App Store scraper.
 - [JoMingyu/google-play-scraper](https://github.com/JoMingyu/google-play-scraper): a Python implementation.
 
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, commit conventions and test workflow. Found a field that stopped resolving? Open an issue with the `SpecError` output, or follow [docs/RUNBOOK.md](docs/RUNBOOK.md) to fix the spec yourself.
 
-```
+```sh
 pnpm install
 pnpm lint            eslint on the whole repo
 pnpm typecheck       tsc --noEmit
