@@ -17,7 +17,7 @@ This is a TypeScript rewrite of the unmaintained [`google-play-scraper`](https:/
 ## Highlights
 
 - Typed results. Every method returns a TypeScript type derived from the [zod](https://zod.dev) schema that validates the scraped data at runtime.
-- No HTTP dependency. Runs on the native `fetch` of Node.js 22 and newer.
+- No HTTP dependency. Runs on the native `fetch` of Node.js 22.12 and newer.
 - Survives layout changes. Every Google Play array path sits behind ordered fallback paths, so one moved index does not break a call.
 - Checked against live Google Play daily. Contract tests run in CI on a schedule and open a labeled issue when Google changes its layout.
 - Typed errors. Branch on `NotFoundError`, `RateLimitError` or `SpecError` instead of parsing message strings.
@@ -327,7 +327,7 @@ type AppsEntry =
 
 `apps` does not deduplicate `appIds`: a list with the same id twice fetches it twice. Use a [`memoized`](#memoized) client to serve repeated ids from cache.
 
-`concurrency` bounds parallelism and a client [`throttle`](#throttling-and-requestoptions) bounds the request rate. When both apply, the smaller constraint wins, so `createClient({ throttle: 2 }).apps({ appIds, concurrency: 5 })` still issues at most two requests per second.
+`concurrency` and a client [`throttle`](#throttling-and-requestoptions) are independent limits: `concurrency` bounds the lookups in flight, `throttle` bounds how many requests start per second. With `createClient({ throttle: 2 }).apps({ appIds, concurrency: 5 })`, up to five lookups can be in flight while at most two requests start per second.
 
 ### availability
 
@@ -746,11 +746,11 @@ await client.app({ appId: 'com.google.android.apps.translate' });
 
 Invalid options throw `ValidationError` before any cache or HTTP state exists.
 
-Entries are keyed by the options after validation and defaulting, so `{}` and `{ lang: 'en', country: 'us' }`, `country: 'US'` and `country: 'us'`, and the same options in any property order share one entry. `lang`, `country`, every feature option, and the `headers`, `timeoutMs`, `retries`, `fetchImpl` and `signal` fields of `requestOptions` separate entries. `fetchImpl` and `signal` are compared by identity: callers that share a signal share an entry, one caller's abort never rejects another, and a fresh signal on every call never hits, so prefer `timeoutMs` for per-call deadlines. `throttle`, `concurrency` and every callback are ignored by the key, so inline callbacks are fine.
+Entries are keyed by the options after validation and defaulting, so `{}` and `{ lang: 'en', country: 'us' }`, `country: 'US'` and `country: 'us'`, and the same options in any property order share one entry. `lang`, `country`, every feature option, and the `headers`, `timeoutMs`, `retries`, `fetchImpl` and `signal` fields of `requestOptions` separate entries. `fetchImpl` and `signal` are compared by identity: callers that share a signal share an entry and its cancellation, callers with distinct signals use separate entries, and a fresh signal on every call never hits, so prefer `timeoutMs` for per-call deadlines. `throttle`, `concurrency` and every callback are ignored by the key, so inline callbacks are fine.
 
 The cached methods are `app`, `availability`, `search`, `suggest`, `list`, `categories`, `developer`, `similar`, `reviews`, `permissions` and `dataSafety`. Concurrent equivalent calls share one in-flight request, a hit resolves to the same object the filling call returned (treat it as read-only), and a rejected call is never cached. `apps` and the `fullDetail` lookups of `search`, `list`, `developer` and `similar` are served from the `app` entries they warm. The iterators, `reviewsAll` and `apps` are not cached themselves; they share the client's defaults, limiter and request options.
 
-Cache hits replay their events. Degradation and integrity events recorded while an entry was fetched are delivered again, in order, to the callbacks of every call that hits it; lifecycle hooks are not, because a hit performs no request. A replayed callback that throws rejects only its own call. Events recorded before a shared request fails still reach every caller that shared it. Events from the app lookups a `fullDetail` call or an `apps` batch makes belong to that outer call and are replayed with its entry.
+Cache hits replay their events. Degradation and integrity events recorded while an entry was fetched are delivered again, in order, to the callbacks of every call that hits it; lifecycle hooks are not, because a hit performs no request. A replayed callback that throws rejects only its own call. Events recorded before a shared request fails still reach every caller that shared it. Events from the app lookups a `fullDetail` call or an `apps` batch makes belong to that outer call: they reach its callbacks, and a cached `fullDetail` result replays them with its entry.
 
 The client exposes cache controls without global state:
 
@@ -845,7 +845,7 @@ import { category, collection, sort, age, permission } from '@mradex77/google-pl
 
 ## Error handling
 
-Every failure is a typed subclass of `GooglePlayError`, so you can branch on the cause instead of parsing message strings.
+Every failure the library raises is a typed subclass of `GooglePlayError`, so you can branch on the cause instead of parsing message strings. Two rejections come from your own code instead: a [cancelled](#cancellation) call rejects with the reason you passed to `abort()`, and an `onDegradation` or `onIntegrityEvent` callback that throws surfaces its own error.
 
 | Error             | Extends           | Thrown when                                                                                 |
 | ----------------- | ----------------- | ------------------------------------------------------------------------------------------- |
@@ -880,7 +880,7 @@ A malformed `appId` never reaches Google Play: it throws `ValidationError` on ev
 
 | Behavior for a missing app        | Methods                                                                                                                                                        |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Throws `NotFoundError`            | `app`, `apps` (per entry, as a rejected `PromiseSettledResult`), `similar`, `developer`                                                                        |
+| Throws `NotFoundError`            | `app`, `apps` (per entry, as a `rejected` `AppsEntry` carrying the error), `similar`, `developer`                                                              |
 | Resolves with a typed empty value | `search` and `suggest` (`[]`), `reviews` (`{ data: [], nextPaginationToken: null }`), `permissions` (`[]`), `dataSafety` (empty arrays, no `privacyPolicyUrl`) |
 | Maps the throw to a status        | `availability` reports `unavailable`                                                                                                                           |
 
@@ -1055,7 +1055,7 @@ const result = await reviews({
 });
 ```
 
-Cancellation is immediate at every point in the request lifecycle:
+With a `fetchImpl` that honors `init.signal`, as the native `fetch` does, cancellation is immediate at every point in the request lifecycle:
 
 | Where the abort lands                        | What happens                                                                              |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -1241,18 +1241,7 @@ No. It is an independent open source project. All app data belongs to its respec
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, commit conventions and test workflow. Found a field that stopped resolving? Open an issue with the `SpecError` output, or follow [docs/RUNBOOK.md](docs/RUNBOOK.md) to fix the spec yourself.
-
-```sh
-pnpm install
-pnpm lint            eslint on the whole repo
-pnpm typecheck       tsc --noEmit
-pnpm test            unit tests, offline against recorded fixtures
-pnpm test:coverage   unit tests with coverage thresholds
-pnpm test:e2e        live contract tests against play.google.com
-pnpm build           emit dist/ with esm, cjs, and d.ts
-pnpm check:package   build then verify the published package
-```
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the `pnpm` scripts, commit conventions and test workflow. Found a field that stopped resolving? Open an issue with the `SpecError` output, or follow [docs/RUNBOOK.md](docs/RUNBOOK.md) to fix the spec yourself.
 
 ## Disclaimer
 
