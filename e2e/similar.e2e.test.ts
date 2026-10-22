@@ -1,12 +1,7 @@
 import { expect, it } from 'vitest';
-import { parseBatchResponse } from '../src/core/batchexecute.ts';
+import { legacyBatchUrl, parseBatchResponse } from '../src/core/batchexecute.ts';
 import { clientFromOptions } from '../src/core/http.ts';
-import {
-  buildClusterBody,
-  CLUSTER_PAGE_SIZE,
-  CLUSTER_RPC_ID,
-  clusterUrl,
-} from '../src/core/pagination.ts';
+import { buildClusterBody, CLUSTER_PAGE_SIZE, CLUSTER_RPC_ID } from '../src/core/pagination.ts';
 import { getPath } from '../src/core/path.ts';
 import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/similar/similar.ts';
 import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
@@ -101,7 +96,7 @@ liveDescribe('similar live contract', () => {
 
     const continuationPage = parseBatchResponse(
       await client.request({
-        url: clusterUrl(SPARSE_QUERY.lang, SPARSE_QUERY.country),
+        url: legacyBatchUrl(SPARSE_QUERY.lang, SPARSE_QUERY.country),
         method: 'POST',
         body: buildClusterBody(CLUSTER_PAGE_SIZE, token ?? ''),
       }),

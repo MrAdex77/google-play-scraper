@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 import { permission } from '../../constants.ts';
-import { parseBatchResponse } from '../../core/batchexecute.ts';
+import { legacyBatchUrl, parseBatchResponse } from '../../core/batchexecute.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { parseRaw } from '../../core/raw.ts';
@@ -11,7 +11,6 @@ import {
   mapPermissions,
   otherPermissionsResponseSchema,
   PERMISSIONS_RPC_ID,
-  permissionsUrl,
 } from './specs.ts';
 
 const PERMISSIONS_CONTEXT = 'permissions';
@@ -40,7 +39,7 @@ export function createPermissions(resolveClient: ResolveClient = clientFromOptio
     const client = resolveClient(parsed);
 
     const text = await client.request({
-      url: permissionsUrl(parsed.lang, parsed.country),
+      url: legacyBatchUrl(parsed.lang, parsed.country),
       method: 'POST',
       body: buildPermissionsBody(parsed.appId),
     });

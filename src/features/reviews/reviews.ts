@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 import { device, sort } from '../../constants.ts';
-import { parseBatchResponse } from '../../core/batchexecute.ts';
+import { legacyBatchUrl, parseBatchResponse } from '../../core/batchexecute.ts';
 import { ParseError } from '../../core/errors.ts';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
 import { detectPaginationTokenCycle } from '../../core/integrity.ts';
@@ -18,7 +18,6 @@ import {
   reviewItemSpecs,
   reviewsCollectionResponseSchema,
   reviewsTokenResponseSchema,
-  reviewsUrl,
 } from './specs.ts';
 
 const REVIEWS_CONTEXT = 'reviews';
@@ -72,7 +71,7 @@ async function fetchReviewsPage(
   count: number,
 ): Promise<ReviewsPage> {
   const text = await client.request({
-    url: reviewsUrl(options.lang, options.country),
+    url: legacyBatchUrl(options.lang, options.country),
     method: 'POST',
     body: buildReviewsBody({
       appId: options.appId,

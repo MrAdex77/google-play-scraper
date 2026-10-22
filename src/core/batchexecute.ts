@@ -5,6 +5,16 @@ import { parseRaw } from './raw.ts';
 
 export const BATCH_URL = `${BASE_URL}/_/PlayStoreUi/data/batchexecute`;
 
+const LEGACY_BATCH_QUERY =
+  'rpcids=qnKhOb&f.sid=-697906427155521722&bl=boq_playuiserver_20190903.08_p0';
+const LEGACY_BATCH_TRAILING_QUERY =
+  'authuser&soc-app=121&soc-platform=1&soc-device=1&_reqid=1065213';
+
+export function legacyBatchUrl(lang: string, country: string): string {
+  const locale = new URLSearchParams({ hl: lang, gl: country });
+  return `${BATCH_URL}?${LEGACY_BATCH_QUERY}&${locale.toString()}&${LEGACY_BATCH_TRAILING_QUERY}`;
+}
+
 const DEFAULT_ENVELOPE_TAIL: readonly unknown[] = [null, 'generic'];
 const WRB_FRAME_MARKER = 'wrb.fr';
 const SNIPPET_LENGTH = 200;

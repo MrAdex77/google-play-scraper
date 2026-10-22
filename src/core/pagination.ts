@@ -1,4 +1,4 @@
-import { BATCH_URL, parseBatchEnvelope, type BatchEnvelope } from './batchexecute.ts';
+import { legacyBatchUrl, parseBatchEnvelope, type BatchEnvelope } from './batchexecute.ts';
 import type { OnDegradation } from './degradation.ts';
 import { ParseError } from './errors.ts';
 import type { HttpClient } from './http.ts';
@@ -13,14 +13,6 @@ export const CLUSTER_RPC_ID = 'qnKhOb';
 export const CLUSTER_PAGE_SIZE = 100;
 
 const NOT_FOUND_STATUS = 5;
-
-const CLUSTER_STATIC_QUERY =
-  'rpcids=qnKhOb&f.sid=-697906427155521722&bl=boq_playuiserver_20190903.08_p0';
-const CLUSTER_TRAILING_QUERY = 'authuser&soc-app=121&soc-platform=1&soc-device=1&_reqid=1065213';
-
-export function clusterUrl(lang: string, country: string): string {
-  return `${BATCH_URL}?${CLUSTER_STATIC_QUERY}&hl=${lang}&gl=${country}&${CLUSTER_TRAILING_QUERY}`;
-}
 
 export function buildClusterBody(numberOfApps: number, withToken: string): string {
   return `f.req=%5B%5B%5B%22qnKhOb%22%2C%22%5B%5Bnull%2C%5B%5B10%2C%5B10%2C${numberOfApps.toString()}%5D%5D%2Ctrue%2Cnull%2C%5B96%2C27%2C4%2C8%2C57%2C30%2C110%2C79%2C11%2C16%2C49%2C1%2C3%2C9%2C12%2C104%2C55%2C56%2C51%2C10%2C34%2C77%5D%5D%2Cnull%2C%5C%22${withToken}%5C%22%5D%5D%22%2Cnull%2C%22generic%22%5D%5D%5D`;
@@ -145,7 +137,11 @@ export async function* clusterPages<M extends SpecMap>(
     let page: Extracted<M>[];
     let used: PreparedLayout;
     try {
-      const text = await client.request({ url: clusterUrl(lang, country), method: 'POST', body });
+      const text = await client.request({
+        url: legacyBatchUrl(lang, country),
+        method: 'POST',
+        body,
+      });
       const envelope = parseBatchEnvelope(text, CLUSTER_RPC_ID);
       if (isExhausted(envelope)) {
         return;

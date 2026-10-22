@@ -1,4 +1,4 @@
-import { BASE_URL, permission } from '../../constants.ts';
+import { permission } from '../../constants.ts';
 import { buildBatchBody } from '../../core/batchexecute.ts';
 import { getPath, type Path } from '../../core/path.ts';
 import { rawOptionalArrayPathSchema } from '../../core/raw.ts';
@@ -6,15 +6,6 @@ import type { AppPermission } from './schema.ts';
 import * as z from 'zod/mini';
 
 export const PERMISSIONS_RPC_ID = 'xdSrCf';
-
-const PERMISSIONS_STATIC_QUERY =
-  'rpcids=qnKhOb&f.sid=-697906427155521722&bl=boq_playuiserver_20190903.08_p0';
-const PERMISSIONS_TRAILING_QUERY =
-  'authuser&soc-app=121&soc-platform=1&soc-device=1&_reqid=1065213';
-
-export function permissionsUrl(lang: string, country: string): string {
-  return `${BASE_URL}/_/PlayStoreUi/data/batchexecute?${PERMISSIONS_STATIC_QUERY}&hl=${lang}&gl=${country}&${PERMISSIONS_TRAILING_QUERY}`;
-}
 
 export function buildPermissionsBody(appId: string): string {
   return buildBatchBody(PERMISSIONS_RPC_ID, [[null, [appId, 7], []]], [null, '1']);
