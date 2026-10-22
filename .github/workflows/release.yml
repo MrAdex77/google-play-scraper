@@ -2,37 +2,45 @@ name: Release
 on:
   push:
     branches: [main]
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+permissions: {}
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
         id: release
         with:
           release-type: node
           include-component-in-tag: false
+  publish:
+    needs: release
+    if: ${{ needs.release.outputs.release_created }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        if: ${{ steps.release.outputs.release_created }}
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        if: ${{ steps.release.outputs.release_created }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        if: ${{ steps.release.outputs.release_created }}
         with:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
-        if: ${{ steps.release.outputs.release_created }}
       - run: pnpm build
-        if: ${{ steps.release.outputs.release_created }}
       - run: npm publish --provenance --access public
-        if: ${{ steps.release.outputs.release_created }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
