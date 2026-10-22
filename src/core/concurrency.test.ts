@@ -86,15 +86,18 @@ describe('mapWithConcurrency', () => {
     expect(result).toEqual([20, 40, 60]);
   });
 
-  it('propagates a rejection without stopping other in-flight workers', async () => {
+  it('propagates a rejection, lets in-flight work finish and starts no queued item', async () => {
+    const started: string[] = [];
     const completed: string[] = [];
     const failure = new Error('boom');
 
     const pending = mapWithConcurrency(['fail', 'b', 'c', 'd'], 2, async (item) => {
+      started.push(item);
       if (item === 'fail') {
         await Promise.resolve();
         throw failure;
       }
+      await Promise.resolve();
       await Promise.resolve();
       completed.push(item);
       return item;
@@ -103,6 +106,7 @@ describe('mapWithConcurrency', () => {
     await expect(pending).rejects.toBe(failure);
     await flushMacrotask();
 
-    expect(completed.sort()).toEqual(['b', 'c', 'd']);
+    expect(started).toEqual(['fail', 'b']);
+    expect(completed).toEqual(['b']);
   });
 });
