@@ -287,7 +287,7 @@ A `search()` row for an unreleased app is returned with `price: 0` and `free: fa
 
 ### apps
 
-Fetches the full detail of many apps in one call, with a concurrency limit and per-id failure capture. One missing app never rejects the whole batch, and results stay aligned with the input order.
+Fetches the full detail of many apps in one call, with a concurrency limit and per-id failure capture. One missing app never rejects the whole batch, and results stay aligned with the input order. Only library failures are captured: a [cancelled](#cancellation) call rejects with your abort reason, and a throwing callback rejects with its own error.
 
 | Option        | Type       | Default  | Description                                                                        |
 | ------------- | ---------- | -------- | ---------------------------------------------------------------------------------- |
@@ -363,7 +363,7 @@ Each country resolves to one of three statuses:
 - `unavailable`: the probe returned `404`; the app is not published there.
 - `error`: the probe could not tell. A block (consent wall or captcha), a rate limit, any other HTTP failure or a network error, with the original `message` preserved.
 
-`error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not published" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
+A [cancelled](#cancellation) call rejects with your abort reason instead of reporting countries as `error`. `error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not published" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
 
 Google Play geoblocking depends on the caller's IP as much as on the `gl` parameter, so pair `availability` with [`createCountryFetch`](#routing-by-country). Each probe carries `gl=<country>`, so a per-country route sends the `us` probe through a US proxy and the `de` probe through a German one.
 
