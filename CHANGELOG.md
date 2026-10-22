@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/MrAdex77/google-play-scraper/compare/v1.4.0...v1.4.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **core:** harden request building, entity decoding and cancellation ([#168](https://github.com/MrAdex77/google-play-scraper/issues/168)) ([f358eea](https://github.com/MrAdex77/google-play-scraper/commit/f358eea081f8b0469924fcda95a48de3873e01ce))
+* **e2e:** stop asserting served state in the live contract suite ([#162](https://github.com/MrAdex77/google-play-scraper/issues/162)) ([2d3e9a1](https://github.com/MrAdex77/google-play-scraper/commit/2d3e9a107b39a0688a5b7f61586d9734b51745e4))
+
 ## [1.4.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.3.0...v1.4.0) (2026-10-05)
 
 
