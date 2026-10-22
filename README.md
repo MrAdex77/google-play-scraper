@@ -504,16 +504,16 @@ Returns `SimilarApp[]` (or `App[]` when `fullDetail` is `true`), each shaped lik
 
 Retrieves reviews for an app. Reviews always come back inside a `{ data, nextPaginationToken }` envelope so paging is uniform.
 
-| Option                | Type       | Default       | Description                                                                                                    |
-| --------------------- | ---------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| `appId`               | `string`   | required      | The Google Play id of the app, see [App ids](#app-ids).                                                        |
-| `sort`                | `Sort`     | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`.                                                       |
-| `num`                 | `number`   | `150`         | Number of reviews to fetch.                                                                                    |
-| `paginate`            | `boolean`  | `false`       | When `true`, fetch a single page and return its token.                                                         |
-| `nextPaginationToken` | `string`   | none          | Continue from a token returned by a previous call.                                                             |
-| `score`               | `1` to `5` | none          | Server-side star filter. Only reviews with this score are served.                                              |
-| `device`              | `Device`   | none          | Server-side device filter: `device.MOBILE`, `device.TABLET`, `device.WATCH`, `device.CHROMEBOOK`, `device.TV`. |
-| `pageSize`            | `number`   | see below     | Maximum reviews per RPC call, `1` to `4500`.                                                                   |
+| Option                | Type       | Default       | Description                                                                                                      |
+| --------------------- | ---------- | ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `appId`               | `string`   | required      | The Google Play id of the app, see [App ids](#app-ids).                                                          |
+| `sort`                | `Sort`     | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`.                                                         |
+| `num`                 | `number`   | `150`         | Number of reviews to fetch.                                                                                      |
+| `paginate`            | `boolean`  | `false`       | When `true`, fetch a single page and return its token.                                                           |
+| `nextPaginationToken` | `string`   | none          | Continue from a token returned by a previous call. A token outside the base64 alphabet throws `ValidationError`. |
+| `score`               | `1` to `5` | none          | Server-side star filter. Only reviews with this score are served.                                                |
+| `device`              | `Device`   | none          | Server-side device filter: `device.MOBILE`, `device.TABLET`, `device.WATCH`, `device.CHROMEBOOK`, `device.TV`.   |
+| `pageSize`            | `number`   | see below     | Maximum reviews per RPC call, `1` to `4500`.                                                                     |
 
 ```typescript
 import { reviews, sort } from '@mradex77/google-play-scraper';
