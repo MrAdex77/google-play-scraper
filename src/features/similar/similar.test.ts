@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { createSimilar, similar, type SimilarOptions } from './similar.ts';
 import { similarAppSchema, type SimilarApp } from './schema.ts';
-import { findSimilarClusterPath } from './specs.ts';
+import { findSimilarClusterPath, similarClusterUrl } from './specs.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
@@ -62,6 +62,35 @@ describe('similar cluster discovery', () => {
     expect(typeof path).toBe('string');
     expect((path ?? '').length).toBeGreaterThan(0);
   });
+});
+
+describe('similarClusterUrl', () => {
+  const clusterPath = '/store/apps/collection/cluster?gsr=SogBaix%3D%3D:S:ANO1ljIr9E8';
+
+  it('appends the storefront to the cluster link google served', () => {
+    expect(similarClusterUrl(clusterPath, 'de', 'de')).toBe(
+      `https://play.google.com${clusterPath}&gl=de&hl=de`,
+    );
+  });
+
+  it('encodes language and country so they cannot add query parameters', () => {
+    const url = new URL(similarClusterUrl(clusterPath, 'en&x=1', 'u#'));
+    expect(url.searchParams.get('hl')).toBe('en&x=1');
+    expect(url.searchParams.get('gl')).toBe('u#');
+    expect(url.searchParams.has('x')).toBe(false);
+  });
+
+  it('keeps a userinfo shaped link on play.google.com', () => {
+    const url = new URL(similarClusterUrl('@evil.example/cluster?gsr=x', 'en', 'us'));
+    expect(url.origin).toBe('https://play.google.com');
+  });
+
+  it.each(['//evil.example/cluster?gsr=x', 'https://evil.example/c?x'])(
+    'rejects a cluster link %s that leaves play.google.com',
+    (foreignPath) => {
+      expect(() => similarClusterUrl(foreignPath, 'en', 'us')).toThrow(ParseError);
+    },
+  );
 });
 
 describe('similar fixture parsing', () => {
