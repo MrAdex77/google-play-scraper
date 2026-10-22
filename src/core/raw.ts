@@ -1,15 +1,6 @@
 import { $ZodError, parse, type $ZodType, type output } from 'zod/v4/core';
 import * as z from 'zod/mini';
-import { ParseError } from './errors.ts';
-
-function formatIssues(error: $ZodError): string {
-  return error.issues
-    .map((issue) => {
-      const path = issue.path.join('.');
-      return path ? `${path}: ${issue.message}` : issue.message;
-    })
-    .join('; ');
-}
+import { formatZodIssues, ParseError } from './errors.ts';
 
 export function parseRaw<Schema extends $ZodType>(
   schema: Schema,
@@ -20,7 +11,7 @@ export function parseRaw<Schema extends $ZodType>(
     return parse(schema, value);
   } catch (error) {
     if (error instanceof $ZodError) {
-      throw new ParseError(`${context}: ${formatIssues(error)}`);
+      throw new ParseError(`${context}: ${formatZodIssues(error)}`);
     }
     throw error;
   }

@@ -1,5 +1,14 @@
 import type { $ZodError } from 'zod/v4/core';
 
+export function formatZodIssues(error: $ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.join('.');
+      return path ? `${path}: ${issue.message}` : issue.message;
+    })
+    .join('; ');
+}
+
 export class GooglePlayError extends Error {
   constructor(message: string) {
     super(message);
@@ -14,13 +23,7 @@ export class ValidationError extends GooglePlayError {
   }
 
   static fromZod(error: $ZodError, context: string): ValidationError {
-    const details = error.issues
-      .map((issue) => {
-        const path = issue.path.join('.');
-        return path ? `${path}: ${issue.message}` : issue.message;
-      })
-      .join('; ');
-    return new ValidationError(`${context}: ${details}`);
+    return new ValidationError(`${context}: ${formatZodIssues(error)}`);
   }
 }
 

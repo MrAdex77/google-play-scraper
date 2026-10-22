@@ -4,7 +4,7 @@ import type { Path } from './path.ts';
 import { getPath } from './path.ts';
 import type { ScriptData } from './scriptData.ts';
 import type { SpecFailure } from './errors.ts';
-import { SpecError } from './errors.ts';
+import { formatZodIssues, SpecError } from './errors.ts';
 
 export interface FieldSpec<T = unknown> {
   paths: readonly Path[];
@@ -46,12 +46,7 @@ function resolveValue(root: unknown, paths: readonly Path[]): ResolvedValue {
 
 function failureMessage(error: unknown): string {
   if (error instanceof $ZodError) {
-    return error.issues
-      .map((issue) => {
-        const path = issue.path.join('.');
-        return path ? `${path}: ${issue.message}` : issue.message;
-      })
-      .join('; ');
+    return formatZodIssues(error);
   }
   if (error instanceof Error) {
     return error.message;
