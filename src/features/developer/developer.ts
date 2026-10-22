@@ -149,13 +149,11 @@ export function createDeveloper(
       num: parsed.num,
     });
 
-    const sliced = items.slice(0, parsed.num);
-
     if (parsed.fullDetail) {
-      return resolveFullDetail(sliced, parsed, getApp);
+      return resolveFullDetail(items, parsed, getApp);
     }
 
-    return z.array(developerAppSchema).parse(sliced);
+    return z.array(developerAppSchema).parse(items);
   };
 }
 
