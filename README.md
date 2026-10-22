@@ -822,7 +822,7 @@ Every failure the library raises is a typed subclass of `GooglePlayError`, so yo
 | `GooglePlayError` | `Error`           | Base class for every error the library throws.                                              |
 | `ValidationError` | `GooglePlayError` | The options you passed fail their zod schema, including a malformed `appId`.                |
 | `HttpError`       | `GooglePlayError` | A request fails with an unsuccessful status or a network error. Carries `status` and `url`. |
-| `NotFoundError`   | `HttpError`       | Google Play responds `404`, e.g. a well formed `appId` that no listing uses.                |
+| `NotFoundError`   | `HttpError`       | Google Play responds `404`, e.g. a well-formed `appId` that no listing uses.                |
 | `RateLimitError`  | `HttpError`       | Google Play responds `429` after retries are exhausted.                                     |
 | `BlockedError`    | `GooglePlayError` | A consent wall redirect, or a captcha challenge redirect that retries cannot clear.         |
 | `ParseError`      | `GooglePlayError` | A batchexecute response cannot be parsed.                                                   |
@@ -846,7 +846,7 @@ try {
 
 ### Failure behavior
 
-A malformed `appId` never reaches Google Play: it throws `ValidationError` on every method, except that `apps` reports it as a rejected entry (see [App ids](#app-ids)). An unknown but well formed `appId` or `devId` does not fail the same way everywhere, because Google Play itself does not: HTML details surfaces respond `404`, while report surfaces serve an empty payload. Both behaviors are pinned by the live test suite.
+A malformed `appId` never reaches Google Play: it throws `ValidationError` on every method, except that `apps` reports it as a rejected entry (see [App ids](#app-ids)). An unknown but well-formed `appId` or `devId` does not fail the same way everywhere, because Google Play itself does not: HTML details surfaces respond `404`, while report surfaces serve an empty payload. Both behaviors are pinned by the live test suite.
 
 | Behavior for a missing app        | Methods                                                                                                                                                        |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -888,7 +888,7 @@ const details = await app({
 });
 ```
 
-Retries use exponential backoff with jitter. A well formed `Retry-After` header (seconds or an HTTP date, as RFC 9110 allows) overrides the backoff up to a fixed ceiling of 60 seconds. A longer wait is not honoured: the call ends at once with `RateLimitError` for a `429` or `BlockedError` for a captcha challenge redirect, independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored.
+Retries use exponential backoff with jitter. A well-formed `Retry-After` header (seconds or an HTTP date, as RFC 9110 allows) overrides the backoff up to a fixed ceiling of 60 seconds. A longer wait is not honoured: the call ends at once with `RateLimitError` for a `429` or `BlockedError` for a captcha challenge redirect, independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored.
 
 ### Request lifecycle hooks
 
