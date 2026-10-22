@@ -10,9 +10,11 @@
 
 **Scrape Google Play app data in Node.js with a fully typed TypeScript API.** Fetch app details, search results, top charts, developer pages, similar apps, reviews, permissions and data safety reports straight from the Play Store, validated at runtime and returned as typed objects.
 
-This is a TypeScript rewrite of the unmaintained [`google-play-scraper`](https://github.com/facundoolano/google-play-scraper) package. Method names, options and constants match the original, so most migrations are an import swap.
+This is a TypeScript rewrite of the unmaintained [`google-play-scraper`](https://github.com/facundoolano/google-play-scraper) package. Thanks to [facundoolano](https://github.com/facundoolano) for the years of work on the original: without it this library would not exist. Method names, options and constants match the original, so most migrations are an import swap.
 
 [API reference](https://mradex77.github.io/google-play-scraper/) · [Examples](https://github.com/MrAdex77/google-play-scraper/tree/main/examples) · [Changelog](CHANGELOG.md) · [Migration guide](#migrating-from-google-play-scraper)
+
+If you need a hosted ASO tool rather than a library, [AsoBeast](https://asobeast.com) tracks keyword ranks daily on Google Play and the App Store, watches competitor listings and alerts on changes, audits store listings with keyword ideas, and exposes a REST API and an MCP server. It is open source and self-hostable.
 
 ## Highlights
 
@@ -66,12 +68,6 @@ npm install @mradex77/google-play-scraper
 ```
 
 Requires Node.js 22.12 or newer.
-
-Every release is published from GitHub Actions with [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the package on npm is linked to the commit and workflow that built it:
-
-```sh
-npm audit signatures
-```
 
 ## Quick start
 
@@ -369,33 +365,7 @@ Each country resolves to one of three statuses:
 
 `error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not published" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
 
-Google Play geoblocking depends on the caller's IP as much as on the `gl` parameter, so pair `availability` with [`createCountryFetch`](#routing-by-country) to send each probe through a proxy in the country it probes:
-
-```typescript
-import { ProxyAgent, fetch as undiciFetch, type RequestInit } from 'undici';
-import { availability, createCountryFetch } from '@mradex77/google-play-scraper';
-
-const throughProxy = (proxyUrl: string): typeof fetch => {
-  const dispatcher = new ProxyAgent(proxyUrl);
-  return ((input: string | URL, init?: RequestInit) =>
-    undiciFetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
-};
-
-const fetchImpl = createCountryFetch({
-  perCountry: {
-    us: throughProxy('http://us-proxy.internal:8080'),
-    de: throughProxy('http://de-proxy.internal:8080'),
-  },
-});
-
-const result = await availability({
-  appId: 'com.adex77.WhereAmI',
-  countries: ['us', 'de'],
-  requestOptions: { fetchImpl },
-});
-```
-
-Each probe carries `gl=<country>`, so `createCountryFetch` routes the `us` probe through the US proxy and the `de` probe through the German proxy.
+Google Play geoblocking depends on the caller's IP as much as on the `gl` parameter, so pair `availability` with [`createCountryFetch`](#routing-by-country). Each probe carries `gl=<country>`, so a per-country route sends the `us` probe through a US proxy and the `de` probe through a German one.
 
 ### search
 
@@ -918,9 +888,7 @@ const details = await app({
 });
 ```
 
-Retries use exponential backoff with jitter. A well formed `Retry-After` header overrides the backoff, in either form RFC 9110 allows: a count of seconds, or an HTTP date resolved against the response `Date` header when the server sends one and against the local clock otherwise.
-
-A `Retry-After` longer than 60 seconds is not waited on. The call ends at once with the mapped status error, `RateLimitError` for a `429` or `BlockedError` for a captcha challenge redirect, so a server cannot park a request for minutes. The ceiling is fixed and independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored and normal jittered backoff applies.
+Retries use exponential backoff with jitter. A well formed `Retry-After` header (seconds or an HTTP date, as RFC 9110 allows) overrides the backoff up to a fixed ceiling of 60 seconds. A longer wait is not honoured: the call ends at once with `RateLimitError` for a `429` or `BlockedError` for a captcha challenge redirect, independent of `timeoutMs`, which bounds a single attempt. A malformed, past or negative value is ignored.
 
 ### Request lifecycle hooks
 
@@ -1088,50 +1056,32 @@ A custom `fetchImpl` should honor `init.signal` so an aborted request is cut sho
 
 ## Resilience
 
-Google Play serves its data as deeply nested, unlabeled arrays whose positions shift a few times a year. Every positional path in this library lives as a typed constant in a `specs.ts` file per feature, and each field is resolved through an ordered list of candidate paths, so a single moved index does not take the whole call down. Extraction collects all field failures in one pass and throws a single `SpecError` naming every broken field and the paths that were tried, which is the input the maintenance runbook needs. Unknown data enters as `unknown` and only leaves through a zod schema, so a layout change fails at the boundary.
-
-To catch breakage before users do, the `e2e/` suite runs against live Google Play on a daily GitHub Actions schedule and opens a labeled issue on failure. Repairing a break is a spec diff confined to one file, walked through step by step in [docs/RUNBOOK.md](docs/RUNBOOK.md).
+Google Play serves its data as deeply nested, unlabeled arrays whose positions shift a few times a year. Every positional path lives as a typed constant in a `specs.ts` file per feature with an ordered list of fallback paths, extraction reports every broken field in one `SpecError`, and data only leaves through a zod schema. The `e2e/` suite runs against live Google Play daily in GitHub Actions and opens a labeled issue on failure. Repairing a break is a spec diff in one file, described in [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ## Monitoring drift
 
 When a continuation page from Google stops parsing, the call keeps everything collected so far and returns instead of throwing. `onDegradation` reports every swallowed continuation failure. `onIntegrityEvent` reports routing fallbacks, skipped best-effort sections, pagination token cycles and exhausted request budgets.
 
-Only the methods that paginate through the cluster endpoint emit degradation events: `search`, `searchIterator`, `similar`, `developer` and `developerIterator`. Each event carries the feature `context`, the `reason` (`'cluster-page-parse'`) and the underlying `ParseError`:
+Only the methods that paginate through the cluster endpoint emit degradation events: `search`, `searchIterator`, `similar`, `developer` and `developerIterator`. Each event carries the feature `context`, the `reason` (`'cluster-page-parse'`) and the underlying `ParseError`. Integrity events share that shape with their own reasons and callback:
 
 ```typescript
-import { search, type DegradationEvent } from '@mradex77/google-play-scraper';
+import { search, type DegradationEvent, type IntegrityEvent } from '@mradex77/google-play-scraper';
 
-const onDegradation = (event: DegradationEvent): void => {
-  metrics.increment('gplay.degradation', {
-    context: event.context,
-    reason: event.reason,
-  });
+const report = (event: DegradationEvent | IntegrityEvent): void => {
+  metrics.increment('gplay.drift', { context: event.context, reason: event.reason });
 };
 
-const results = await search({ term: 'panda', num: 100, onDegradation });
-```
-
-A degraded call still resolves with the pages that parsed, so wire the callback to a metrics counter or log sink. If the callback itself throws, the error surfaces to the caller unchanged.
-
-An event never marks a normal end of results. Google ends a cluster by serving its token node as `null` or leaving it out, and the library reads either as the end of the list and keeps every app on that page.
-
-Integrity events use the same shape but a separate type and callback:
-
-```typescript
-import { app, type IntegrityEvent } from '@mradex77/google-play-scraper';
-
-const onIntegrityEvent = (event: IntegrityEvent): void => {
-  metrics.increment('gplay.integrity', {
-    context: event.context,
-    reason: event.reason,
-  });
-};
-
-const details = await app({
-  appId: 'com.google.android.apps.translate',
-  onIntegrityEvent,
+const results = await search({
+  term: 'panda',
+  num: 100,
+  onDegradation: report,
+  onIntegrityEvent: report,
 });
 ```
+
+A degraded call still resolves with the pages that parsed, so wire the callbacks to a metrics counter or log sink. If a callback throws, the error surfaces to the caller unchanged.
+
+A degradation event never marks a normal end of results. Google ends a cluster by serving its token node as `null` or leaving it out, and the library reads either as the end of the list and keeps every app on that page.
 
 | Callback           | Reason                     | Meaning                                                                        |
 | ------------------ | -------------------------- | ------------------------------------------------------------------------------ |
@@ -1201,15 +1151,6 @@ import { appSchema } from '@mradex77/google-play-scraper';
 const slimAppSchema = z.pick(appSchema, { title: true, appId: true, score: true });
 ```
 
-The zod/mini surface is what keeps the library small in your bundle. Measured with `esbuild --bundle --minify --format=esm --platform=node` against zod 4.4.3:
-
-| Bundle             | Minified | Gzip    |
-| ------------------ | -------- | ------- |
-| Classic zod (v0.4) | 414.8 kB | 85.8 kB |
-| zod/mini (current) | 115.1 kB | 29.9 kB |
-
-Install size on disk is unchanged: `zod/mini` is a subpath export of the same `zod` package, so `node_modules` stays identical while the consumer bundle shrinks about 3.6×.
-
 ## FAQ
 
 ### Is there an official Google Play API for app data?
@@ -1228,10 +1169,6 @@ Set the `throttle` option to cap requests per second, keep the default retry beh
 
 No. It targets Node.js 22.12 and newer. Browsers cannot scrape Google Play anyway because of CORS restrictions.
 
-### Is this library affiliated with Google?
-
-No. It is an independent open source project. All app data belongs to its respective owners, and you are responsible for using it in compliance with the Google Play Terms of Service and applicable law.
-
 ## Related projects
 
 - [facundoolano/google-play-scraper](https://github.com/facundoolano/google-play-scraper): the original Node.js library this project is a rewrite of.
@@ -1245,7 +1182,7 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the develo
 
 ## Disclaimer
 
-This project is not affiliated with, endorsed by or sponsored by Google. It accesses publicly available data only. Use it responsibly, respect the Google Play Terms of Service, and throttle your requests.
+This project is not affiliated with, endorsed by or sponsored by Google. It reads publicly available data only, and all app data belongs to its respective owners. Use it responsibly, respect the Google Play Terms of Service and applicable law, and throttle your requests.
 
 ## License
 
