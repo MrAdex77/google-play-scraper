@@ -287,7 +287,7 @@ A `search()` row for an unreleased app is returned with `price: 0` and `free: fa
 
 ### apps
 
-Fetches the full detail of many apps in one call, with a concurrency limit and per-id failure capture. One missing app never rejects the whole batch, and results stay aligned with the input order.
+Fetches the full detail of many apps in one call, with a concurrency limit and per-id failure capture. One missing app never rejects the whole batch, and results stay aligned with the input order. Only library failures are captured: a [cancelled](#cancellation) call rejects with your abort reason, and a throwing callback rejects with its own error.
 
 | Option        | Type       | Default  | Description                                                                        |
 | ------------- | ---------- | -------- | ---------------------------------------------------------------------------------- |
@@ -363,7 +363,7 @@ Each country resolves to one of three statuses:
 - `unavailable`: the probe returned `404`; the app is not published there.
 - `error`: the probe could not tell. A block (consent wall or captcha), a rate limit, any other HTTP failure or a network error, with the original `message` preserved.
 
-`error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not published" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
+A [cancelled](#cancellation) call rejects with your abort reason instead of reporting countries as `error`. `error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not published" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
 
 Google Play geoblocking depends on the caller's IP as much as on the `gl` parameter, so pair `availability` with [`createCountryFetch`](#routing-by-country). Each probe carries `gl=<country>`, so a per-country route sends the `us` probe through a US proxy and the `de` probe through a German one.
 
@@ -504,16 +504,16 @@ Returns `SimilarApp[]` (or `App[]` when `fullDetail` is `true`), each shaped lik
 
 Retrieves reviews for an app. Reviews always come back inside a `{ data, nextPaginationToken }` envelope so paging is uniform.
 
-| Option                | Type       | Default       | Description                                                                                                    |
-| --------------------- | ---------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| `appId`               | `string`   | required      | The Google Play id of the app, see [App ids](#app-ids).                                                        |
-| `sort`                | `Sort`     | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`.                                                       |
-| `num`                 | `number`   | `150`         | Number of reviews to fetch.                                                                                    |
-| `paginate`            | `boolean`  | `false`       | When `true`, fetch a single page and return its token.                                                         |
-| `nextPaginationToken` | `string`   | none          | Continue from a token returned by a previous call.                                                             |
-| `score`               | `1` to `5` | none          | Server-side star filter. Only reviews with this score are served.                                              |
-| `device`              | `Device`   | none          | Server-side device filter: `device.MOBILE`, `device.TABLET`, `device.WATCH`, `device.CHROMEBOOK`, `device.TV`. |
-| `pageSize`            | `number`   | see below     | Maximum reviews per RPC call, `1` to `4500`.                                                                   |
+| Option                | Type       | Default       | Description                                                                                                      |
+| --------------------- | ---------- | ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `appId`               | `string`   | required      | The Google Play id of the app, see [App ids](#app-ids).                                                          |
+| `sort`                | `Sort`     | `sort.NEWEST` | One of `sort.NEWEST`, `sort.RATING`, `sort.HELPFULNESS`.                                                         |
+| `num`                 | `number`   | `150`         | Number of reviews to fetch.                                                                                      |
+| `paginate`            | `boolean`  | `false`       | When `true`, fetch a single page and return its token.                                                           |
+| `nextPaginationToken` | `string`   | none          | Continue from a token returned by a previous call. A token outside the base64 alphabet throws `ValidationError`. |
+| `score`               | `1` to `5` | none          | Server-side star filter. Only reviews with this score are served.                                                |
+| `device`              | `Device`   | none          | Server-side device filter: `device.MOBILE`, `device.TABLET`, `device.WATCH`, `device.CHROMEBOOK`, `device.TV`.   |
+| `pageSize`            | `number`   | see below     | Maximum reviews per RPC call, `1` to `4500`.                                                                     |
 
 ```typescript
 import { reviews, sort } from '@mradex77/google-play-scraper';

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BATCH_URL,
   buildBatchBody,
+  legacyBatchUrl,
   parseBatchEnvelope,
   parseBatchResponse,
 } from './batchexecute.ts';
@@ -125,5 +126,24 @@ describe('parseBatchEnvelope', () => {
   it('ignores a status slot without a numeric code', () => {
     const text = `)]}'\n\n[["wrb.fr","rpcOdd",null,null,null,["5"],"generic"]]`;
     expect(parseBatchEnvelope(text, 'rpcOdd')).toEqual({ payload: null, status: undefined });
+  });
+});
+
+describe('legacyBatchUrl', () => {
+  it('embeds the rpc id, language and country in the batch url', () => {
+    const url = legacyBatchUrl('pl', 'de');
+    expect(url.startsWith(`${BATCH_URL}?`)).toBe(true);
+    expect(url).toContain('rpcids=qnKhOb');
+    expect(url).toContain('&hl=pl&gl=de&');
+    expect(url.endsWith('&_reqid=1065213')).toBe(true);
+  });
+
+  it('encodes language and country so they cannot add or cut query parameters', () => {
+    const url = new URL(legacyBatchUrl('en&x=1', 'u#'));
+    expect(url.searchParams.get('hl')).toBe('en&x=1');
+    expect(url.searchParams.get('gl')).toBe('u#');
+    expect(url.searchParams.has('x')).toBe(false);
+    expect(url.hash).toBe('');
+    expect(url.searchParams.get('_reqid')).toBe('1065213');
   });
 });

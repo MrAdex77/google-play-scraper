@@ -70,6 +70,7 @@ const SYNTHETIC_CORPUS = [
   '<!-- comment -->',
   'a bare & ampersand',
   'an &unknown; entity',
+  'prototype &constructor; &toString; &valueOf; &hasOwnProperty; names',
   '&am p;',
   '&#xg;',
   '&#;',

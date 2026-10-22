@@ -5,7 +5,7 @@ import { apps, createApps } from './apps.ts';
 import { createClient } from '../../client.ts';
 import { memoized } from '../memoized/memoized.ts';
 import type { GetApp } from '../../core/fullDetail.ts';
-import { GooglePlayError, NotFoundError, ValidationError } from '../../core/errors.ts';
+import { NotFoundError, ValidationError } from '../../core/errors.ts';
 import type { App } from '../app/schema.ts';
 import type { OnDegradation } from '../../core/degradation.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
@@ -87,19 +87,40 @@ describe('apps', () => {
     }
   });
 
-  it('wraps a non-google-play failure as GooglePlayError preserving the cause', async () => {
+  it('rejects the whole batch with a failure that did not come from the library', async () => {
     const boom = new TypeError('kaboom');
     const failing = createApps(() => Promise.reject(boom));
 
-    const result = await failing({ appIds: ['com.x'] });
+    await expect(failing({ appIds: ['com.x', 'com.y'] })).rejects.toBe(boom);
+  });
 
-    const entry = result[0];
-    expect(entry?.status).toBe('rejected');
-    if (entry?.status === 'rejected') {
-      expect(entry.error).toBeInstanceOf(GooglePlayError);
-      expect(entry.error.message).toBe('kaboom');
-      expect(entry.error.cause).toBe(boom);
-    }
+  it('rejects with the abort reason instead of capturing a cancelled call per id', async () => {
+    const reason = new Error('budget exceeded');
+    const controller = new AbortController();
+    controller.abort(reason);
+    const { fetchImpl, state } = countingAppFetch();
+
+    await expect(
+      apps({
+        appIds: ['com.a', 'com.b'],
+        requestOptions: { fetchImpl, signal: controller.signal },
+      }),
+    ).rejects.toBe(reason);
+    expect(state.calls).toBe(0);
+  });
+
+  it('surfaces an error thrown by the observability callback', async () => {
+    const callbackFailure = new Error('callback failed');
+
+    await expect(
+      apps({
+        appIds: ['com.a'],
+        onIntegrityEvent: () => {
+          throw callbackFailure;
+        },
+        requestOptions: { fetchImpl: fetchReturning(reroutedHtml) },
+      }),
+    ).rejects.toBe(callbackFailure);
   });
 
   it('honors the concurrency limit', async () => {

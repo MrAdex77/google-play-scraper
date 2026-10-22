@@ -60,6 +60,42 @@ describe('availability', () => {
     }
   });
 
+  it('rejects with the abort reason instead of reporting every country as error', async () => {
+    const reason = new Error('budget exceeded');
+    const controller = new AbortController();
+    controller.abort(reason);
+
+    await expect(
+      availability({
+        appId: 'com.example.app',
+        countries: ['us', 'de'],
+        requestOptions: {
+          fetchImpl: statusByCountry({ us: 200, de: 200 }),
+          signal: controller.signal,
+        },
+      }),
+    ).rejects.toBe(reason);
+  });
+
+  it('still reports a throwing custom fetch as a network error', async () => {
+    const boom = new TypeError('kaboom');
+    const throwingFetch: typeof fetch = () => {
+      throw boom;
+    };
+
+    const result = await availability({
+      appId: 'com.example.app',
+      countries: ['us'],
+      requestOptions: { fetchImpl: throwingFetch, retries: 0 },
+    });
+
+    const us = result.countries.us;
+    expect(us?.status).toBe('error');
+    if (us?.status === 'error') {
+      expect(us.message).toContain('Network request');
+    }
+  });
+
   it('reports a consent wall as error, never as unavailable', async () => {
     const consentFetch: typeof fetch = () =>
       Promise.resolve(fakeResponse({ status: 200, url: 'https://consent.google.com/m' }));

@@ -1,3 +1,4 @@
+import { mapWithConcurrency } from './concurrency.ts';
 import type { ObservabilityOptions, RequestOptions } from './options.ts';
 
 export interface FullDetailOptions extends ObservabilityOptions {
@@ -25,31 +26,15 @@ export async function resolveFullDetail<Result>(
   getApp: GetApp<Result>,
   concurrency = DEFAULT_CONCURRENCY,
 ): Promise<Result[]> {
-  const results: Result[] = new Array<Result>(items.length);
-  let cursor = 0;
-
-  const worker = async (): Promise<void> => {
-    while (cursor < items.length) {
-      const index = cursor;
-      cursor += 1;
-      const item = items[index];
-      if (item === undefined) {
-        continue;
-      }
-      results[index] = await getApp({
-        appId: item.appId,
-        lang: options.lang,
-        country: options.country,
-        throttle: options.throttle,
-        requestOptions: options.requestOptions,
-        onDegradation: options.onDegradation,
-        onIntegrityEvent: options.onIntegrityEvent,
-      });
-    }
-  };
-
-  const workerCount = Math.min(concurrency, items.length);
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-
-  return results;
+  return mapWithConcurrency(items, concurrency, (item) =>
+    getApp({
+      appId: item.appId,
+      lang: options.lang,
+      country: options.country,
+      throttle: options.throttle,
+      requestOptions: options.requestOptions,
+      onDegradation: options.onDegradation,
+      onIntegrityEvent: options.onIntegrityEvent,
+    }),
+  );
 }

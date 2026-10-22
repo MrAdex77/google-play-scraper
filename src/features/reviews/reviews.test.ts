@@ -122,6 +122,43 @@ describe('reviews manual pagination', () => {
     expect(bodies).toHaveLength(1);
     expect(bodies[0]).toContain(providedToken);
   });
+
+  it('accepts standard and url safe base64 pagination tokens', async () => {
+    const providedToken = 'Ct4B+It/UBAV8d1P0v-QSN_jXC==';
+    const { fetchImpl, bodies } = capturingFetch(page2);
+
+    await reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      nextPaginationToken: providedToken,
+      requestOptions: { fetchImpl },
+    });
+
+    expect(bodies[0]).toContain(`%5C%22${providedToken}%5C%22`);
+  });
+
+  it('rejects a pagination token that would rewrite the request body before any request', async () => {
+    const { fetchImpl, bodies } = capturingFetch(page2);
+    const injectedToken = 'T%5C%22%5D%5D%22%2Cnull%2C%22generic%22%5D%5D%5D&f.req=INJECTED';
+
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        nextPaginationToken: injectedToken,
+        requestOptions: { fetchImpl },
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        nextPaginationToken: 'quoted"token\\',
+        requestOptions: { fetchImpl },
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(bodies).toHaveLength(0);
+  });
 });
 
 const reviewEntry = (id: string): unknown[] => {

@@ -16,6 +16,11 @@ describe('htmlToPlainText', () => {
     expect(htmlToPlainText('&Amp;')).toBe('&Amp;');
   });
 
+  it('leaves entity names that match object prototype members literal', () => {
+    const prototypeNames = '&constructor; &toString; &valueOf; &hasOwnProperty; &isPrototypeOf;';
+    expect(htmlToPlainText(prototypeNames)).toBe(prototypeNames);
+  });
+
   it('decodes decimal, hex, and astral numeric references', () => {
     expect(htmlToPlainText('&#65;')).toBe('A');
     expect(htmlToPlainText('&#x41;')).toBe('A');

@@ -3,11 +3,9 @@ import * as z from 'zod/mini';
 import {
   buildClusterBody,
   clusterPages,
-  clusterUrl,
   CLUSTER_PAGE_SIZE,
   fetchClusterApps,
 } from './pagination.ts';
-import { BATCH_URL } from './batchexecute.ts';
 import type { DegradationEvent } from './degradation.ts';
 import { ParseError } from './errors.ts';
 import type { HttpClient, HttpRequest } from './http.ts';
@@ -77,16 +75,6 @@ const queuedClient = (responses: string[]): { client: HttpClient; requests: Http
   };
   return { client, requests };
 };
-
-describe('clusterUrl', () => {
-  it('embeds the rpc id, language and country in the batch url', () => {
-    const url = clusterUrl('pl', 'de');
-    expect(url.startsWith(`${BATCH_URL}?`)).toBe(true);
-    expect(url).toContain('rpcids=qnKhOb');
-    expect(url).toContain('hl=pl');
-    expect(url).toContain('gl=de');
-  });
-});
 
 describe('buildClusterBody', () => {
   it('interpolates the page size and pagination token verbatim', () => {

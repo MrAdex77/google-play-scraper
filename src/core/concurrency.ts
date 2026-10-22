@@ -5,16 +5,22 @@ export async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results: R[] = new Array<R>(items.length);
   let cursor = 0;
+  let failed = false;
 
   const worker = async (): Promise<void> => {
-    while (cursor < items.length) {
+    while (!failed && cursor < items.length) {
       const index = cursor;
       cursor += 1;
       const item = items[index];
       if (item === undefined) {
         continue;
       }
-      results[index] = await fn(item, index);
+      try {
+        results[index] = await fn(item, index);
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
     }
   };
 

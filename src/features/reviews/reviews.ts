@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 import { device, sort } from '../../constants.ts';
-import { parseBatchResponse } from '../../core/batchexecute.ts';
+import { legacyBatchUrl, parseBatchResponse } from '../../core/batchexecute.ts';
 import { ParseError } from '../../core/errors.ts';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
 import { detectPaginationTokenCycle } from '../../core/integrity.ts';
@@ -18,11 +18,11 @@ import {
   reviewItemSpecs,
   reviewsCollectionResponseSchema,
   reviewsTokenResponseSchema,
-  reviewsUrl,
 } from './specs.ts';
 
 const REVIEWS_CONTEXT = 'reviews';
 const REQUEST_BUDGET_FACTOR = 2;
+const PAGINATION_TOKEN_PATTERN = /^[A-Za-z0-9_\-+/=]*$/;
 
 const sortSchema = z._default(
   z.union([z.literal(sort.NEWEST), z.literal(sort.RATING), z.literal(sort.HELPFULNESS)]),
@@ -36,7 +36,7 @@ export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
   sort: sortSchema,
   num: z._default(z.int().check(z.gte(1)), DEFAULT_REVIEWS_PAGE_SIZE),
   paginate: z._default(z.boolean(), false),
-  nextPaginationToken: z.optional(z.string()),
+  nextPaginationToken: z.optional(z.string().check(z.regex(PAGINATION_TOKEN_PATTERN))),
   score: z.optional(reviewScoreSchema),
   device: z.optional(z.enum(device)),
   pageSize: z.optional(z.int().check(z.gte(1), z.lte(MAX_REVIEWS_PAGE_SIZE))),
@@ -72,7 +72,7 @@ async function fetchReviewsPage(
   count: number,
 ): Promise<ReviewsPage> {
   const text = await client.request({
-    url: reviewsUrl(options.lang, options.country),
+    url: legacyBatchUrl(options.lang, options.country),
     method: 'POST',
     body: buildReviewsBody({
       appId: options.appId,

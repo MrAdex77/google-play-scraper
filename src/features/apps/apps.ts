@@ -19,16 +19,6 @@ export type AppsEntry =
 
 const APPS_CONTEXT = 'apps';
 
-function toGooglePlayError(cause: unknown): GooglePlayError {
-  if (cause instanceof GooglePlayError) {
-    return cause;
-  }
-  const message = cause instanceof Error ? cause.message : String(cause);
-  const error = new GooglePlayError(message);
-  error.cause = cause;
-  return error;
-}
-
 export function createApps(getApp: GetApp<App>) {
   return async function apps(options: AppsOptions): Promise<AppsEntry[]> {
     const parsed = parseOptions(appsOptionsSchema, options, APPS_CONTEXT);
@@ -49,7 +39,10 @@ export function createApps(getApp: GetApp<App>) {
           });
           return { appId, status: 'fulfilled', app: result };
         } catch (error) {
-          return { appId, status: 'rejected', error: toGooglePlayError(error) };
+          if (!(error instanceof GooglePlayError)) {
+            throw error;
+          }
+          return { appId, status: 'rejected', error };
         }
       },
     );

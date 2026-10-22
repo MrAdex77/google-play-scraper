@@ -1,7 +1,7 @@
 import * as z from 'zod/mini';
 import { BASE_URL } from '../../constants.ts';
 import { mapWithConcurrency } from '../../core/concurrency.ts';
-import { NotFoundError } from '../../core/errors.ts';
+import { GooglePlayError, NotFoundError } from '../../core/errors.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import {
   appIdSchema,
@@ -42,11 +42,13 @@ const AVAILABILITY_CONTEXT = 'availability';
 const DETAILS_URL = `${BASE_URL}/store/apps/details`;
 
 function toCountryAvailability(error: unknown): CountryAvailability {
+  if (!(error instanceof GooglePlayError)) {
+    throw error;
+  }
   if (error instanceof NotFoundError) {
     return { status: 'unavailable' };
   }
-  const message = error instanceof Error ? error.message : String(error);
-  return { status: 'error', message };
+  return { status: 'error', message: error.message };
 }
 
 export function createAvailability(resolveClient: ResolveClient = clientFromOptions) {

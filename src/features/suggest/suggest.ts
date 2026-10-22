@@ -21,6 +21,7 @@ export type SuggestOptions = z.input<typeof suggestOptionsSchema>;
 
 const SUGGEST_CONTEXT = 'suggest';
 const MAX_SUGGESTIONS = 5;
+const suggestionTextsSchema = z.array(z.string());
 
 export function createSuggest(resolveClient: ResolveClient = clientFromOptions) {
   return async function suggest(options: SuggestOptions): Promise<string[]> {
@@ -45,9 +46,11 @@ export function createSuggest(resolveClient: ResolveClient = clientFromOptions) 
       return [];
     }
 
-    const suggestions = z
-      .array(z.string())
-      .parse(entries.map((entry) => getPath(entry, SUGGESTION_TEXT_PATH)));
+    const suggestions = parseRaw(
+      suggestionTextsSchema,
+      entries.map((entry) => getPath(entry, SUGGESTION_TEXT_PATH)),
+      `${SUGGEST_CONTEXT} entries`,
+    );
 
     return suggestions.slice(0, MAX_SUGGESTIONS);
   };

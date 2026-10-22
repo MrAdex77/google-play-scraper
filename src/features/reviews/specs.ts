@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { BASE_URL, type Device } from '../../constants.ts';
+import type { Device } from '../../constants.ts';
 import type { Path } from '../../core/path.ts';
 import { rawArrayPathSchema, rawOptionalArrayPathSchema } from '../../core/raw.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
@@ -17,14 +17,6 @@ export const DEVICE_IDS: Record<Device, number> = {
   chromebook: 5,
   tv: 6,
 };
-
-const REVIEWS_STATIC_QUERY =
-  'rpcids=qnKhOb&f.sid=-697906427155521722&bl=boq_playuiserver_20190903.08_p0';
-const REVIEWS_TRAILING_QUERY = 'authuser&soc-app=121&soc-platform=1&soc-device=1&_reqid=1065213';
-
-export function reviewsUrl(lang: string, country: string): string {
-  return `${BASE_URL}/_/PlayStoreUi/data/batchexecute?${REVIEWS_STATIC_QUERY}&hl=${lang}&gl=${country}&${REVIEWS_TRAILING_QUERY}`;
-}
 
 export interface ReviewsRequest {
   appId: string;

@@ -21,17 +21,12 @@ import {
   buildReviewsBody,
   REVIEWS_RESPONSE_PATHS,
   REVIEWS_RPC_ID,
-  reviewsUrl,
 } from '../src/features/reviews/specs.ts';
-import { buildPermissionsBody, permissionsUrl } from '../src/features/permissions/specs.ts';
+import { buildPermissionsBody } from '../src/features/permissions/specs.ts';
+import { legacyBatchUrl } from '../src/core/batchexecute.ts';
 import { dataSafetyUrl } from '../src/features/datasafety/specs.ts';
 import { getPath } from '../src/core/path.ts';
-import {
-  buildClusterBody,
-  CLUSTER_PAGE_SIZE,
-  CLUSTER_RPC_ID,
-  clusterUrl,
-} from '../src/core/pagination.ts';
+import { buildClusterBody, CLUSTER_PAGE_SIZE, CLUSTER_RPC_ID } from '../src/core/pagination.ts';
 import { parseScriptData } from '../src/core/scriptData.ts';
 
 interface Recorder {
@@ -117,7 +112,7 @@ function searchContinuationRecorder(
       }
 
       const continuation = await client.request({
-        url: clusterUrl(DEFAULT_STOREFRONT.lang, DEFAULT_STOREFRONT.country),
+        url: legacyBatchUrl(DEFAULT_STOREFRONT.lang, DEFAULT_STOREFRONT.country),
         method: 'POST',
         body: buildClusterBody(CLUSTER_PAGE_SIZE, page.token),
       });
@@ -201,7 +196,7 @@ function developerContinuationRecorder(recording: DeveloperContinuationRecording
       }
 
       const response = await client.request({
-        url: clusterUrl('en', 'us'),
+        url: legacyBatchUrl('en', 'us'),
         method: 'POST',
         body: buildClusterBody(CLUSTER_PAGE_SIZE, token),
       });
@@ -250,7 +245,7 @@ function similarContinuationRecorder(appId: string, file: string): Recorder {
           break;
         }
         const text = await client.request({
-          url: clusterUrl('en', 'us'),
+          url: legacyBatchUrl('en', 'us'),
           method: 'POST',
           body: buildClusterBody(CLUSTER_PAGE_SIZE, token),
         });
@@ -292,7 +287,7 @@ function reviewsRecorder(recording: ReviewsRecording): Recorder {
     name: recording.name,
     async run(client) {
       const initialText = await client.request({
-        url: reviewsUrl('en', 'us'),
+        url: legacyBatchUrl('en', 'us'),
         method: 'POST',
         body: buildReviewsBody(request),
       });
@@ -308,7 +303,7 @@ function reviewsRecorder(recording: ReviewsRecording): Recorder {
       }
 
       const page2Text = await client.request({
-        url: reviewsUrl('en', 'us'),
+        url: legacyBatchUrl('en', 'us'),
         method: 'POST',
         body: buildReviewsBody({ ...request, token }),
       });
@@ -327,7 +322,7 @@ function permissionsRecorder(
     name,
     async run(client) {
       const response = await client.request({
-        url: permissionsUrl(storefront.lang, storefront.country),
+        url: legacyBatchUrl(storefront.lang, storefront.country),
         method: 'POST',
         body: buildPermissionsBody(appId),
       });

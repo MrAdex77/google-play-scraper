@@ -1,4 +1,5 @@
 import { BASE_URL } from '../../constants.ts';
+import { ParseError } from '../../core/errors.ts';
 import { isFreeMicros, microsToUnits, resolveAppUrl } from '../../core/appItemTransforms.ts';
 import { htmlText, plainText } from '../../core/htmlText.ts';
 import { getPath, type Path } from '../../core/path.ts';
@@ -69,7 +70,12 @@ export function similarDetailsUrl(appId: string, country: string): string {
 }
 
 export function similarClusterUrl(clusterPath: string, lang: string, country: string): string {
-  return `${BASE_URL}${clusterPath}&gl=${country}&hl=${lang}`;
+  const cluster = URL.parse(clusterPath, BASE_URL);
+  if (cluster?.origin !== BASE_URL) {
+    throw new ParseError(`similar: cluster link leaves ${BASE_URL}`);
+  }
+  const locale = new URLSearchParams({ gl: country, hl: lang });
+  return `${cluster.href}&${locale.toString()}`;
 }
 
 export function findSimilarClusterPath(
