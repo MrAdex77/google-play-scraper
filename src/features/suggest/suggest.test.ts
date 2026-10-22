@@ -77,6 +77,19 @@ describe('suggest', () => {
     ).rejects.toBeInstanceOf(ParseError);
   });
 
+  it('rejects a suggestion entry without text as a ParseError', async () => {
+    const payload = JSON.stringify([[[['panda'], [null]]]]);
+    const frame = JSON.stringify([
+      ['wrb.fr', SUGGEST_RPC_ID, payload, null, null, null, 'generic'],
+    ]);
+    await expect(
+      suggest({
+        term: 'pand',
+        requestOptions: { fetchImpl: fetchReturning(`)]}'\n\n${frame}`) },
+      }),
+    ).rejects.toBeInstanceOf(ParseError);
+  });
+
   it('posts a body that decodes back to the expected payload', async () => {
     const { fetchImpl, bodies } = recordingFetch(pandFixture);
 
