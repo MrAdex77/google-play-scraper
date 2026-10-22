@@ -5,14 +5,14 @@ const CARRIAGE_RETURNS = /\r\n?/g;
 const TAGS = /<[^>]*>/g;
 const ENTITIES = /&#[0-9]+;|&#[xX][0-9a-fA-F]+;|&[a-zA-Z]+;/g;
 
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: '&',
-  lt: '<',
-  gt: '>',
-  quot: '"',
-  apos: "'",
-  nbsp: '\u00a0',
-};
+const NAMED_ENTITIES = new Map<string, string>([
+  ['amp', '&'],
+  ['lt', '<'],
+  ['gt', '>'],
+  ['quot', '"'],
+  ['apos', "'"],
+  ['nbsp', '\u00a0'],
+]);
 
 const REPLACEMENT_CHARACTER = '\ufffd';
 const MAX_CODE_POINT = 0x10ffff;
@@ -67,7 +67,7 @@ function decodeEntity(match: string): string {
   if (body.startsWith('#')) {
     return decodeNumericReference(Number.parseInt(body.slice(1), 10));
   }
-  return NAMED_ENTITIES[body] ?? match;
+  return NAMED_ENTITIES.get(body) ?? match;
 }
 
 function stripTags(html: string): string {
