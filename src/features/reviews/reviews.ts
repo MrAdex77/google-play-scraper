@@ -22,6 +22,7 @@ import {
 
 const REVIEWS_CONTEXT = 'reviews';
 const REQUEST_BUDGET_FACTOR = 2;
+const PAGINATION_TOKEN_PATTERN = /^[A-Za-z0-9_\-+/=]*$/;
 
 const sortSchema = z._default(
   z.union([z.literal(sort.NEWEST), z.literal(sort.RATING), z.literal(sort.HELPFULNESS)]),
@@ -35,7 +36,7 @@ export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
   sort: sortSchema,
   num: z._default(z.int().check(z.gte(1)), DEFAULT_REVIEWS_PAGE_SIZE),
   paginate: z._default(z.boolean(), false),
-  nextPaginationToken: z.optional(z.string()),
+  nextPaginationToken: z.optional(z.string().check(z.regex(PAGINATION_TOKEN_PATTERN))),
   score: z.optional(reviewScoreSchema),
   device: z.optional(z.enum(device)),
   pageSize: z.optional(z.int().check(z.gte(1), z.lte(MAX_REVIEWS_PAGE_SIZE))),
