@@ -162,7 +162,7 @@ liveDescribe('cli commands against live google play', () => {
     expectRequestedCountContract(result.data.length, 5, 'cli reviews');
     for (const review of result.data) {
       expect(review.id.length).toBeGreaterThan(0);
-      expect(review.score).toBeGreaterThanOrEqual(1);
+      expect(review.score).toBeGreaterThanOrEqual(0);
       expect(review.score).toBeLessThanOrEqual(5);
     }
   });

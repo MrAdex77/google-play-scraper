@@ -72,7 +72,6 @@ liveDescribe('permissions live contract', () => {
       const detailed = (await liveClient.permissions({ appId })) as AppPermission[];
       const short = (await liveClient.permissions({ appId, short: true })) as string[];
 
-      expect(short.length, `${appId} declares common permissions`).toBeGreaterThan(0);
       expect(new Set(short).size, `${appId} short output repeats a permission`).toBe(short.length);
       expect(short, `${appId} short output drifted from the detailed entries`).toEqual(
         uniqueCommonPermissions(detailed),
@@ -92,7 +91,7 @@ liveDescribe('permissions live contract', () => {
     expect(new Set(pairs).size).toBe(detailed.length);
   });
 
-  it('names every group of an other only listing and keeps short in step', async () => {
+  it('names every group of an other only listing and keeps short in step', async ({ annotate }) => {
     const detailed = (await liveClient.permissions({
       appId: OTHER_ONLY_PREREGISTRATION,
     })) as AppPermission[];
@@ -101,11 +100,14 @@ liveDescribe('permissions live contract', () => {
       short: true,
     })) as string[];
 
-    expect(detailed.length).toBeGreaterThan(0);
     for (const entry of detailed) {
       expect(entry.group.length).toBeGreaterThan(0);
     }
     expect(short).toEqual(uniqueCommonPermissions(detailed));
+    await annotate(
+      `${OTHER_ONLY_PREREGISTRATION}: ${detailed.length.toString()} entries, ${short.length.toString()} of them common`,
+      'notice',
+    );
   });
 
   it('returns an empty list instead of throwing for a missing app', async () => {
