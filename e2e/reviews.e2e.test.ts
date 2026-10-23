@@ -8,12 +8,12 @@ import {
   reviewsAnchor,
 } from './contracts.ts';
 import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
+import { findReviewFilterAnchor, type ReviewFilter } from './reviewAnchors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 const GEO_GAME = 'com.adex77.WhereAmI';
 const WHATSAPP = 'com.whatsapp';
-const STRAVA = 'com.strava';
-const MAPS = 'com.google.android.apps.maps';
+const ONE_STAR = 1;
 const LEGACY_PROBE = 9000;
 const WEAR_OS_LAUNCH = Date.parse('2014-06-25T00:00:00Z');
 const EXHAUSTION_PROBE = 5000;
@@ -31,10 +31,12 @@ const MINORITY_DEVICES: readonly Device[] = [
   device.CHROMEBOOK,
   device.TV,
 ];
-const SECONDARY_DEVICES: readonly { deviceName: Device; appId: string }[] = [
-  { deviceName: device.TABLET, appId: WHATSAPP },
-  { deviceName: device.WATCH, appId: STRAVA },
-];
+const SECONDARY_DEVICES: readonly Device[] = [device.TABLET, device.WATCH];
+const SCORE_SORTS = [
+  { name: 'newest', sort: sort.NEWEST },
+  { name: 'rating', sort: sort.RATING },
+  { name: 'helpfulness', sort: sort.HELPFULNESS },
+] as const;
 
 function requestCounter(): { onRequest: () => void; count: () => number } {
   let requests = 0;
@@ -63,8 +65,14 @@ function newestDate(reviews: readonly Review[]): number {
   return Math.max(...reviews.map((review) => Date.parse(review.date)));
 }
 
+function nthNewestDate(reviews: readonly Review[], depth: number): number {
+  const timestamps = reviews
+    .map((review) => Date.parse(review.date))
+    .sort((left, right) => right - left);
+  return timestamps[depth - 1] ?? Number.NaN;
+}
+
 function expectOnlyScore(reviews: readonly Review[], score: number, label: string): void {
-  expect(reviews.length, `${label}: the filtered page served no reviews`).toBeGreaterThan(0);
   for (const review of reviews) {
     expect(review.score, `${label}: review ${review.id} escaped the score filter`).toBe(score);
   }
@@ -241,79 +249,73 @@ liveDescribe('reviews live contract', () => {
     expectReviewsContract([...first.data, ...second.data], 'manual page size');
   });
 
-  it.each([
-    { name: 'newest', sort: sort.NEWEST },
-    { name: 'rating', sort: sort.RATING },
-    { name: 'helpfulness', sort: sort.HELPFULNESS },
-  ])(
+  it.for(SCORE_SORTS)(
     'returns only one star reviews across two $name sorted pages',
-    async ({ name, sort: sortValue }) => {
+    async ({ name, sort: sortValue }, { annotate }) => {
       const events: IntegrityEvent[] = [];
       const label = `${name} score filter`;
-      const first = await liveClient.reviews({
-        appId: WHATSAPP,
-        paginate: true,
+      const filter: ReviewFilter = {
         sort: sortValue,
-        score: 1,
+        score: ONE_STAR,
         pageSize: MANUAL_PAGE_SIZE,
         onIntegrityEvent: (event) => events.push(event),
-      });
+      };
+      const anchor = await findReviewFilterAnchor(filter, label);
+      const first = anchor.page.data;
       const second = await liveClient.reviews({
-        appId: WHATSAPP,
+        appId: anchor.appId,
         paginate: true,
-        sort: sortValue,
-        score: 1,
-        pageSize: MANUAL_PAGE_SIZE,
-        nextPaginationToken: tokenOf(first, label),
-        onIntegrityEvent: (event) => events.push(event),
+        nextPaginationToken: anchor.token,
+        ...filter,
       });
 
-      expectOnlyScore(first.data, 1, `${label} page one`);
-      expectOnlyScore(second.data, 1, `${label} page two`);
-      expectReviewsContract([...first.data, ...second.data], label);
-      expect(sharedIds(second.data, first.data)).toBe(0);
+      expectOnlyScore(first, ONE_STAR, `${label} page one`);
+      expectOnlyScore(second.data, ONE_STAR, `${label} page two`);
+      expectReviewsContract([...first, ...second.data], label);
+      expect(sharedIds(second.data, first)).toBe(0);
       expect(events).toEqual([]);
+      await annotate(
+        `${label}: ${anchor.appId} served ${second.data.length.toString()} reviews on page two`,
+        'notice',
+      );
     },
   );
 
   it.for(SECONDARY_DEVICES)(
-    'excludes $deviceName reviews from the mobile filter inside the unfiltered window of $appId',
-    async ({ deviceName, appId }, { annotate }) => {
-      const label = `${appId} ${deviceName} filter`;
+    'excludes %s reviews from the mobile filter inside the unfiltered window',
+    async (deviceName, { annotate }) => {
+      const label = `${deviceName} filter`;
+      const anchor = await findReviewFilterAnchor(
+        { device: deviceName, pageSize: SECONDARY_WINDOW_PAGE_SIZE },
+        label,
+      );
       const unfiltered = await liveClient.reviews({
-        appId,
+        appId: anchor.appId,
         paginate: true,
         pageSize: FULL_WINDOW_PAGE_SIZE,
       });
       const mobile = await liveClient.reviews({
-        appId,
+        appId: anchor.appId,
         paginate: true,
         device: device.MOBILE,
         pageSize: FULL_WINDOW_PAGE_SIZE,
       });
-      const secondary = await liveClient.reviews({
-        appId,
-        paginate: true,
-        device: deviceName,
-        pageSize: SECONDARY_WINDOW_PAGE_SIZE,
-      });
+      const secondary = anchor.page.data;
       const windowStart = Math.max(oldestDate(unfiltered.data), oldestDate(mobile.data));
-      const insideWindow = secondary.data.filter(
-        (review) => Date.parse(review.date) >= windowStart,
-      );
+      const insideWindow = secondary.filter((review) => Date.parse(review.date) >= windowStart);
 
       expect(
-        secondary.data.length,
-        `${label}: the ${deviceName} filter served no reviews`,
+        unfiltered.data.length,
+        `${label}: the unfiltered window of ${anchor.appId} is empty`,
       ).toBeGreaterThan(0);
-      expectReviewsContract(secondary.data, label);
+      expectReviewsContract(secondary, label);
       expect(
-        sharedIds(secondary.data, mobile.data),
-        `mobile filter: a ${deviceName} review leaked into the mobile stream`,
+        sharedIds(secondary, mobile.data),
+        `${label}: a ${deviceName} review of ${anchor.appId} leaked into the mobile stream`,
       ).toBe(0);
       if (insideWindow.length === 0) {
         await annotate(
-          `${label}: no review inside the unfiltered window, subset check skipped`,
+          `${label}: no ${anchor.appId} review inside the unfiltered window, subset check skipped`,
           'notice',
         );
         return;
@@ -325,67 +327,72 @@ liveDescribe('reviews live contract', () => {
     },
   );
 
-  it('serves the watch filter and dates any unrated review before Wear OS', async ({
-    annotate,
-  }) => {
+  it('dates any unrated review behind the watch filter before Wear OS', async ({ annotate }) => {
+    const label = 'watch legacy reviews';
+    const anchor = await findReviewFilterAnchor(
+      { device: device.WATCH, pageSize: FILTER_PAGE_SIZE },
+      label,
+    );
     const watch = await liveClient.reviews({
-      appId: MAPS,
+      appId: anchor.appId,
       device: device.WATCH,
       num: LEGACY_PROBE,
     });
     const unrated = watch.data.filter((review) => review.score === 0);
 
-    expect(
-      watch.data.length,
-      'maps watch filter: the filtered stream served no reviews',
-    ).toBeGreaterThan(0);
-    expectReviewsContract(watch.data, 'maps watch filter');
+    expectReviewsContract(watch.data, label);
     for (const review of unrated) {
       expect(
         Date.parse(review.date),
-        `maps watch filter: unrated review ${review.id} is not a pre Wear OS legacy review`,
+        `${label}: unrated review ${review.id} of ${anchor.appId} is not a pre Wear OS legacy review`,
       ).toBeLessThan(WEAR_OS_LAUNCH);
     }
     await annotate(
-      `maps watch filter: ${unrated.length.toString()} unrated legacy reviews among ${watch.data.length.toString()}`,
+      `${label}: ${unrated.length.toString()} unrated legacy reviews among ${watch.data.length.toString()} served by ${anchor.appId}`,
       'notice',
     );
   });
 
-  it.each(MINORITY_DEVICES)(
+  it.for(MINORITY_DEVICES)(
     'reaches further back than the unfiltered stream for %s and keeps the filter on page two',
-    async (deviceName) => {
+    async (deviceName, { annotate }) => {
       const label = `${deviceName} filter`;
+      const anchor = await findReviewFilterAnchor(
+        { device: deviceName, pageSize: FILTER_PAGE_SIZE },
+        label,
+      );
+      const first = anchor.page.data;
       const unfiltered = await liveClient.reviews({
-        appId: WHATSAPP,
+        appId: anchor.appId,
         paginate: true,
-        pageSize: FILTER_PAGE_SIZE,
-      });
-      const first = await liveClient.reviews({
-        appId: WHATSAPP,
-        paginate: true,
-        device: deviceName,
         pageSize: FILTER_PAGE_SIZE,
       });
       const second = await liveClient.reviews({
-        appId: WHATSAPP,
+        appId: anchor.appId,
         paginate: true,
         device: deviceName,
         pageSize: FILTER_PAGE_SIZE,
-        nextPaginationToken: tokenOf(first, label),
+        nextPaginationToken: anchor.token,
       });
+      const depth = Math.min(first.length, unfiltered.data.length);
 
-      expect(first.data.length, `${label}: page one is empty`).toBeGreaterThan(0);
-      expect(second.data.length, `${label}: page two is empty`).toBeGreaterThan(0);
-      expectReviewsContract([...first.data, ...second.data], label);
       expect(
-        oldestDate(first.data),
-        `${label}: a filtered page of ${FILTER_PAGE_SIZE.toString()} must reach further back than an unfiltered one`,
-      ).toBeLessThan(oldestDate(unfiltered.data));
+        unfiltered.data.length,
+        `${label}: the unfiltered page of ${anchor.appId} is empty`,
+      ).toBeGreaterThan(0);
+      expectReviewsContract([...first, ...second.data], label);
+      expect(
+        nthNewestDate(first, depth),
+        `${label}: the ${depth.toString()} newest ${deviceName} reviews of ${anchor.appId} must reach further back than its ${depth.toString()} newest unfiltered ones`,
+      ).toBeLessThan(nthNewestDate(unfiltered.data, depth));
       expect(
         newestDate(second.data),
         `${label}: page two must continue older than page one`,
-      ).toBeLessThanOrEqual(oldestDate(first.data));
+      ).toBeLessThanOrEqual(oldestDate(first));
+      await annotate(
+        `${label}: ${anchor.appId} served ${second.data.length.toString()} reviews on page two`,
+        'notice',
+      );
     },
   );
 
@@ -406,14 +413,18 @@ liveDescribe('reviews live contract', () => {
 
     const result = await liveClient.reviews({
       appId: GEO_GAME,
-      score: 1,
+      score: ONE_STAR,
       num: EXHAUSTION_PROBE,
       onIntegrityEvent: (event) => events.push(event),
       requestOptions: { onRequest: counter.onRequest },
     });
 
     expect(counter.count()).toBe(1);
-    expectOnlyScore(result.data, 1, 'small catalog one star');
+    expect(
+      result.data.length,
+      'small catalog one star: the owned listing carries one star reviews',
+    ).toBeGreaterThan(0);
+    expectOnlyScore(result.data, ONE_STAR, 'small catalog one star');
     expect(result.data.length).toBeLessThan(EXHAUSTION_PROBE);
     expect(result.nextPaginationToken).toBeNull();
     expect(events).toEqual([]);

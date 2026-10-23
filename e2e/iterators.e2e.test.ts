@@ -19,6 +19,7 @@ import {
   reviewsAnchor,
 } from './contracts.ts';
 import { liveClient, liveDescribe, memoizingResolveClient } from './helpers.ts';
+import { findReviewFilterAnchor, type ReviewFilter } from './reviewAnchors.ts';
 import { findSearchContinuationAnchor } from './searchAnchors.ts';
 
 const WHATSAPP = 'com.whatsapp';
@@ -47,6 +48,7 @@ const SEARCH_QUERY: SearchQuery = {
   throttle: 1,
 };
 const REVIEWS_ALL_CEILING = 5000;
+const FIVE_STARS = 5;
 const STREAM_PAGE_SIZE = 5;
 const STREAM_STOP = 1;
 
@@ -265,11 +267,12 @@ liveDescribe('iterators live contract', () => {
   it('stops a filtered stream after the first review without fetching a second page', async () => {
     let requests = 0;
     const collected: Review[] = [];
+    const filter: ReviewFilter = { score: FIVE_STARS, pageSize: STREAM_PAGE_SIZE };
+    const anchor = await findReviewFilterAnchor(filter, 'filtered stream');
 
     for await (const review of liveClient.reviewsIterator({
-      appId: WHATSAPP,
-      score: 5,
-      pageSize: STREAM_PAGE_SIZE,
+      appId: anchor.appId,
+      ...filter,
       requestOptions: {
         onRequest: () => {
           requests += 1;
@@ -285,7 +288,7 @@ liveDescribe('iterators live contract', () => {
     expect(requests).toBe(1);
     expect(collected).toHaveLength(STREAM_STOP);
     for (const review of collected) {
-      expect(review.score).toBe(5);
+      expect(review.score).toBe(FIVE_STARS);
     }
     expectReviewsContract(collected, 'filtered stream');
   });
