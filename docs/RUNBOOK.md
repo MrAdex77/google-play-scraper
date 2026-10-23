@@ -398,9 +398,12 @@ arranged for a maintainer's own app:
 - `REVIEW_FILTER_ANCHORS` in `e2e/reviewAnchors.ts` must keep one phone first
   listing whose review stream serves a page with a continuation token behind
   every device filter and behind a score filter. `findReviewFilterAnchor` walks
-  the pool and fails only when every anchor serves an empty filtered page, which
-  means Google changed the filter regime and the `device` and `score` options
-  return nothing for everyone. Measured on 2026-10-23, `com.whatsapp`,
+  the pool and fails only when no anchor serves both reviews and a token: every
+  filtered page empty means Google changed the filter regime and the `device`
+  and `score` options return nothing for everyone, while reviews without a token
+  on every anchor means the filtered streams shrank below one page, so the pool
+  needs larger listings. The message names the filter it tried so the two states
+  can be told apart from the page sizes. Measured on 2026-10-23, `com.whatsapp`,
   `com.google.android.youtube`, `com.netflix.mediaclient` and
   `com.facebook.katana` each served 40 reviews with a token for tablet, watch,
   Chromebook and TV; Maps, Strava and Google Fit were left out because their TV
