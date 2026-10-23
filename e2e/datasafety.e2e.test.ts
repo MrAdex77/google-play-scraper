@@ -78,7 +78,10 @@ liveDescribe('datasafety live contract', () => {
   }) => {
     const result = await liveClient.dataSafety({ appId: 'com.instagram.android' });
 
-    expect(result.sharedData.length).toBeGreaterThan(0);
+    expect(
+      result.sharedData.length,
+      'instagram no longer declares shared data, re-anchor the shared data anchor',
+    ).toBeGreaterThan(0);
     expect(result.collectedData.length).toBeGreaterThan(0);
     for (const entry of [...result.sharedData, ...result.collectedData]) {
       expect(entry.data.length).toBeGreaterThan(0);
@@ -131,8 +134,14 @@ liveDescribe('datasafety live contract', () => {
       );
 
       expectPlainSafetyReport(report, `${country} youtube kids`);
-      expect(described.length, `${country}: described practices`).toBeGreaterThan(0);
-      expect(linked.length, `${country}: practices that keep their link markup`).toBeGreaterThan(0);
+      expect(
+        described.length,
+        `${country}: youtube kids no longer describes a security practice, re-anchor the linked practice anchor`,
+      ).toBeGreaterThan(0);
+      expect(
+        linked.length,
+        `${country}: youtube kids no longer serves a linked practice description, re-anchor the linked practice anchor`,
+      ).toBeGreaterThan(0);
     }
   });
 
@@ -207,8 +216,14 @@ liveDescribe('datasafety live contract', () => {
       country: 'de',
     });
 
-    expect(offered.collectedData.length).toBeGreaterThan(0);
-    expect(withheld).toEqual(EMPTY_REPORT);
+    expect(
+      offered.collectedData.length,
+      'vk is no longer offered on the us storefront, re-anchor the storefront restricted anchor',
+    ).toBeGreaterThan(0);
+    expect(
+      withheld,
+      'vk is now offered on the de storefront, re-anchor the storefront restricted anchor',
+    ).toEqual(EMPTY_REPORT);
   });
 
   it('returns the same report content for a worldwide app in two storefronts', async () => {
@@ -229,10 +244,14 @@ liveDescribe('datasafety live contract', () => {
     const american = await practicesIn('us');
     const indian = await practicesIn('in');
 
-    expect(american.length).toBeGreaterThan(0);
+    expect(
+      american.length,
+      'phonepe declares no security practice on the us storefront, re-anchor the regional practice anchor',
+    ).toBeGreaterThan(0);
     expect(indian).toEqual(expect.arrayContaining(american));
-    expect(indian.filter((practice) => !american.includes(practice))).toContain(
-      'UPI payments verified',
-    );
+    expect(
+      indian.filter((practice) => !american.includes(practice)),
+      'the in storefront no longer adds the upi practice to phonepe, re-anchor the regional practice anchor',
+    ).toContain('UPI payments verified');
   });
 });

@@ -211,7 +211,7 @@ liveDescribe('iterators live contract', () => {
 
     expect(
       collected.length,
-      `${query.term}: a drained stream must follow a second continuation page past the ${CLUSTER_PAGE_SIZE.toString()} items of the first`,
+      `${query.term}: a drained stream must follow a second continuation page past the ${CLUSTER_PAGE_SIZE.toString()} items of the first, re-anchor SEARCH_CONTINUATION_ANCHORS to a term that still serves two continuation pages if google trimmed this one`,
     ).toBeGreaterThan(page.apps.length + CLUSTER_PAGE_SIZE);
     expect(new Set(collected).size).toBe(collected.length);
     expect(events).toEqual([]);

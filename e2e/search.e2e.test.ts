@@ -286,7 +286,7 @@ liveDescribe('search live contract', () => {
     );
     expect(
       results.length,
-      `${query.term}: a second continuation page must follow the ${CLUSTER_PAGE_SIZE.toString()} items of the first`,
+      `${query.term}: a second continuation page must follow the ${CLUSTER_PAGE_SIZE.toString()} items of the first, re-anchor SEARCH_CONTINUATION_ANCHORS to a term that still serves two continuation pages if google trimmed this one`,
     ).toBeGreaterThan(page.apps.length + CLUSTER_PAGE_SIZE);
     expectAppItemsContract(results, `${query.term} chained search continuation`);
     expect(events).toEqual([]);
