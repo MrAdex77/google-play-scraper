@@ -183,10 +183,14 @@ reports instead of assuming a state:
 ```ts
 if (listing.ratings === undefined) {
   expect(page.data).toEqual([]);
-  return;
 }
-expect(page.data.length).toBeGreaterThan(0);
+expectReviewsContract(page.data, label);
+await annotate(`${label}: ${page.data.length.toString()} reviews`, 'notice');
 ```
+
+A rating does not imply a written review, so the rated branch asserts the
+contract on whatever Google serves and reports the count instead of requiring
+one.
 
 Report which branch ran with vitest's `annotate` so a reader of the run can see
 that coverage moved, without the run failing over it.
@@ -406,8 +410,10 @@ arranged for a maintainer's own app:
   can be told apart from the page sizes. Measured on 2026-10-23, `com.whatsapp`,
   `com.google.android.youtube`, `com.netflix.mediaclient` and
   `com.facebook.katana` each served 40 reviews with a token for tablet, watch,
-  Chromebook and TV; Maps, Strava and Google Fit were left out because their TV
-  streams are shorter than one page. Re-anchor as
+  Chromebook and TV, and `com.whatsapp` served 20 one star reviews with a token
+  on every sort and a five star page of 5 with a token; Maps, Strava and Google
+  Fit were left out because their TV streams are shorter than one page.
+  Re-anchor as
   `test(e2e): re-anchor the review filter pool`.
 - The data safety suite carries four single listing anchors whose state Google
   or the publisher decides: Instagram declaring shared data, YouTube Kids
