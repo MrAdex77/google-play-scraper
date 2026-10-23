@@ -59,7 +59,7 @@ async function firstPageOf(query: DeveloperQuery): Promise<ContinuationAnchor> {
 async function continuationOffersAgreeing(storefront: Storefront): Promise<DeveloperApp[]> {
   const label = `${storefront.country} paid catalogue`;
   const events: DegradationEvent[] = [];
-  const { firstPageCount } = await firstPageOf({
+  const anchor = await firstPageOf({
     devId: PAID_CATALOGUE_DEV_ID,
     ...storefront,
     throttle: 1,
@@ -73,9 +73,9 @@ async function continuationOffersAgreeing(storefront: Storefront): Promise<Devel
   })) as DeveloperApp[];
 
   expect(events, `${label} degraded`).toEqual([]);
-  expect(items.length, `${label} lost its continuation pages`).toBeGreaterThan(firstPageCount);
+  expectContinuationContract(anchor, items.length, PAID_CATALOGUE_NUM, label);
   expectAppItemsContract(items, label);
-  const continuation = items.slice(firstPageCount);
+  const continuation = items.slice(anchor.firstPageCount);
   await expectListingOffersAgree(continuation, storefront, label);
   return continuation;
 }
