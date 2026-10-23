@@ -82,7 +82,10 @@ liveDescribe('datasafety live contract', () => {
       result.sharedData.length,
       'instagram no longer declares shared data, re-anchor the shared data anchor',
     ).toBeGreaterThan(0);
-    expect(result.collectedData.length).toBeGreaterThan(0);
+    expect(
+      result.collectedData.length,
+      'instagram no longer declares collected data, re-anchor the shared data anchor',
+    ).toBeGreaterThan(0);
     for (const entry of [...result.sharedData, ...result.collectedData]) {
       expect(entry.data.length).toBeGreaterThan(0);
       expect(entry.type.length).toBeGreaterThan(0);

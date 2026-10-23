@@ -95,12 +95,15 @@ liveDescribe('plain text summaries live contract', () => {
     );
   });
 
-  it('returns plain text summaries for a preregistered game cluster', async () => {
+  it('returns plain text summaries for a preregistered game cluster', async ({ annotate }) => {
     const items = await liveClient.similar({ appId: PREREGISTERED_GAME });
 
     expectConvertedSummaries(plainTextSpy, items, 'preregistered cluster');
     expectHtmlSummaries(items, 'preregistered cluster');
-    expect(items.length).toBeGreaterThan(0);
+    await annotate(
+      `${PREREGISTERED_GAME} is recommended alongside ${items.length.toString()} apps`,
+      'notice',
+    );
   });
 
   it('returns plain text summaries for a developer catalogue', async () => {

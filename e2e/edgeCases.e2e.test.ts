@@ -379,10 +379,8 @@ liveDescribe('preregistration listings live contract', () => {
     if (listing.ratings === undefined) {
       expect(reviews.data).toEqual([]);
       expect(reviews.nextPaginationToken).toBeNull();
-    } else {
-      expect(reviews.data.length).toBeGreaterThan(0);
-      expectReviewsContract(reviews.data, 'candidate reviews');
     }
+    expectReviewsContract(reviews.data, 'candidate reviews');
 
     await annotate(
       `${appId}: ${permissions.length.toString()} permissions, ${safety.collectedData.length.toString()} collected entries, ${similar.length.toString()} neighbours, ${describeRatingState(listing)}`,

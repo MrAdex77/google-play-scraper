@@ -315,7 +315,7 @@ liveDescribe('reviews live contract', () => {
       ).toBe(0);
       if (insideWindow.length === 0) {
         await annotate(
-          `${label}: no ${anchor.appId} review inside the unfiltered window, subset check skipped`,
+          `${label}: none of the ${secondary.length.toString()} ${anchor.appId} reviews sits inside the window of ${unfiltered.data.length.toString()} unfiltered and ${mobile.data.length.toString()} mobile reviews, subset check skipped`,
           'notice',
         );
         return;
@@ -374,16 +374,16 @@ liveDescribe('reviews live contract', () => {
         pageSize: FILTER_PAGE_SIZE,
         nextPaginationToken: anchor.token,
       });
-      const depth = Math.min(first.length, unfiltered.data.length);
 
       expect(
         unfiltered.data.length,
         `${label}: the unfiltered page of ${anchor.appId} is empty`,
       ).toBeGreaterThan(0);
       expectReviewsContract([...first, ...second.data], label);
+      const depth = Math.min(first.length, unfiltered.data.length);
       expect(
         nthNewestDate(first, depth),
-        `${label}: the ${depth.toString()} newest ${deviceName} reviews of ${anchor.appId} must reach further back than its ${depth.toString()} newest unfiltered ones`,
+        `${label}: the ${depth.toString()} newest ${deviceName} reviews of ${anchor.appId} must reach further back than its ${depth.toString()} newest unfiltered ones, an equal date means google ignored the device filter`,
       ).toBeLessThan(nthNewestDate(unfiltered.data, depth));
       expect(
         newestDate(second.data),

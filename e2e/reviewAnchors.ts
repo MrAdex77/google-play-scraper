@@ -1,4 +1,4 @@
-import type { ReviewsOptions, ReviewsResult } from '../src/index.ts';
+import type { Device, ReviewsOptions, ReviewsResult } from '../src/index.ts';
 import { liveClient } from './helpers.ts';
 
 export const REVIEW_FILTER_ANCHORS = [
@@ -8,10 +8,13 @@ export const REVIEW_FILTER_ANCHORS = [
   'com.facebook.katana',
 ] as const;
 
-export type ReviewFilter = Omit<
+type ReviewFilterOptions = Omit<
   ReviewsOptions,
   'appId' | 'paginate' | 'num' | 'nextPaginationToken'
 >;
+
+export type ReviewFilter = ReviewFilterOptions &
+  ({ device: Device } | { score: NonNullable<ReviewsOptions['score']> });
 
 export interface ReviewFilterAnchor {
   appId: string;

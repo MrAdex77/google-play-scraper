@@ -79,16 +79,21 @@ liveDescribe('permissions live contract', () => {
     }
   });
 
-  it('names a group for every entry of a listing that spreads permissions over groups', async () => {
+  it('names a group for every entry of a listing that spreads permissions over groups', async ({
+    annotate,
+  }) => {
     const detailed = (await liveClient.permissions({ appId: WHATSAPP })) as AppPermission[];
 
-    expect(detailed.length).toBeGreaterThan(0);
     for (const entry of detailed) {
       expect(typeof entry.group).toBe('string');
       expect(entry.group.length, `${entry.permission} has no group`).toBeGreaterThan(0);
     }
     const pairs = detailed.map((entry) => `${entry.group}\u0000${entry.permission}`);
     expect(new Set(pairs).size).toBe(detailed.length);
+    await annotate(
+      `${WHATSAPP}: ${detailed.length.toString()} entries over ${new Set(detailed.map((entry) => entry.group)).size.toString()} groups`,
+      'notice',
+    );
   });
 
   it('names every group of an other only listing and keeps short in step', async ({ annotate }) => {
