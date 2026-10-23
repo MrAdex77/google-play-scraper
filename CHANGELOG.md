@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/MrAdex77/google-play-scraper/compare/v1.4.1...v1.4.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* **e2e:** stop requiring filtered review streams to be non empty ([#170](https://github.com/MrAdex77/google-play-scraper/issues/170)) ([d2f9020](https://github.com/MrAdex77/google-play-scraper/commit/d2f9020bec31e354cb23177e8531115429873a32))
+
 ## [1.4.1](https://github.com/MrAdex77/google-play-scraper/compare/v1.4.0...v1.4.1) (2026-10-22)
 
 
