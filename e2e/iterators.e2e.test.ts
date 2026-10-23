@@ -1,6 +1,5 @@
 import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.ts';
-import { CLUSTER_PAGE_SIZE } from '../src/core/pagination.ts';
 import { app } from '../src/features/app/app.ts';
 import {
   createDeveloper,
@@ -20,7 +19,7 @@ import {
 } from './contracts.ts';
 import { liveClient, liveDescribe, memoizingResolveClient } from './helpers.ts';
 import { findReviewFilterAnchor, type ReviewFilter } from './reviewAnchors.ts';
-import { findSearchContinuationAnchor } from './searchAnchors.ts';
+import { fetchSearchContinuationPage, findSearchContinuationAnchor } from './searchAnchors.ts';
 
 const WHATSAPP = 'com.whatsapp';
 const GEO_GAME = 'com.adex77.WhereAmI';
@@ -196,10 +195,12 @@ liveDescribe('iterators live contract', () => {
     expect(events).toEqual([]);
   });
 
-  it('drains a continued search stream through every continuation page', async () => {
+  it('drains a continued search stream through every continuation page', async ({ annotate }) => {
     const resolveClient = memoizingResolveClient();
     const streamSearch = createSearchIterator(resolveClient);
-    const { query, page } = await findSearchContinuationAnchor(resolveClient);
+    const anchor = await findSearchContinuationAnchor(resolveClient);
+    const { query, page } = anchor;
+    const continuation = await fetchSearchContinuationPage(anchor);
     const collected: string[] = [];
     const events: DegradationEvent[] = [];
     for await (const result of streamSearch({
@@ -209,12 +210,19 @@ liveDescribe('iterators live contract', () => {
       collected.push(result.appId);
     }
 
-    expect(
-      collected.length,
-      `${query.term}: a drained stream must follow a second continuation page past the ${CLUSTER_PAGE_SIZE.toString()} items of the first, re-anchor SEARCH_CONTINUATION_ANCHORS to a term that still serves two continuation pages if google trimmed this one`,
-    ).toBeGreaterThan(page.apps.length + CLUSTER_PAGE_SIZE);
     expect(new Set(collected).size).toBe(collected.length);
     expect(events).toEqual([]);
+    if (continuation.token === undefined) {
+      await annotate(
+        `${query.term}: google serves one continuation page, the drained stream had no second hop`,
+        'notice',
+      );
+      return;
+    }
+    expect(
+      collected.length,
+      `${query.term}: a drained stream must add apps past the ${continuation.added.length.toString()} the first continuation page added`,
+    ).toBeGreaterThan(page.apps.length + continuation.added.length);
   });
 
   it('drains a search stream without a token and without hanging', async () => {
@@ -286,7 +294,10 @@ liveDescribe('iterators live contract', () => {
     }
 
     expect(requests).toBe(1);
-    expect(collected).toHaveLength(STREAM_STOP);
+    expect(
+      collected,
+      `filtered stream: ${anchor.appId} served no five star review to the iterator although the anchor probe just did, rerun or re-anchor REVIEW_FILTER_ANCHORS`,
+    ).toHaveLength(STREAM_STOP);
     for (const review of collected) {
       expect(review.score).toBe(FIVE_STARS);
     }
