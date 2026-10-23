@@ -125,7 +125,7 @@ liveDescribe('similar live contract', () => {
 
   it('agrees with the app details on continuation offers in a comma decimal storefront', async () => {
     const events: DegradationEvent[] = [];
-    const { apps } = await fetchSimilarFirstPage(
+    const { apps, token } = await fetchSimilarFirstPage(
       { appId: GAME_APP_ID, ...GERMAN_STOREFRONT, throttle: 1 },
       clientFromOptions,
     );
@@ -137,8 +137,11 @@ liveDescribe('similar live contract', () => {
     })) as SimilarApp[];
 
     expect(events, 'the german game cluster degraded').toEqual([]);
-    expect(items.length, 'the german game cluster lost its continuation page').toBeGreaterThan(
-      apps.length,
+    expectContinuationContract(
+      { firstPageCount: apps.length, token },
+      items.length,
+      SIMILAR_MAX_APPS,
+      'german game similar cluster',
     );
     expectAppItemsContract(items, 'german game similar cluster');
 

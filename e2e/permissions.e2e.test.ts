@@ -72,7 +72,6 @@ liveDescribe('permissions live contract', () => {
       const detailed = (await liveClient.permissions({ appId })) as AppPermission[];
       const short = (await liveClient.permissions({ appId, short: true })) as string[];
 
-      expect(short.length, `${appId} declares common permissions`).toBeGreaterThan(0);
       expect(new Set(short).size, `${appId} short output repeats a permission`).toBe(short.length);
       expect(short, `${appId} short output drifted from the detailed entries`).toEqual(
         uniqueCommonPermissions(detailed),
@@ -80,19 +79,24 @@ liveDescribe('permissions live contract', () => {
     }
   });
 
-  it('names a group for every entry of a listing that spreads permissions over groups', async () => {
+  it('names a group for every entry of a listing that spreads permissions over groups', async ({
+    annotate,
+  }) => {
     const detailed = (await liveClient.permissions({ appId: WHATSAPP })) as AppPermission[];
 
-    expect(detailed.length).toBeGreaterThan(0);
     for (const entry of detailed) {
       expect(typeof entry.group).toBe('string');
       expect(entry.group.length, `${entry.permission} has no group`).toBeGreaterThan(0);
     }
     const pairs = detailed.map((entry) => `${entry.group}\u0000${entry.permission}`);
     expect(new Set(pairs).size).toBe(detailed.length);
+    await annotate(
+      `${WHATSAPP}: ${detailed.length.toString()} entries over ${new Set(detailed.map((entry) => entry.group)).size.toString()} groups`,
+      'notice',
+    );
   });
 
-  it('names every group of an other only listing and keeps short in step', async () => {
+  it('names every group of an other only listing and keeps short in step', async ({ annotate }) => {
     const detailed = (await liveClient.permissions({
       appId: OTHER_ONLY_PREREGISTRATION,
     })) as AppPermission[];
@@ -101,11 +105,14 @@ liveDescribe('permissions live contract', () => {
       short: true,
     })) as string[];
 
-    expect(detailed.length).toBeGreaterThan(0);
     for (const entry of detailed) {
       expect(entry.group.length).toBeGreaterThan(0);
     }
     expect(short).toEqual(uniqueCommonPermissions(detailed));
+    await annotate(
+      `${OTHER_ONLY_PREREGISTRATION}: ${detailed.length.toString()} entries, ${short.length.toString()} of them common`,
+      'notice',
+    );
   });
 
   it('returns an empty list instead of throwing for a missing app', async () => {

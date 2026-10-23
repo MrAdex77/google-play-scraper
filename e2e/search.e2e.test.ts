@@ -2,7 +2,6 @@ import { expect, it } from 'vitest';
 import { clientFromOptions } from '../src/core/http.ts';
 import { app } from '../src/features/app/app.ts';
 import { createSearch, fetchSearchFirstPage } from '../src/features/search/search.ts';
-import { CLUSTER_PAGE_SIZE } from '../src/core/pagination.ts';
 import {
   type App,
   type DegradationEvent,
@@ -23,6 +22,7 @@ import {
   memoizingResolveClient,
 } from './helpers.ts';
 import {
+  fetchSearchContinuationPage,
   findSearchContinuationAnchor,
   SEARCH_CONTINUATION_ANCHORS,
   surfacedSearchAnchors,
@@ -265,11 +265,15 @@ liveDescribe('search live contract', () => {
     expect(events).toEqual([]);
   });
 
-  it('chains a second search continuation page from the token of the first', async () => {
+  it('chains a second search continuation page from the token of the first', async ({
+    annotate,
+  }) => {
     const events: DegradationEvent[] = [];
     const resolveClient = memoizingResolveClient();
     const search = createSearch(app, resolveClient);
-    const { query, page } = await findSearchContinuationAnchor(resolveClient);
+    const anchor = await findSearchContinuationAnchor(resolveClient);
+    const { query, page } = anchor;
+    const continuation = await fetchSearchContinuationPage(anchor);
     const num = 250;
 
     const results = (await search({
@@ -284,12 +288,19 @@ liveDescribe('search live contract', () => {
       num,
       `${query.term} chained search continuation`,
     );
-    expect(
-      results.length,
-      `${query.term}: a second continuation page must follow the ${CLUSTER_PAGE_SIZE.toString()} items of the first`,
-    ).toBeGreaterThan(page.apps.length + CLUSTER_PAGE_SIZE);
     expectAppItemsContract(results, `${query.term} chained search continuation`);
     expect(events).toEqual([]);
+    if (continuation.token === undefined) {
+      await annotate(
+        `${query.term}: google serves one continuation page, the second hop was not exercised`,
+        'notice',
+      );
+      return;
+    }
+    expect(
+      results.length,
+      `${query.term}: the second continuation page must add apps past the ${continuation.added.length.toString()} the first continuation page added`,
+    ).toBeGreaterThan(page.apps.length + continuation.added.length);
   });
 
   it('keeps paging a paid search until the requested number of paid apps', async () => {

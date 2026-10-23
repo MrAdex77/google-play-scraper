@@ -97,15 +97,11 @@ liveDescribe('sparse listings live contract', () => {
       return;
     }
 
-    expect(page.data.length).toBeGreaterThan(0);
-    for (const review of page.data) {
-      expect(review.id.length).toBeGreaterThan(0);
-      expect(review.userName.length).toBeGreaterThan(0);
-      expect(review.score).toBeGreaterThanOrEqual(1);
-      expect(review.score).toBeLessThanOrEqual(5);
-      expect(Number.isNaN(Date.parse(review.date))).toBe(false);
-    }
-    await annotate(`${SPARSE_REVIEW_ANCHOR} now reports ${describeRatingState(listing)}`, 'notice');
+    expectReviewsContract(page.data, SPARSE_REVIEW_ANCHOR);
+    await annotate(
+      `${SPARSE_REVIEW_ANCHOR} now reports ${describeRatingState(listing)} and serves ${page.data.length.toString()} reviews`,
+      'notice',
+    );
   });
 
   it('stops cleanly when paginating a sparse listing', async () => {
@@ -383,10 +379,8 @@ liveDescribe('preregistration listings live contract', () => {
     if (listing.ratings === undefined) {
       expect(reviews.data).toEqual([]);
       expect(reviews.nextPaginationToken).toBeNull();
-    } else {
-      expect(reviews.data.length).toBeGreaterThan(0);
-      expectReviewsContract(reviews.data, 'candidate reviews');
     }
+    expectReviewsContract(reviews.data, 'candidate reviews');
 
     await annotate(
       `${appId}: ${permissions.length.toString()} permissions, ${safety.collectedData.length.toString()} collected entries, ${similar.length.toString()} neighbours, ${describeRatingState(listing)}`,

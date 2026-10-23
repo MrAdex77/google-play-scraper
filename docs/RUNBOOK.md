@@ -165,10 +165,16 @@ reviews or zero ratings, whether a category is currently empty, whether a game
 is still in preregistration, where an app ranks for a search term, or whether a
 class of item is currently served inside a Google served set: an unrated legacy
 review behind the watch filter, a tablet review inside a recent date window, a
-shared data entry that declares a purpose. Issue #161 came from the first of
-those: the parser accepted every review Google served, and the run failed
-because Google served a watch window without one of its 2011 era unrated
-reviews, which it served again an hour later. Assert the invariant that holds
+shared data entry that declares a purpose, or any review at all behind a device
+or score filter. Issue #161 came from the first of those: the parser accepted
+every review Google served, and the run failed because Google served a watch
+window without one of its 2011 era unrated reviews, which it served again an
+hour later. Issue #169 came from the last: the Maps watch stream served nothing
+for three attempts over thirty seconds and 2802 reviews three hours later, and
+Spotify's watch stream flipped the same way within minutes. A filtered stream
+is a Google served subset, so its emptiness is served state even on a flagship;
+take the anchor for a filtered probe from `findReviewFilterAnchor` in
+`e2e/reviewAnchors.ts` instead of naming an app. Assert the invariant that holds
 in either state and let the test follow the catalogue.
 
 When a state still deserves live coverage, branch on what the page actually
@@ -177,10 +183,14 @@ reports instead of assuming a state:
 ```ts
 if (listing.ratings === undefined) {
   expect(page.data).toEqual([]);
-  return;
 }
-expect(page.data.length).toBeGreaterThan(0);
+expectReviewsContract(page.data, label);
+await annotate(`${label}: ${page.data.length.toString()} reviews`, 'notice');
 ```
+
+A rating does not imply a written review, so the rated branch asserts the
+contract on whatever Google serves and reports the count instead of requiring
+one.
 
 Report which branch ran with vitest's `annotate` so a reader of the run can see
 that coverage moved, without the run failing over it.
@@ -208,9 +218,14 @@ listing rather than by a count. The group name of each entry is read leniently
 non empty `group` on every entry. A live count assertion may only take one of
 these shapes:
 
-1. **Non empty.** `count > 0` where the anchor must carry data, which catches a
-   path that drifted onto nothing. A test that needs two items to mean anything,
-   such as an ordering check, may require two.
+1. **Non empty.** `count > 0` on an unfiltered primary surface (a flagship's
+   first review page, a chart, a search, a developer page, the report sections
+   of the primary anchor) or on an owned listing, where emptiness is the
+   symptom of a path that drifted onto nothing. A filtered or secondary review
+   stream of a third party app is served state even when it is non empty today
+   (issue #169), so its anchor comes from `findReviewFilterAnchor` and nothing
+   downstream requires it to be non empty. A test that needs two items to mean
+   anything, such as an ordering check, may require two.
 2. **Requested ceiling.** `count <= num`. `num` is forwarded or sliced by this
    library, so returning more than was asked is a real break.
    `expectRequestedCountContract` asserts both this and the non empty shape.
@@ -293,6 +308,11 @@ turns up:
   category.
 - `expectContinuationContract` for a paginated aggregate measured against the
   first page it continued from.
+- `findReviewFilterAnchor` in `e2e/reviewAnchors.ts` for any review probe that
+  carries a `device` or `score` filter. It walks `REVIEW_FILTER_ANCHORS` and
+  returns the first app whose filtered first page serves reviews and a
+  continuation token, so the probe never requires a single third party app to
+  serve a filtered stream.
 - `expectSearchListingAgreement` for a search item measured against the same
   app's listing, which catches drift on either surface.
 - `expectOfferAgreement` for a cluster item measured against the same app's
@@ -379,6 +399,27 @@ arranged for a maintainer's own app:
   past the first page, because `expectListingOffersAgree` can only prove that a
   continuation price was read from the offer micros on an item that costs
   something. Its failure message ends in "re-anchor the paid sample".
+- `REVIEW_FILTER_ANCHORS` in `e2e/reviewAnchors.ts` must keep one phone first
+  listing whose review stream serves a page with a continuation token behind
+  every device filter and behind a score filter. `findReviewFilterAnchor` walks
+  the pool and fails only when no anchor serves both reviews and a token: every
+  filtered page empty means Google changed the filter regime and the `device`
+  and `score` options return nothing for everyone, while reviews without a token
+  on every anchor means the filtered streams shrank below one page, so the pool
+  needs larger listings. The message names the filter it tried so the two states
+  can be told apart from the page sizes. Measured on 2026-10-23, `com.whatsapp`,
+  `com.google.android.youtube`, `com.netflix.mediaclient` and
+  `com.facebook.katana` each served 40 reviews with a token for tablet, watch,
+  Chromebook and TV, and `com.whatsapp` served 20 one star reviews with a token
+  on every sort and a five star page of 5 with a token; Maps, Strava and Google
+  Fit were left out because their TV streams are shorter than one page.
+  Re-anchor as
+  `test(e2e): re-anchor the review filter pool`.
+- The data safety suite carries four single listing anchors whose state Google
+  or the publisher decides: Instagram declaring shared data, YouTube Kids
+  serving a linked security practice description, VK offered on the `us`
+  storefront and withheld on `de`, and PhonePe gaining the UPI practice on the
+  `in` storefront. Each failure message ends in "re-anchor the ... anchor".
 
 The play pass failure message says "re-anchor the pool". That is a maintenance
 task, not a

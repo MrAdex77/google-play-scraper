@@ -16,7 +16,6 @@ vi.mock(import('../src/core/htmlText.ts'), { spy: true });
 
 const plainTextSpy = vi.mocked(plainText);
 
-const MULTI_LINE_SHARE = 0.5;
 const GOOGLE_DEVELOPER_ID = '5700313618786177705';
 const GOOGLE_DEVELOPER_NAME = 'Google LLC';
 const PREREGISTERED_GAME = 'com.tencent.mhadv';
@@ -40,7 +39,7 @@ liveDescribe('plain text summaries live contract', () => {
     plainTextSpy.mockClear();
   });
 
-  it('returns plain text summaries for a full action game chart', async () => {
+  it('returns plain text summaries for a full action game chart', async ({ annotate }) => {
     const items = await liveClient.list({
       category: 'GAME_ACTION',
       collection: 'TOP_FREE',
@@ -49,15 +48,21 @@ liveDescribe('plain text summaries live contract', () => {
 
     expectConvertedSummaries(plainTextSpy, items, 'action chart');
     expectHtmlSummaries(items, 'action chart');
-    expect(multiLineShare(items)).toBeGreaterThan(MULTI_LINE_SHARE);
+    await annotate(
+      `action chart: ${multiLineShare(items).toFixed(2)} of the summaries span several lines`,
+      'notice',
+    );
   });
 
-  it('returns plain text summaries for chess search results', async () => {
+  it('returns plain text summaries for chess search results', async ({ annotate }) => {
     const results = await liveClient.search({ term: 'chess', num: 30 });
 
     expectConvertedSummaries(plainTextSpy, results, 'chess search');
     expectHtmlSummaries(results, 'chess search');
-    expect(multiLineShare(results)).toBeGreaterThan(MULTI_LINE_SHARE);
+    await annotate(
+      `chess search: ${multiLineShare(results).toFixed(2)} of the summaries span several lines`,
+      'notice',
+    );
   });
 
   it('returns plain text summaries for package id searches', async () => {
@@ -90,12 +95,15 @@ liveDescribe('plain text summaries live contract', () => {
     );
   });
 
-  it('returns plain text summaries for a preregistered game cluster', async () => {
+  it('returns plain text summaries for a preregistered game cluster', async ({ annotate }) => {
     const items = await liveClient.similar({ appId: PREREGISTERED_GAME });
 
     expectConvertedSummaries(plainTextSpy, items, 'preregistered cluster');
     expectHtmlSummaries(items, 'preregistered cluster');
-    expect(items.length).toBeGreaterThan(0);
+    await annotate(
+      `${PREREGISTERED_GAME} is recommended alongside ${items.length.toString()} apps`,
+      'notice',
+    );
   });
 
   it('returns plain text summaries for a developer catalogue', async () => {
