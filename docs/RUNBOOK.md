@@ -633,3 +633,25 @@ If a change to a feature's options schema starts fragmenting the cache, the
 for `gl=us` and `gl=US`; that equivalence was measured live on 2026-09-22 on
 prices, install bands and search ranking, and is the only normalization the key
 applies beyond sorting properties.
+
+## Workers runtime parity
+
+`pnpm test:workers` builds the package, bundles `workers/probe.ts` with the
+conditions Wrangler uses (`workerd`, `worker`, `browser`), and runs every
+scenario in `workers/scenarios.ts` twice against the same recorded fixtures: in
+Node.js from `src/`, and in workerd from `dist/` at each date in
+`COMPATIBILITY_DATES`. A test is named `<scenario> matches Node.js` under the
+date that failed. `e2e/workers.e2e.test.ts` runs a subset of the scenarios
+against live Google Play from inside workerd.
+
+| Symptom                                                                         | Cause                                                                             | Fix                                                                                                                                                   |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The whole file fails in `beforeAll` with esbuild `Could not resolve "node:..."` | A Node.js only module reached the published build                                 | `pnpm lint` names the file when it is under `src/`. Otherwise a dependency now resolves its `node` build: pin or replace it                           |
+| Only `2022-01-01` fails                                                         | Code uses an API the legacy URL parser or an older runtime lacks                  | Route it through a runtime neutral helper such as `parseUrl` in `src/core/url.ts` and add the API to `no-restricted-properties` in `eslint.config.js` |
+| Every date fails for one scenario                                               | Node.js and workerd disagree on a web API the scenario reaches                    | Compare the two `outcome` and `requests` values in the diff, then fix the code, never the scenario                                                    |
+| `<scenario> consumes exactly the responses it was served` fails                 | A refreshed fixture or a code change altered how many requests the scenario makes | Update `SERVED` in `workers/parity.workers.test.ts` to the new request sequence                                                                       |
+| Only the live file fails while the Node.js e2e file for the same method passes  | A runtime difference that the fixtures do not cover                               | Reproduce it offline by adding a scenario, then fix the code                                                                                          |
+
+Raise `COMPATIBILITY_DATES.current` only to a date the installed workerd
+accepts: workerd rejects dates newer than its own build, and Miniflare
+`4.20260730.0` accepts up to `2026-08-06`.

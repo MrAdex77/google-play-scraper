@@ -8,7 +8,7 @@
 [![node](https://img.shields.io/node/v/@mradex77/google-play-scraper.svg)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/@mradex77/google-play-scraper.svg)](LICENSE)
 
-**Scrape Google Play app data in Node.js with a fully typed TypeScript API.** Fetch app details, search results, top charts, developer pages, similar apps, reviews, permissions and data safety reports straight from the Play Store, validated at runtime and returned as typed objects.
+**Scrape Google Play app data in Node.js and Cloudflare Workers with a fully typed TypeScript API.** Fetch app details, search results, top charts, developer pages, similar apps, reviews, permissions and data safety reports straight from the Play Store, validated at runtime and returned as typed objects.
 
 This is a TypeScript rewrite of the unmaintained [`google-play-scraper`](https://github.com/facundoolano/google-play-scraper) package. Thanks to [facundoolano](https://github.com/facundoolano) for the years of work on the original: without it this library would not exist. Method names, options and constants match the original, so most migrations are an import swap.
 
@@ -19,7 +19,7 @@ If you need a hosted ASO tool rather than a library, [AsoBeast](https://asobeast
 ## Highlights
 
 - Typed results. Every method returns a TypeScript type derived from the [zod](https://zod.dev) schema that validates the scraped data at runtime.
-- No HTTP dependency. Runs on the native `fetch` of Node.js 22.12 and newer.
+- No HTTP dependency. Runs on the native `fetch` of Node.js 22.12 and newer and of [Cloudflare Workers](#cloudflare-workers).
 - Survives layout changes. Every Google Play array path sits behind ordered fallback paths, so one moved index does not break a call.
 - Checked against live Google Play daily. Contract tests run in CI on a schedule and open a labeled issue when Google changes its layout.
 - Typed errors. Branch on `NotFoundError`, `RateLimitError` or `SpecError` instead of parsing message strings.
@@ -51,6 +51,7 @@ If you need a hosted ASO tool rather than a library, [AsoBeast](https://asobeast
 - [Constants](#constants)
 - [Error handling](#error-handling)
 - [Throttling and requestOptions](#throttling-and-requestoptions)
+- [Cloudflare Workers](#cloudflare-workers)
 - [Resilience](#resilience)
 - [Monitoring drift](#monitoring-drift)
 - [Versioning and API stability](#versioning-and-api-stability)
@@ -67,7 +68,7 @@ If you need a hosted ASO tool rather than a library, [AsoBeast](https://asobeast
 npm install @mradex77/google-play-scraper
 ```
 
-Requires Node.js 22.12 or newer.
+Requires Node.js 22.12 or newer, or a [Cloudflare Worker](#cloudflare-workers).
 
 ## Quick start
 
@@ -1054,6 +1055,51 @@ Calling `abort()` with no argument produces the standard `AbortError` `DOMExcept
 
 A custom `fetchImpl` should honor `init.signal` so an aborted request is cut short on the wire. One that ignores it cannot be interrupted mid-request, but the call still rejects with your reason as soon as that request settles, and its body is discarded.
 
+## Cloudflare Workers
+
+The library runs inside [Cloudflare Workers](https://developers.cloudflare.com/workers/) without extra configuration. It needs no `nodejs_compat` flag, and every compatibility date works, including dates before `2022-10-31` that still use the legacy URL parser. CI runs the published build inside workerd at three compatibility dates for every pull request.
+
+```typescript
+import { NotFoundError, app } from '@mradex77/google-play-scraper';
+
+const DEFAULT_APP_ID = 'com.google.android.apps.translate';
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const appId = new URL(request.url).searchParams.get('id') ?? DEFAULT_APP_ID;
+    try {
+      const { title, score, installs } = await app({ appId });
+      return Response.json({ appId, title, score, installs });
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return new Response('Unknown app', { status: 404 });
+      }
+      throw error;
+    }
+  },
+};
+```
+
+```jsonc
+{
+  "name": "play-lookup",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+}
+```
+
+The bundled library adds about 220 KiB to a Worker, 44 KiB gzipped. A few platform limits shape how you call it:
+
+| Topic            | What to know                                                                                                                                                                                                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Where to call it | Inside a handler. Workers reject timers, abort controllers and network requests at global scope, so a call made at module top level fails at startup. Creating a client there is fine: a module level `memoized()` or `createClient()` keeps its cache and throttle across the requests that isolate serves. |
+| CPU time         | The Free plan allows 10 ms of CPU per request. One `app` call spends about 5 ms parsing on a laptop, so it fits. `search` with `fullDetail`, `apps`, `availability` and `reviewsAll` parse many pages and need the Paid plan, which allows 30 seconds by default.                                            |
+| Subrequests      | Every Google Play request, retries included, is one subrequest: 50 per request on Free, 10,000 on Paid. Size `num`, `fullDetail`, `appIds` and `countries` to that budget.                                                                                                                                   |
+| Caching          | The `memoized` cache and `throttle` state live in one isolate. Isolates are per location and can be evicted at any time, so treat the cache as best effort and use the Cache API or Workers KV for anything shared.                                                                                          |
+| Blocking         | Google sees Cloudflare's egress address. A consent wall or captcha surfaces as `BlockedError`, the same as on any other host.                                                                                                                                                                                |
+| Proxies          | The `undici` proxy recipe is Node.js only. In a Worker, pass a `fetchImpl` that forwards to your proxy service.                                                                                                                                                                                              |
+| CLI              | The `google-play-scraper` command is Node.js only.                                                                                                                                                                                                                                                           |
+
 ## Resilience
 
 Google Play serves its data as deeply nested, unlabeled arrays whose positions shift a few times a year. Every positional path lives as a typed constant in a `specs.ts` file per feature with an ordered list of fallback paths, extraction reports every broken field in one `SpecError`, and data only leaves through a zod schema. The `e2e/` suite runs against live Google Play daily in GitHub Actions and opens a labeled issue on failure. Repairing a break is a spec diff in one file, described in [docs/RUNBOOK.md](docs/RUNBOOK.md).
@@ -1167,7 +1213,7 @@ Set the `throttle` option to cap requests per second, keep the default retry beh
 
 ### Does this library work in the browser?
 
-No. It targets Node.js 22.12 and newer. Browsers cannot scrape Google Play anyway because of CORS restrictions.
+No. Browsers cannot scrape Google Play because of CORS restrictions. Server runtimes work: Node.js 22.12 and newer, and [Cloudflare Workers](#cloudflare-workers).
 
 ## Related projects
 
