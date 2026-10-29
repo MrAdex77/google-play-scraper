@@ -15,7 +15,7 @@ import {
   expectContinuationContract,
   type ContinuationAnchor,
 } from './contracts.ts';
-import { expectFieldFilledOnEveryPage } from './fieldPresence.ts';
+import { expectFieldFilledOnEachPageShape } from './fieldPresence.ts';
 import { expectListingOffersAgree, liveClient, liveDescribe, type Storefront } from './helpers.ts';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
@@ -126,7 +126,7 @@ liveDescribe('developer live contract', () => {
       expect(item.developer).toContain('Google');
     }
 
-    expectFieldFilledOnEveryPage('google developer', items, anchor, [
+    expectFieldFilledOnEachPageShape('google developer', items, anchor, [
       'score',
       'scoreText',
       'summary',

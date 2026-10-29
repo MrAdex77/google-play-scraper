@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { expectFieldFilledOnEveryPage, expectFieldFilledSomewhere } from '../e2e/fieldPresence.ts';
+import {
+  expectFieldFilledOnEachPageShape,
+  expectFieldFilledSomewhere,
+} from '../e2e/fieldPresence.ts';
 
 const FIRST_PAGE = [{ score: 4.5, summary: 'rated' }, { summary: 'unrated' }];
 const CONTINUATION = [{ summary: 'plain' }, { score: 3.1, summary: 'rated too' }];
@@ -25,10 +28,10 @@ describe('expectFieldFilledSomewhere', () => {
   });
 });
 
-describe('expectFieldFilledOnEveryPage', () => {
+describe('expectFieldFilledOnEachPageShape', () => {
   it('passes when both page shapes fill every field', () => {
     expect(() => {
-      expectFieldFilledOnEveryPage('cluster', [...FIRST_PAGE, ...CONTINUATION], ANCHOR, [
+      expectFieldFilledOnEachPageShape('cluster', [...FIRST_PAGE, ...CONTINUATION], ANCHOR, [
         'score',
         'summary',
       ]);
@@ -39,7 +42,7 @@ describe('expectFieldFilledOnEveryPage', () => {
     const hollowContinuation = CONTINUATION.map(({ summary }) => ({ summary }));
 
     expect(() => {
-      expectFieldFilledOnEveryPage('cluster', [...FIRST_PAGE, ...hollowContinuation], ANCHOR, [
+      expectFieldFilledOnEachPageShape('cluster', [...FIRST_PAGE, ...hollowContinuation], ANCHOR, [
         'score',
       ]);
     }).toThrow('cluster continuation: field "score" is empty across all 2 items');
@@ -49,7 +52,7 @@ describe('expectFieldFilledOnEveryPage', () => {
     const hollowFirstPage = FIRST_PAGE.map(({ summary }) => ({ summary }));
 
     expect(() => {
-      expectFieldFilledOnEveryPage('cluster', [...hollowFirstPage, ...CONTINUATION], ANCHOR, [
+      expectFieldFilledOnEachPageShape('cluster', [...hollowFirstPage, ...CONTINUATION], ANCHOR, [
         'score',
       ]);
     }).toThrow('cluster first page: field "score" is empty across all 2 items');
@@ -57,7 +60,7 @@ describe('expectFieldFilledOnEveryPage', () => {
 
   it('refuses an aggregate that never crossed the first page', () => {
     expect(() => {
-      expectFieldFilledOnEveryPage('cluster', FIRST_PAGE, ANCHOR, ['score']);
+      expectFieldFilledOnEachPageShape('cluster', FIRST_PAGE, ANCHOR, ['score']);
     }).toThrow('cluster: the aggregate never crossed the 2 items of the first page');
   });
 });

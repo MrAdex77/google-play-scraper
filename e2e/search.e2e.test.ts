@@ -14,7 +14,7 @@ import {
   expectRequestedCountContract,
   expectSearchListingAgreement,
 } from './contracts.ts';
-import { expectFieldFilledOnEveryPage, expectFieldFilledSomewhere } from './fieldPresence.ts';
+import { expectFieldFilledOnEachPageShape, expectFieldFilledSomewhere } from './fieldPresence.ts';
 import {
   expectListingOffersAgree,
   liveClient,
@@ -262,7 +262,7 @@ liveDescribe('search live contract', () => {
       results.slice(0, page.apps.length).map((item) => item.appId),
       'the continuation must append to the first page, never reorder it',
     ).toEqual(page.apps.map((item) => item.appId));
-    expectFieldFilledOnEveryPage(
+    expectFieldFilledOnEachPageShape(
       `${query.term} search continuation`,
       results,
       { firstPageCount: page.apps.length, token: page.token },

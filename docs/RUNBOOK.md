@@ -330,7 +330,7 @@ turns up:
   priced items first, then free ones, and requires an item priced above zero in
   that sample, so a surface that reads the price from anything but the offer
   micros cannot pass on free apps or sales to zero alone.
-- `expectFieldFilledSomewhere` and `expectFieldFilledOnEveryPage` in
+- `expectFieldFilledSomewhere` and `expectFieldFilledOnEachPageShape` in
   `e2e/fieldPresence.ts` for the optional fields of a result set, which must be
   filled on at least one item of every page shape the set contains. See
   "Optional field presence".
@@ -553,7 +553,7 @@ An optional field (`score`, `scoreText`, `summary`, `currency`, review `text`,
 produces a green run with hollow data instead of a `SpecError`. The live
 suites guard that through `expectFieldFilledSomewhere`, which requires each
 listed field to be filled on at least one item of the result set, and
-`expectFieldFilledOnEveryPage`, which runs the same check on the first page and
+`expectFieldFilledOnEachPageShape`, which runs the same check on the first page and
 on the continuation of an aggregate that crossed a cluster boundary. Those are
 the two signatures a drift has: a moved path fills nothing on any item, and a
 continuation shape that broke fills nothing past the first page. How many

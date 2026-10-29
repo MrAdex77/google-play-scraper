@@ -14,7 +14,7 @@ export function expectFieldFilledSomewhere(
   }
 }
 
-export function expectFieldFilledOnEveryPage(
+export function expectFieldFilledOnEachPageShape(
   context: string,
   items: readonly Record<string, unknown>[],
   anchor: ContinuationAnchor,

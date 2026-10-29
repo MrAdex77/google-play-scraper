@@ -7,7 +7,7 @@ import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/simila
 import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
 import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.ts';
 import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
-import { expectFieldFilledOnEveryPage } from './fieldPresence.ts';
+import { expectFieldFilledOnEachPageShape } from './fieldPresence.ts';
 import { expectListingOffersAgree, liveClient, liveDescribe, type Storefront } from './helpers.ts';
 
 const FLAGSHIP_APP_ID = 'com.google.android.apps.translate';
@@ -73,7 +73,7 @@ liveDescribe('similar live contract', () => {
     expect(items.some((item) => item.appId === FLAGSHIP_APP_ID)).toBe(false);
     expectAppItemsContract(items, 'flagship similar cluster');
 
-    expectFieldFilledOnEveryPage(
+    expectFieldFilledOnEachPageShape(
       'flagship similar cluster',
       items,
       { firstPageCount: apps.length, token },
