@@ -50,6 +50,13 @@ function histogramTotal(histogram: App['histogram']): number {
   return Object.values(histogram).reduce((sum, count) => sum + count, 0);
 }
 
+function expectCount(value: number, label: string): void {
+  expect(
+    Number.isInteger(value) && value >= 0,
+    `${label} must be a non negative integer, got ${value.toString()}`,
+  ).toBe(true);
+}
+
 export function expectOfferConsistency(offer: OfferFields, label: string): void {
   expect(Number.isFinite(offer.price), `${label}: price must be a finite number`).toBe(true);
   expect(offer.price, `${label}: price must never be negative`).toBeGreaterThanOrEqual(0);
@@ -332,6 +339,10 @@ export function expectRatingSurfaceConsistency(listing: App, label: string): voi
   }
 
   expect(listing.score, `${label}: a rated listing must carry a score`).toBeDefined();
+  expectCount(listing.ratings, `${label}: the rating count`);
+  if (listing.reviews !== undefined) {
+    expectCount(listing.reviews, `${label}: the review count`);
+  }
 
   const lag = Math.max(HISTOGRAM_LAG_FLOOR, Math.ceil(listing.ratings * HISTOGRAM_LAG_RATIO));
   const histogramMessage = `${label}: histogram total ${total.toString()} must track the rating count ${listing.ratings.toString()}`;
