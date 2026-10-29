@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.4.1...v1.5.0) (2026-10-29)
+
+
+### Features
+
+* **core:** support cloudflare workers ([#177](https://github.com/MrAdex77/google-play-scraper/issues/177)) ([813a28b](https://github.com/MrAdex77/google-play-scraper/commit/813a28b7767ca8a279a932d04fe08214c1bfa90c))
+
+
+### Bug Fixes
+
+* **e2e:** stop ordering the review count against the rating count ([#176](https://github.com/MrAdex77/google-play-scraper/issues/176)) ([1f423e5](https://github.com/MrAdex77/google-play-scraper/commit/1f423e5e7ae6f2a430069039b18cfd0c713bda55))
+* **e2e:** stop requiring filtered review streams to be non empty ([#170](https://github.com/MrAdex77/google-play-scraper/issues/170)) ([d2f9020](https://github.com/MrAdex77/google-play-scraper/commit/d2f9020bec31e354cb23177e8531115429873a32))
+
 ## [1.4.1](https://github.com/MrAdex77/google-play-scraper/compare/v1.4.0...v1.4.1) (2026-10-22)
 
 
