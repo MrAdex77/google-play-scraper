@@ -143,8 +143,11 @@ today, which leaves four ordinary kinds:
    as a subset of the other in every sample: issue #175 came from requiring
    the review count to stay at or below the rating count, and a game three
    weeks out of preregistration served 145 ratings, a histogram summing to 143
-   and 376 reviews. A bound measured from samples, whatever its margin, is
-   catalogue state.
+   and 376 reviews. A bound between two independently computed quantities,
+   measured from samples, is catalogue state whatever its margin. The
+   histogram tolerance below is different in kind: the buckets and the rating
+   count are one identity (the buckets sum to the count) read at two moments,
+   and the tolerance absorbs the lag between those moments.
 3. **Self-anchoring.** The assertion derives its expectation from the same
    run, for example the search result set matching the first page it was built
    from, or `list` returning exactly `num` items for a `num` below the chart
@@ -328,7 +331,7 @@ turns up:
   that sample, so a surface that reads the price from anything but the offer
   micros cannot pass on free apps or sales to zero alone.
 - `expectFieldFilledSomewhere` and `expectFieldFilledOnEveryPage` in
-  `e2e/helpers.ts` for the optional fields of a result set, which must be
+  `e2e/fieldPresence.ts` for the optional fields of a result set, which must be
   filled on at least one item of every page shape the set contains. See
   "Optional field presence".
 
@@ -558,14 +561,17 @@ items fill a field is catalogue state (a chess search filled `score` on 23 of
 30 results on 2026-10-29, a top chart on 100 of 100), so no suite asserts a
 fill ratio.
 
-When a presence gate fails, run `pnpm coverage:live` to see which anchors
-starve the field:
+A failing gate names the page shape in its label, and that label is the
+triage:
 
-- **The field at 0 on every anchor** means a moved path. Fix the matching
-  `src/features/<name>/specs.ts` per the steps above and refresh the fixtures
-  with `pnpm fixtures:update`.
-- **The field at 0 past the first page only** means the continuation shape
-  broke, so start at `src/core/clusterItem.ts`.
+- **A `... first page` label, or a surface without a continuation** means a
+  moved path. Run `pnpm coverage:live` to see which other anchors starve the
+  same field, then fix the matching `src/features/<name>/specs.ts` per the
+  steps above and refresh the fixtures with `pnpm fixtures:update`.
+- **A `... continuation` label while the `... first page` gate of the same
+  test is green** means the continuation shape broke, so start at
+  `src/core/clusterItem.ts`. The report script reads whole aggregates and
+  cannot show this split, which is why the gate carries it.
 
 Never satisfy a presence gate by dropping the field from the list or by turning
 it into a ratio (hard rule 11): the fix is a re-port of the path.
