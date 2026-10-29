@@ -13,6 +13,7 @@ export const COMPATIBILITY_DATES = {
   current: '2026-07-30',
 } as const;
 
+export const SOURCE_ENTRY = fileURLToPath(new URL('../src/index.ts', import.meta.url));
 export const PUBLISHED_ENTRY = fileURLToPath(new URL('../dist/index.js', import.meta.url));
 
 const PROBE_ENTRY = fileURLToPath(new URL('./probe.ts', import.meta.url));
