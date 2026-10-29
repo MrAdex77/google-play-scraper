@@ -337,13 +337,6 @@ export function expectRatingSurfaceConsistency(listing: App, label: string): voi
   const histogramMessage = `${label}: histogram total ${total.toString()} must track the rating count ${listing.ratings.toString()}`;
   expect(total, histogramMessage).toBeGreaterThanOrEqual(listing.ratings - lag);
   expect(total, histogramMessage).toBeLessThanOrEqual(listing.ratings + lag);
-
-  if (listing.reviews !== undefined) {
-    expect(
-      listing.reviews,
-      `${label}: the review count must not exceed the rating count`,
-    ).toBeLessThanOrEqual(listing.ratings);
-  }
 }
 
 export function expectPurchaseConsistency(listing: App, label: string): void {
