@@ -50,12 +50,17 @@ export function expectFieldFilledOnEveryPage(
   anchor: ContinuationAnchor,
   fields: readonly string[],
 ): void {
+  const continuation = items.slice(anchor.firstPageCount);
+  expect(
+    continuation.length,
+    `${context}: the aggregate never crossed the ${anchor.firstPageCount.toString()} items of the first page, so there is no continuation shape to check`,
+  ).toBeGreaterThan(0);
   expectFieldFilledSomewhere(
     `${context} first page`,
     items.slice(0, anchor.firstPageCount),
     fields,
   );
-  expectFieldFilledSomewhere(`${context} continuation`, items.slice(anchor.firstPageCount), fields);
+  expectFieldFilledSomewhere(`${context} continuation`, continuation, fields);
 }
 
 export interface Storefront {
