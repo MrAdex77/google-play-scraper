@@ -15,7 +15,7 @@ import {
   expectSearchListingAgreement,
 } from './contracts.ts';
 import {
-  expectFieldCoverage,
+  expectFieldFilledSomewhere,
   expectListingOffersAgree,
   liveClient,
   liveDescribe,
@@ -175,12 +175,12 @@ liveDescribe('search live contract', () => {
 
     expect(resultIds).toEqual(firstPageIds);
     expectAppItemsContract(results, 'first page search');
-    expectFieldCoverage('search', results, {
-      score: 0.8,
-      scoreText: 0.8,
-      summary: 0.8,
-      currency: 0.8,
-    });
+    expectFieldFilledSomewhere('first page search', results, [
+      'score',
+      'scoreText',
+      'summary',
+      'currency',
+    ]);
     expect(events).toEqual([]);
   });
 

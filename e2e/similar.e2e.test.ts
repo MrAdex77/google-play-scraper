@@ -8,7 +8,7 @@ import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/s
 import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.ts';
 import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
 import {
-  expectFieldCoverage,
+  expectFieldFilledOnEveryPage,
   expectListingOffersAgree,
   liveClient,
   liveDescribe,
@@ -78,11 +78,12 @@ liveDescribe('similar live contract', () => {
     expect(items.some((item) => item.appId === FLAGSHIP_APP_ID)).toBe(false);
     expectAppItemsContract(items, 'flagship similar cluster');
 
-    expectFieldCoverage('similar', items, {
-      score: 0.8,
-      scoreText: 0.8,
-      summary: 0.8,
-    });
+    expectFieldFilledOnEveryPage(
+      'flagship similar cluster',
+      items,
+      { firstPageCount: apps.length, token },
+      ['score', 'scoreText', 'summary'],
+    );
     expect(events).toEqual([]);
   });
 

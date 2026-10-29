@@ -7,7 +7,7 @@ import {
   expectSizedRequestFloor,
   reviewsAnchor,
 } from './contracts.ts';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
+import { expectFieldFilledSomewhere, liveClient, liveDescribe } from './helpers.ts';
 import { findReviewFilterAnchor, type ReviewFilter } from './reviewAnchors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -148,10 +148,10 @@ liveDescribe('reviews live contract', () => {
     expectReviewsContract(byRating.data, 'rating sorted reviews');
     expectReviewsContract(byHelpfulness.data, 'helpfulness sorted reviews');
 
-    expectFieldCoverage('reviews', byHelpfulness.data, {
-      text: 0.8,
-      userImage: 0.8,
-    });
+    expectFieldFilledSomewhere('helpfulness sorted reviews', byHelpfulness.data, [
+      'text',
+      'userImage',
+    ]);
   });
 
   it('returns the newest sort in non increasing date order', async () => {

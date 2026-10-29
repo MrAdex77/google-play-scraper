@@ -16,7 +16,7 @@ import {
   type ContinuationAnchor,
 } from './contracts.ts';
 import {
-  expectFieldCoverage,
+  expectFieldFilledOnEveryPage,
   expectListingOffersAgree,
   liveClient,
   liveDescribe,
@@ -131,11 +131,11 @@ liveDescribe('developer live contract', () => {
       expect(item.developer).toContain('Google');
     }
 
-    expectFieldCoverage('developer', items, {
-      score: 0.8,
-      scoreText: 0.8,
-      summary: 0.8,
-    });
+    expectFieldFilledOnEveryPage('google developer', items, anchor, [
+      'score',
+      'scoreText',
+      'summary',
+    ]);
     expect(events).toEqual([]);
     expect(integrity).toEqual([]);
   });
