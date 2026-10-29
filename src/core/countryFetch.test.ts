@@ -66,6 +66,17 @@ describe('createCountryFetch', () => {
     expect(us).not.toHaveBeenCalled();
   });
 
+  it('uses the fallback for a relative url even when it carries a gl param', async () => {
+    const us = fetchMock('us');
+    const fallback = fetchMock('fallback');
+    const routed = createCountryFetch({ perCountry: { us }, fallback });
+
+    const response = await routed('/store/search?q=x&gl=us');
+
+    expect(await response.text()).toBe('fallback');
+    expect(us).not.toHaveBeenCalled();
+  });
+
   it('falls back to the global fetch when no fallback is configured', async () => {
     const globalFetch = fetchMock('global');
     vi.stubGlobal('fetch', globalFetch);
