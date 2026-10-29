@@ -13,6 +13,17 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'workers',
+          include: ['workers/**/*.workers.test.ts'],
+          environment: 'node',
+          testTimeout: 30000,
+          hookTimeout: 120000,
+          fileParallelism: false,
+          benchmark: { include: [] },
+        },
+      },
+      {
+        test: {
           name: 'e2e',
           include: ['e2e/**/*.e2e.test.ts'],
           environment: 'node',
