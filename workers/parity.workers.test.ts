@@ -132,6 +132,14 @@ describe('node baseline', () => {
   it.each(FAILING_SCENARIOS)('%s rejects with %s', (name, errorName) => {
     expect(inNode.get(name)).toHaveProperty('outcome.error.name', errorName);
   });
+
+  it('memoized serves the second call from one cache entry', () => {
+    expect(inNode.get('memoized')).toHaveProperty('outcome.value', { reused: true, size: 1 });
+  });
+
+  it('countryRouting sends the german url to its route and the unparsable one to the fallback', () => {
+    expect(inNode.get('countryRouting')).toHaveProperty('outcome.value', ['de', 'fallback']);
+  });
 });
 
 describe.each(Object.values(COMPATIBILITY_DATES))(
