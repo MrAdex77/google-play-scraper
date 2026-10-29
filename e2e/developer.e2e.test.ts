@@ -15,13 +15,8 @@ import {
   expectContinuationContract,
   type ContinuationAnchor,
 } from './contracts.ts';
-import {
-  expectFieldFilledOnEveryPage,
-  expectListingOffersAgree,
-  liveClient,
-  liveDescribe,
-  type Storefront,
-} from './helpers.ts';
+import { expectFieldFilledOnEveryPage } from './fieldPresence.ts';
+import { expectListingOffersAgree, liveClient, liveDescribe, type Storefront } from './helpers.ts';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
 const GOOGLE_QUERY: DeveloperQuery = {

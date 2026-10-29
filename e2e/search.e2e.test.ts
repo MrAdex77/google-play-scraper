@@ -14,8 +14,8 @@ import {
   expectRequestedCountContract,
   expectSearchListingAgreement,
 } from './contracts.ts';
+import { expectFieldFilledSomewhere } from './fieldPresence.ts';
 import {
-  expectFieldFilledSomewhere,
   expectListingOffersAgree,
   liveClient,
   liveDescribe,

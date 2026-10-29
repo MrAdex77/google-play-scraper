@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
 import { type ListItem } from '../src/index.ts';
 import { expectAppItemsContract, expectRequestedCountContract } from './contracts.ts';
-import { expectFieldFilledSomewhere, liveClient, liveDescribe } from './helpers.ts';
+import { expectFieldFilledSomewhere } from './fieldPresence.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const LIST_CEILING_PROBE = 500;
 

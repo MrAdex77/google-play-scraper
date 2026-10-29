@@ -7,7 +7,8 @@ import {
   expectSizedRequestFloor,
   reviewsAnchor,
 } from './contracts.ts';
-import { expectFieldFilledSomewhere, liveClient, liveDescribe } from './helpers.ts';
+import { expectFieldFilledSomewhere } from './fieldPresence.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 import { findReviewFilterAnchor, type ReviewFilter } from './reviewAnchors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -17,14 +18,12 @@ const ONE_STAR = 1;
 const LEGACY_PROBE = 9000;
 const WEAR_OS_LAUNCH = Date.parse('2014-06-25T00:00:00Z');
 const EXHAUSTION_PROBE = 5000;
-const LOCALIZED_OVERLAP_RATIO = 0.1;
 const SMALL_PAGE = 10;
 const SIZED_CONTINUATION_NUM = 25;
 const MANUAL_PAGE_SIZE = 20;
 const FILTER_PAGE_SIZE = 40;
 const FULL_WINDOW_PAGE_SIZE = 4500;
 const SECONDARY_WINDOW_PAGE_SIZE = 20;
-const SUBSET_RATIO = 0.9;
 const MINORITY_DEVICES: readonly Device[] = [
   device.TABLET,
   device.WATCH,

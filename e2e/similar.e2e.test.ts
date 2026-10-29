@@ -7,13 +7,8 @@ import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/simila
 import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
 import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.ts';
 import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
-import {
-  expectFieldFilledOnEveryPage,
-  expectListingOffersAgree,
-  liveClient,
-  liveDescribe,
-  type Storefront,
-} from './helpers.ts';
+import { expectFieldFilledOnEveryPage } from './fieldPresence.ts';
+import { expectListingOffersAgree, liveClient, liveDescribe, type Storefront } from './helpers.ts';
 
 const FLAGSHIP_APP_ID = 'com.google.android.apps.translate';
 const FLAGSHIP_QUERY: SimilarQuery = {

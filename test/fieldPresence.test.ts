@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expectFieldFilledOnEveryPage, expectFieldFilledSomewhere } from '../e2e/helpers.ts';
+import { expectFieldFilledOnEveryPage, expectFieldFilledSomewhere } from '../e2e/fieldPresence.ts';
 
 const FIRST_PAGE = [{ score: 4.5, summary: 'rated' }, { summary: 'unrated' }];
 const CONTINUATION = [{ summary: 'plain' }, { score: 3.1, summary: 'rated too' }];
