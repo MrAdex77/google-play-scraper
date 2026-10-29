@@ -1,5 +1,6 @@
 import * as z from 'zod/mini';
 import { hasUniqueCountriesIgnoringCase, normalizeCountry, parseOptions } from './options.ts';
+import { parseUrl } from './url.ts';
 
 const COUNTRY_QUERY_PARAM = 'gl';
 const COUNTRY_FETCH_CONTEXT = 'countryFetch';
@@ -34,12 +35,8 @@ function urlOf(input: FetchInput): string {
 }
 
 function countryOf(input: FetchInput): string | undefined {
-  const url = urlOf(input);
-  if (!URL.canParse(url)) {
-    return undefined;
-  }
-  const country = new URL(url).searchParams.get(COUNTRY_QUERY_PARAM);
-  return country === null ? undefined : normalizeCountry(country);
+  const country = parseUrl(urlOf(input))?.searchParams.get(COUNTRY_QUERY_PARAM) ?? undefined;
+  return country === undefined ? undefined : normalizeCountry(country);
 }
 
 export function createCountryFetch(settings: CountryFetchSettings): typeof fetch {

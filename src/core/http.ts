@@ -6,6 +6,7 @@ import {
   NotFoundError,
   RateLimitError,
 } from './errors.ts';
+import { parseUrl } from './url.ts';
 
 export interface HttpRequest {
   url: string;
@@ -261,8 +262,8 @@ function isCaptchaChallenge(url: URL): boolean {
 }
 
 function blockOf(finalUrl: string): Block | undefined {
-  const url = URL.parse(finalUrl);
-  if (url === null) {
+  const url = parseUrl(finalUrl);
+  if (url === undefined) {
     return undefined;
   }
   if (url.host === CONSENT_HOST) {
