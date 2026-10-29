@@ -5,7 +5,7 @@ import {
   type Request as WorkerRequest,
   type Response as WorkerResponse,
 } from 'miniflare';
-import type { ScenarioName } from './scenarios.ts';
+import { SCENARIO_PARAM, type ScenarioName } from './scenarios.ts';
 
 export const COMPATIBILITY_DATES = {
   legacyUrl: '2022-01-01',
@@ -61,7 +61,18 @@ export function startProbe(
   });
 }
 
+function probeUrl(name: ScenarioName): URL {
+  const url = new URL(PROBE_ORIGIN);
+  url.searchParams.set(SCENARIO_PARAM, name);
+  return url;
+}
+
 export async function runInWorker(worker: Miniflare, name: ScenarioName): Promise<unknown> {
-  const response = await worker.dispatchFetch(`${PROBE_ORIGIN}/?scenario=${name}`);
+  const response = await worker.dispatchFetch(probeUrl(name));
+  if (!response.ok) {
+    throw new Error(
+      `probe answered ${String(response.status)} for ${name}: ${await response.text()}`,
+    );
+  }
   return response.json();
 }

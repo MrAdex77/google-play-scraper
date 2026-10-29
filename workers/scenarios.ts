@@ -4,11 +4,15 @@ type Scenario = (library: typeof Library) => Promise<unknown>;
 
 export type Outcome = { value: unknown } | { error: { name: string; library: boolean } };
 
+export const SCENARIO_PARAM = 'scenario';
+
 const WHATSAPP = 'com.whatsapp';
 const TRANSLATE = 'com.google.android.apps.translate';
 const MISSING_APP = 'com.adex77.definitely.not.a.real.app';
 const GOOGLE_DEVELOPER = '5700313618786177705';
-const ROUTED_URLS = ['https://play.google.com/store/apps/details?id=a&gl=DE', 'not a url'];
+const GERMAN_LISTING_URL = 'https://play.google.com/store/apps/details?id=a&gl=DE';
+const UNPARSABLE_URL = 'not a url';
+const ROUTED_URLS = [GERMAN_LISTING_URL, UNPARSABLE_URL];
 
 const routedBody = (body: string) => (): Promise<Response> => Promise.resolve(new Response(body));
 

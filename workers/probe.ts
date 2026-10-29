@@ -1,7 +1,5 @@
 import * as library from '../src/index.ts';
-import { isScenarioName, settle } from './scenarios.ts';
-
-const SCENARIO_PARAM = 'scenario';
+import { SCENARIO_PARAM, isScenarioName, settle } from './scenarios.ts';
 
 export default {
   async fetch(request: Request): Promise<Response> {
