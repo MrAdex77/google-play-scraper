@@ -1,7 +1,7 @@
 {
   "name": "@mradex77/google-play-scraper",
   "version": "1.4.1",
-  "description": "Google Play scraper for Node.js with a fully typed TypeScript API. Fetch app details, search results, top charts, reviews, permissions and data safety from the Play Store.",
+  "description": "Google Play scraper for Node.js and Cloudflare Workers with a fully typed TypeScript API. Fetch app details, search results, top charts, reviews, permissions and data safety from the Play Store.",
   "keywords": [
     "google-play",
     "google-play-scraper",
@@ -22,6 +22,7 @@
     "market-research",
     "typescript",
     "nodejs",
+    "cloudflare-workers",
     "zod",
     "cli"
   ],
@@ -79,6 +80,7 @@
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:e2e": "vitest run --project e2e",
+    "test:workers": "pnpm build && vitest run --project workers",
     "check:package": "pnpm build && publint && attw --pack .",
     "coverage:live": "node scripts/live-coverage-report.ts",
     "docs:api": "typedoc",
@@ -108,10 +110,12 @@
     "@types/node": "^26.1.2",
     "@vitest/coverage-v8": "^5.0.3",
     "cheerio": "1.2.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
+    "miniflare": "^4.20260730.0",
     "prettier": "^3.9.6",
     "publint": "^0.3.22",
     "tsdown": "^0.23.0",

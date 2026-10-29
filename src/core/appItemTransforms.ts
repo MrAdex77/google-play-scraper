@@ -1,4 +1,5 @@
 import { BASE_URL } from '../constants.ts';
+import { parseUrl } from './url.ts';
 
 const MICROS_PER_UNIT = 1_000_000;
 
@@ -18,5 +19,5 @@ export function developerIdFromUrl(value: unknown): string | undefined {
   if (typeof value !== 'string') {
     return undefined;
   }
-  return URL.parse(value, BASE_URL)?.searchParams.get('id') ?? undefined;
+  return parseUrl(value, BASE_URL)?.searchParams.get('id') ?? undefined;
 }

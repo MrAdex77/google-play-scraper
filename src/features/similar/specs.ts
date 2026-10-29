@@ -8,6 +8,7 @@ import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.ts
 import { deriveScriptDataSelection, type ScriptData } from '../../core/scriptData.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
+import { parseUrl } from '../../core/url.ts';
 import { similarAppSchema } from './schema.ts';
 import * as z from 'zod/mini';
 
@@ -70,7 +71,7 @@ export function similarDetailsUrl(appId: string, country: string): string {
 }
 
 export function similarClusterUrl(clusterPath: string, lang: string, country: string): string {
-  const cluster = URL.parse(clusterPath, BASE_URL);
+  const cluster = parseUrl(clusterPath, BASE_URL);
   if (cluster?.origin !== BASE_URL) {
     throw new ParseError(`similar: cluster link leaves ${BASE_URL}`);
   }

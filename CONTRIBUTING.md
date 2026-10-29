@@ -23,12 +23,13 @@ pnpm typecheck       tsc --noEmit
 pnpm test            unit tests, offline against recorded fixtures
 pnpm test:coverage   unit tests with coverage thresholds
 pnpm test:e2e        live contract tests against play.google.com
+pnpm test:workers    build, then run the package inside workerd against recorded fixtures
 pnpm bench           parser benchmarks over recorded fixtures
 pnpm build           emit dist/ with esm, cjs, and d.ts
 pnpm fixtures:update refresh recorded fixtures from live Google Play
 ```
 
-Before opening a pull request, make sure `pnpm lint`, `pnpm typecheck`, `pnpm test:coverage` and `pnpm build` all pass.
+Before opening a pull request, make sure `pnpm lint`, `pnpm typecheck`, `pnpm test:coverage`, `pnpm build` and `pnpm test:workers` all pass.
 
 ## Benchmarks
 

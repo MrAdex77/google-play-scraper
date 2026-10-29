@@ -48,4 +48,5 @@ jobs:
           maxColorRange: 90
       - run: pnpm build
       - run: pnpm check:package
+      - run: pnpm test:workers
       - run: pnpm docs:api
