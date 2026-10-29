@@ -19,6 +19,7 @@ const LEGACY_PROBE = 9000;
 const WEAR_OS_LAUNCH = Date.parse('2014-06-25T00:00:00Z');
 const EXHAUSTION_PROBE = 5000;
 const SMALL_PAGE = 10;
+const POLISH_LETTER = /[ąćęłńóśźż]/i;
 const SIZED_CONTINUATION_NUM = 25;
 const MANUAL_PAGE_SIZE = 20;
 const FILTER_PAGE_SIZE = 40;
@@ -169,7 +170,7 @@ liveDescribe('reviews live contract', () => {
     }
   });
 
-  it('serves a different first page for a polish storefront', async ({ annotate }) => {
+  it('serves polish reviews for a polish storefront', async ({ annotate }) => {
     const defaultPage = await liveClient.reviews({ appId: WHATSAPP, paginate: true });
     const polishPage = await liveClient.reviews({
       appId: WHATSAPP,
@@ -185,12 +186,15 @@ liveDescribe('reviews live contract', () => {
 
     const defaultIds = new Set(defaultPage.data.map((review) => review.id));
     const overlap = polishPage.data.filter((review) => defaultIds.has(review.id)).length;
+    const polishWritten = polishPage.data.filter((review) =>
+      POLISH_LETTER.test(review.text ?? ''),
+    ).length;
     expect(
-      overlap,
-      'polish storefront reviews: the storefront options never reached google, the polish page is the default page',
-    ).toBeLessThan(polishPage.data.length);
+      polishWritten,
+      'polish storefront reviews: no review on the page is written in polish, the storefront options never reached google',
+    ).toBeGreaterThan(0);
     await annotate(
-      `polish storefront reviews: ${overlap.toString()} of ${polishPage.data.length.toString()} reviews also appear on the default storefront`,
+      `polish storefront reviews: ${polishWritten.toString()} of ${polishPage.data.length.toString()} reviews carry a polish letter, ${overlap.toString()} also appear on the default storefront`,
       'notice',
     );
   });
