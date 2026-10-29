@@ -15,13 +15,8 @@ import {
   expectContinuationContract,
   type ContinuationAnchor,
 } from './contracts.ts';
-import {
-  expectFieldCoverage,
-  expectListingOffersAgree,
-  liveClient,
-  liveDescribe,
-  type Storefront,
-} from './helpers.ts';
+import { expectFieldFilledOnEachPageShape } from './fieldPresence.ts';
+import { expectListingOffersAgree, liveClient, liveDescribe, type Storefront } from './helpers.ts';
 
 const GOOGLE_DEV_ID = '5700313618786177705';
 const GOOGLE_QUERY: DeveloperQuery = {
@@ -131,11 +126,11 @@ liveDescribe('developer live contract', () => {
       expect(item.developer).toContain('Google');
     }
 
-    expectFieldCoverage('developer', items, {
-      score: 0.8,
-      scoreText: 0.8,
-      summary: 0.8,
-    });
+    expectFieldFilledOnEachPageShape('google developer', items, anchor, [
+      'score',
+      'scoreText',
+      'summary',
+    ]);
     expect(events).toEqual([]);
     expect(integrity).toEqual([]);
   });

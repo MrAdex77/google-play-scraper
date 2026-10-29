@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
 import { NotFoundError, type App, type IntegrityEvent } from '../src/index.ts';
 import { expectListingContract, expectTaxonomyMembership } from './contracts.ts';
-import { expectFieldFilledSomewhere, liveClient, liveDescribe } from './helpers.ts';
+import { expectFieldFilledSomewhere } from './fieldPresence.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 const GEO_GAME = 'com.adex77.WhereAmI';

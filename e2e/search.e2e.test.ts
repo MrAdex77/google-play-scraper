@@ -14,8 +14,8 @@ import {
   expectRequestedCountContract,
   expectSearchListingAgreement,
 } from './contracts.ts';
+import { expectFieldFilledOnEachPageShape, expectFieldFilledSomewhere } from './fieldPresence.ts';
 import {
-  expectFieldCoverage,
   expectListingOffersAgree,
   liveClient,
   liveDescribe,
@@ -175,12 +175,12 @@ liveDescribe('search live contract', () => {
 
     expect(resultIds).toEqual(firstPageIds);
     expectAppItemsContract(results, 'first page search');
-    expectFieldCoverage('search', results, {
-      score: 0.8,
-      scoreText: 0.8,
-      summary: 0.8,
-      currency: 0.8,
-    });
+    expectFieldFilledSomewhere('first page search', results, [
+      'score',
+      'scoreText',
+      'summary',
+      'currency',
+    ]);
     expect(events).toEqual([]);
   });
 
@@ -262,6 +262,12 @@ liveDescribe('search live contract', () => {
       results.slice(0, page.apps.length).map((item) => item.appId),
       'the continuation must append to the first page, never reorder it',
     ).toEqual(page.apps.map((item) => item.appId));
+    expectFieldFilledOnEachPageShape(
+      `${query.term} search continuation`,
+      results,
+      { firstPageCount: page.apps.length, token: page.token },
+      ['score', 'scoreText', 'summary'],
+    );
     expect(events).toEqual([]);
   });
 

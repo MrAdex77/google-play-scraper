@@ -525,3 +525,31 @@ describe('app', () => {
     expect(result.url).toContain('id=com.adex77.WhereAmI&');
   });
 });
+
+describe('app rating counts', () => {
+  const RATING_NODE = [1, 2, 51];
+  const RECORDED_LISTINGS = [
+    { appId: 'com.google.android.apps.translate', html: translateHtml },
+    { appId: 'com.mojang.minecraftpe', html: minecraftHtml },
+    { appId: 'com.adex77.WhereAmI', html: whereAmIHtml },
+    { appId: 'com.whatsapp', html: whatsappHtml },
+  ];
+
+  it.each(RECORDED_LISTINGS)(
+    'reads the counts of $appId from the cells of the rating node',
+    async ({ appId, html }) => {
+      const details = parseScriptData(html).blocks['ds:5'];
+      const ratingNode = getPath(details, RATING_NODE);
+      const buckets = Array.from({ length: 5 }, (_, index) =>
+        getPath(ratingNode, [1, index + 1, 1]),
+      );
+
+      const result = await app({ appId, requestOptions: { fetchImpl: fetchReturning(html) } });
+
+      expect(result.ratings).toBe(getPath(ratingNode, [2, 1]));
+      expect(result.reviews).toBe(getPath(ratingNode, [3, 1]));
+      expect(Object.values(result.histogram)).toEqual(buckets);
+      expect(Number.isInteger(result.ratings) && Number.isInteger(result.reviews)).toBe(true);
+    },
+  );
+});

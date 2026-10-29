@@ -2,7 +2,6 @@ import { describe, expect } from 'vitest';
 import { clientFromOptions, type HttpClient, type ResolveClient } from '../src/core/http.ts';
 import { createClient, type AppItem } from '../src/index.ts';
 import { expectOfferAgreement } from './contracts.ts';
-import { fieldCoverage } from './coverage.ts';
 
 const LIVE_TESTS_DISABLED = process.env.GP_E2E === '0';
 
@@ -30,30 +29,6 @@ export function memoizingResolveClient(): ResolveClient {
     },
   };
   return () => client;
-}
-
-export function expectFieldFilledSomewhere(
-  context: string,
-  items: readonly Record<string, unknown>[],
-  fields: readonly string[],
-): void {
-  for (const field of fields) {
-    const { filled, total } = fieldCoverage(items, field);
-    const message = `${context}: field "${field}" is empty across all ${total.toString()} anchors`;
-    expect(filled, message).toBeGreaterThan(0);
-  }
-}
-
-export function expectFieldCoverage(
-  context: string,
-  items: readonly Record<string, unknown>[],
-  thresholds: Readonly<Record<string, number>>,
-): void {
-  for (const [field, minimum] of Object.entries(thresholds)) {
-    const { filled, total, ratio } = fieldCoverage(items, field);
-    const message = `${context}: field "${field}" coverage ${ratio.toFixed(2)} below ${minimum.toString()} (${filled.toString()}/${total.toString()})`;
-    expect.soft(ratio, message).toBeGreaterThanOrEqual(minimum);
-  }
 }
 
 export interface Storefront {

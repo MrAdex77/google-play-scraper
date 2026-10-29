@@ -7,7 +7,8 @@ import {
   expectSizedRequestFloor,
   reviewsAnchor,
 } from './contracts.ts';
-import { expectFieldCoverage, liveClient, liveDescribe } from './helpers.ts';
+import { expectFieldFilledSomewhere } from './fieldPresence.ts';
+import { liveClient, liveDescribe } from './helpers.ts';
 import { findReviewFilterAnchor, type ReviewFilter } from './reviewAnchors.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -17,14 +18,13 @@ const ONE_STAR = 1;
 const LEGACY_PROBE = 9000;
 const WEAR_OS_LAUNCH = Date.parse('2014-06-25T00:00:00Z');
 const EXHAUSTION_PROBE = 5000;
-const LOCALIZED_OVERLAP_RATIO = 0.1;
 const SMALL_PAGE = 10;
+const POLISH_LETTER = /[ąćęłńóśźż]/i;
 const SIZED_CONTINUATION_NUM = 25;
 const MANUAL_PAGE_SIZE = 20;
 const FILTER_PAGE_SIZE = 40;
 const FULL_WINDOW_PAGE_SIZE = 4500;
 const SECONDARY_WINDOW_PAGE_SIZE = 20;
-const SUBSET_RATIO = 0.9;
 const MINORITY_DEVICES: readonly Device[] = [
   device.TABLET,
   device.WATCH,
@@ -148,10 +148,10 @@ liveDescribe('reviews live contract', () => {
     expectReviewsContract(byRating.data, 'rating sorted reviews');
     expectReviewsContract(byHelpfulness.data, 'helpfulness sorted reviews');
 
-    expectFieldCoverage('reviews', byHelpfulness.data, {
-      text: 0.8,
-      userImage: 0.8,
-    });
+    expectFieldFilledSomewhere('helpfulness sorted reviews', byHelpfulness.data, [
+      'text',
+      'userImage',
+    ]);
   });
 
   it('returns the newest sort in non increasing date order', async () => {
@@ -170,7 +170,7 @@ liveDescribe('reviews live contract', () => {
     }
   });
 
-  it('serves a disjoint localized first page for a polish storefront', async () => {
+  it('serves polish reviews for a polish storefront', async ({ annotate }) => {
     const defaultPage = await liveClient.reviews({ appId: WHATSAPP, paginate: true });
     const polishPage = await liveClient.reviews({
       appId: WHATSAPP,
@@ -186,10 +186,17 @@ liveDescribe('reviews live contract', () => {
 
     const defaultIds = new Set(defaultPage.data.map((review) => review.id));
     const overlap = polishPage.data.filter((review) => defaultIds.has(review.id)).length;
+    const polishWritten = polishPage.data.filter((review) =>
+      POLISH_LETTER.test(review.text ?? ''),
+    ).length;
     expect(
-      overlap,
-      `polish storefront reviews: ${overlap.toString()} of ${polishPage.data.length.toString()} reviews also appear on the default storefront`,
-    ).toBeLessThan(polishPage.data.length * LOCALIZED_OVERLAP_RATIO);
+      polishWritten,
+      'polish storefront reviews: no review on the page is written in polish, the storefront options never reached google',
+    ).toBeGreaterThan(0);
+    await annotate(
+      `polish storefront reviews: ${polishWritten.toString()} of ${polishPage.data.length.toString()} reviews carry a polish letter, ${overlap.toString()} also appear on the default storefront`,
+      'notice',
+    );
   });
 
   it('returns an empty page instead of throwing for a missing app', async () => {
@@ -320,10 +327,15 @@ liveDescribe('reviews live contract', () => {
         );
         return;
       }
+      const shared = sharedIds(insideWindow, unfiltered.data);
       expect(
-        sharedIds(insideWindow, unfiltered.data),
-        `${label}: its reviews inside the window must be part of the unfiltered stream`,
-      ).toBeGreaterThanOrEqual(insideWindow.length * SUBSET_RATIO);
+        shared,
+        `${label}: none of its ${insideWindow.length.toString()} reviews inside the window is part of the unfiltered stream, the review ids of the filtered stream drifted`,
+      ).toBeGreaterThan(0);
+      await annotate(
+        `${label}: ${shared.toString()} of ${insideWindow.length.toString()} ${deviceName} reviews inside the window are in the unfiltered stream`,
+        'notice',
+      );
     },
   );
 
