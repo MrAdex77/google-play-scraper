@@ -137,7 +137,14 @@ today, which leaves four ordinary kinds:
    a drifted path breaks the agreement immediately while catalogue movement
    never does. Two fields parsed from the same node are not an invariant, they
    are a tautology: `offersIAP` and `IAPRange` both read `[1, 2, 19, 0]`, so
-   only the shape of `IAPRange` is worth asserting.
+   only the shape of `IAPRange` is worth asserting. Agreement is only an
+   invariant where the page derives one field from the other. Two counts that
+   Google computes separately are not in a subset relation even when one reads
+   as a subset of the other in every sample: issue #175 came from requiring
+   the review count to stay at or below the rating count, and a game three
+   weeks out of preregistration served 145 ratings, a histogram summing to 143
+   and 376 reviews. A bound measured from samples, whatever its margin, is
+   catalogue state.
 3. **Self-anchoring.** The assertion derives its expectation from the same
    run, for example the search result set matching the first page it was built
    from, or `list` returning exactly `num` items for a `num` below the chart
@@ -320,6 +327,10 @@ turns up:
   priced items first, then free ones, and requires an item priced above zero in
   that sample, so a surface that reads the price from anything but the offer
   micros cannot pass on free apps or sales to zero alone.
+- `expectFieldFilledSomewhere` and `expectFieldFilledOnEveryPage` in
+  `e2e/helpers.ts` for the optional fields of a result set, which must be
+  filled on at least one item of every page shape the set contains. See
+  "Optional field presence".
 
 The offer fields deserve their own note, because they are the one place where
 absence carries meaning. `price`, `currency` and `priceText` are three sibling
@@ -347,23 +358,21 @@ a first page item with no offer node reads `free` false like a search row. So
 an undefined `currency` on a continuation item does not separate a free app
 from an offerless listing; call `app()` when that distinction matters.
 
-Three thresholds in the suite are measured, not guessed, on 2026-08-26 unless
-a bullet says otherwise:
+Two tolerances in the suite are measured, not guessed, and both sit between
+fields the page derives from one another:
 
 - The histogram tracks the rating count to within `max(10, 10% of ratings)`.
   The histogram total always sat at or below the rating count, and the gap
   ratio grows as listings shrink: measured on 2026-09-17 across 35 listings it
   was under 0.01% above a million ratings, 1.07% at 3556, 1.63% at 7723 and
-  5.1% at 39, where the floor of ten takes over. The earlier 1% figure came
-  from flagship listings only. Ten percent is six times the worst measured
-  drift and still a third of the smallest number a drifted `ratings` path could
-  read instead, the review count, which never exceeds about thirty percent of
-  the ratings on any sampled listing.
+  5.1% at 39, where the floor of ten takes over, and on 2026-10-29 across 150
+  rated listings the worst gaps were 2 of 13, 1 of 7 and 3 of 26, all inside
+  the floor. The earlier 1% figure came from flagship listings only. The
+  review count is not part of this tolerance in any direction: it is a count
+  Google computes on its own and it exceeded the rating count on
+  `com.tencent.mhadv` (issue #175).
 - `scoreText` is the score rounded to one decimal, so it agrees to within 0.051
   once the locale decimal comma is normalized.
-- `DATA_RICH_COLLECTED_FLOOR` in `e2e/datasafety.e2e.test.ts` is 10 against 37
-  entries measured on `com.instagram.android`, so a partial parse of the
-  collected data section fails while an ordinary policy edit does not.
 
 Two localized formats decide whether a check runs at all. The install count
 comparison only runs when the string is plain grouped ASCII digits, so a
@@ -373,8 +382,7 @@ check accepts any Unicode decimal digit, because the Arabic storefront serves
 `‏١٢٫٩٩ ج.م.‏ - ‏١٢٬٢٤٩٫٩٩ ج.م.‏ لكل عنصر` and the Japanese one serves
 `￥50～￥57,800/アイテム`.
 
-Re-measure with `pnpm coverage:live` and a scratch probe before moving any of
-them.
+Re-measure with a scratch probe before moving either of them.
 
 ### Maintained anchor pools
 
@@ -535,26 +543,32 @@ token:
 Never satisfy a tripwire by weakening it: thresholds fall under hard rule 11,
 so the fix is always a re-port of the contract, never a threshold tweak.
 
-## Coverage gate recalibration
+## Optional field presence
 
-The live suites gate optional fields (`score`, `scoreText`, `summary`,
-`currency`, review `text`, `userImage`) through `expectFieldCoverage`, so a
-drifted path that stops finding its value fails the daily run with a message
-naming the starved field. When a coverage gate fails, first run
-`pnpm coverage:live` and read the field's measured ratio:
+An optional field (`score`, `scoreText`, `summary`, `currency`, review `text`,
+`userImage`) legally parses as `undefined`, so a path that drifts onto nothing
+produces a green run with hollow data instead of a `SpecError`. The live
+suites guard that through `expectFieldFilledSomewhere`, which requires each
+listed field to be filled on at least one item of the result set, and
+`expectFieldFilledOnEveryPage`, which runs the same check on the first page and
+on the continuation of an aggregate that crossed a cluster boundary. Those are
+the two signatures a drift has: a moved path fills nothing on any item, and a
+continuation shape that broke fills nothing past the first page. How many
+items fill a field is catalogue state (a chess search filled `score` on 23 of
+30 results on 2026-10-29, a top chart on 100 of 100), so no suite asserts a
+fill ratio.
 
-- **A single field at ~0.0** means a moved path. Fix the matching
+When a presence gate fails, run `pnpm coverage:live` to see which anchors
+starve the field:
+
+- **The field at 0 on every anchor** means a moved path. Fix the matching
   `src/features/<name>/specs.ts` per the steps above and refresh the fixtures
-  with `pnpm fixtures:update`. A ratio stuck near the first page's share of the
-  result set means only the continuation shape broke, so start at
-  `src/core/clusterItem.ts`.
-- **A field slightly under its gate across anchors** means catalog drift, not a
-  broken path. Lower that field's gate to measured-minus-0.3 in a dedicated
-  commit whose body quotes the `coverage:live` report output.
+  with `pnpm fixtures:update`.
+- **The field at 0 past the first page only** means the continuation shape
+  broke, so start at `src/core/clusterItem.ts`.
 
-Never delete a gate to green a run (hard rule 11): a gate that no longer holds
-is recalibrated from the report data or its contract is re-ported, never
-removed.
+Never satisfy a presence gate by dropping the field from the list or by turning
+it into a ratio (hard rule 11): the fix is a re-port of the path.
 
 ## Rate limit and cancellation semantics
 
