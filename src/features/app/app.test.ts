@@ -349,6 +349,25 @@ describe('app', () => {
   });
 
   it.each([
+    [['$0.99 per item', [0]], true, '$0.99 per item'],
+    [['', [0]], false, ''],
+    [[null, [0]], false, undefined],
+    [[], false, undefined],
+  ])('reads offersIAP from the first purchase cell of %j', async (cell, offers, range) => {
+    const ds5 = parseScriptData(translateHtml).blocks['ds:5'] as unknown[];
+    const details = (ds5[1] as unknown[])[2] as unknown[];
+    details[19] = cell;
+
+    const result = await app({
+      appId: 'com.google.android.apps.translate',
+      requestOptions: { fetchImpl: fetchReturning(buildScriptData('ds:5', ds5)) },
+    });
+
+    expect(result.offersIAP).toBe(offers);
+    expect(result.IAPRange).toBe(range);
+  });
+
+  it.each([
     ['com.google.android.apps.translate', translateHtml, false],
     ['com.mojang.minecraftpe', minecraftHtml, true],
     ['com.adex77.WhereAmI', whereAmIHtml, true],
