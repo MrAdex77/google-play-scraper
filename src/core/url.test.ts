@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseUrl } from './url.ts';
+import { appDetailsUrl, parseUrl } from './url.ts';
 
 describe('parseUrl', () => {
   afterEach(() => {
@@ -44,5 +44,21 @@ describe('parseUrl', () => {
 
     expect(parseUrl('https://play.google.com/store')?.pathname).toBe('/store');
     expect(parseUrl('http://')).toBeUndefined();
+  });
+});
+
+describe('appDetailsUrl', () => {
+  it('builds the details link with the query in the given order', () => {
+    expect(appDetailsUrl({ id: 'com.whatsapp', hl: 'en', gl: 'us' })).toBe(
+      'https://play.google.com/store/apps/details?id=com.whatsapp&hl=en&gl=us',
+    );
+  });
+
+  it('encodes reserved characters so every value round trips', () => {
+    const reviewId = 'gp:AOqp+/=&x y';
+    const link = new URL(appDetailsUrl({ id: 'com.whatsapp', reviewId }));
+
+    expect(link.searchParams.get('reviewId')).toBe(reviewId);
+    expect([...link.searchParams.keys()]).toEqual(['id', 'reviewId']);
   });
 });
