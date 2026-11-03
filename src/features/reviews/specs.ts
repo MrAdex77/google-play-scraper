@@ -130,6 +130,7 @@ export const reviewItemSpecs = {
   userImage: { paths: [[1, 1, 3, 2]], missing: OPTIONAL, schema: shape.userImage },
   date: { paths: [[5]], missing: REQUIRED, schema: shape.date, transform: generateDate },
   score: { paths: [[2]], missing: REQUIRED, schema: shape.score },
+  scoreText: { paths: [[2]], missing: REQUIRED, schema: shape.scoreText, transform: String },
   title: { paths: [[0]], missing: REQUIRED, schema: shape.title, transform: alwaysNull },
   text: { paths: [[4]], missing: OPTIONAL, schema: shape.text, transform: sanitizeText },
   replyDate: {

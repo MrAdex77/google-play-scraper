@@ -244,6 +244,7 @@ export function expectReviewContract(review: Review, label: string): void {
     review.score,
     `${scoped}: score must not exceed ${MAX_SCORE.toString()}`,
   ).toBeLessThanOrEqual(MAX_SCORE);
+  expect(review.scoreText, `${scoped}: scoreText must spell the score`).toBe(String(review.score));
   expect(Number.isNaN(Date.parse(review.date)), `${scoped}: date must parse`).toBe(false);
   expect(
     Date.parse(review.date),

@@ -60,6 +60,7 @@ describe('reviews fixture parsing', () => {
       expect(() => reviewSchema.parse(review)).not.toThrow();
       expect(review.score).toBeGreaterThanOrEqual(1);
       expect(review.score).toBeLessThanOrEqual(5);
+      expect(review.scoreText).toBe(String(review.score));
       expect(Number.isNaN(Date.parse(review.date))).toBe(false);
     }
   });
@@ -261,6 +262,7 @@ describe('reviews degraded payloads', () => {
     });
 
     expect(result.data.map((review) => review.score)).toEqual([5, 0]);
+    expect(result.data.map((review) => review.scoreText)).toEqual(['5', '0']);
     expect(result.data[1]?.date).toBe('2013-03-06T10:05:16.637Z');
   });
 
@@ -466,6 +468,26 @@ describe('reviews degraded payloads', () => {
     expect(thrown).toBeInstanceOf(SpecError);
     const failedFields = (thrown as SpecError).failures.map((failure) => failure.field);
     expect(failedFields).toContain('criterias');
+  });
+
+  it('names both score fields when the score cell is missing', async () => {
+    const entry = reviewEntry('r1');
+    entry[2] = null;
+
+    let thrown: unknown;
+    try {
+      await reviews({
+        appId: TRANSLATE,
+        paginate: true,
+        requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(SpecError);
+    const failedFields = (thrown as SpecError).failures.map((failure) => failure.field);
+    expect(failedFields).toEqual(['score', 'scoreText']);
   });
 });
 
