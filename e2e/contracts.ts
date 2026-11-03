@@ -351,6 +351,10 @@ export function expectRatingSurfaceConsistency(listing: App, label: string): voi
 }
 
 export function expectPurchaseConsistency(listing: App, label: string): void {
+  expect(
+    listing.offersIAP,
+    `${label}: offersIAP and IAPRange read the same cell, so a range means purchases are offered`,
+  ).toBe(Boolean(listing.IAPRange));
   if (listing.IAPRange === undefined || listing.IAPRange.length === 0) {
     return;
   }
@@ -430,6 +434,7 @@ export function expectListingContract(listing: App, label: string): void {
   expect(listing.developer.length, `${scoped}: developer must not be empty`).toBeGreaterThan(0);
   expect(listing.developerId.length, `${scoped}: developerId must not be empty`).toBeGreaterThan(0);
   expect(listing.genreId.length, `${scoped}: genreId must not be empty`).toBeGreaterThan(0);
+  expect(typeof listing.offersIAP, `${scoped}: offersIAP must be a boolean`).toBe('boolean');
   expect(new URL(listing.url).origin, `${scoped}: url must address the play store`).toBe(
     PLAY_ORIGIN,
   );

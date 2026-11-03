@@ -298,7 +298,7 @@ liveDescribe('commercial model edges live contract', () => {
       expect(typeof listing.adSupported).toBe('boolean');
     }
 
-    const offering = listings.filter((listing) => listing.offersIAP === true);
+    const offering = listings.filter((listing) => listing.offersIAP);
     expect(
       offering.length,
       'no in app purchase anchor advertises a range, re-anchor the pool',

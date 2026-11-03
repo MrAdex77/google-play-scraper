@@ -160,7 +160,7 @@ export const appSpecs = {
   },
   offersIAP: {
     paths: [[1, 2, 19, 0]],
-    missing: OPTIONAL,
+    missing: DEFAULT_FALSE,
     schema: shape.offersIAP,
     transform: (value) => Boolean(value),
   },
