@@ -57,3 +57,21 @@ export async function expectListingOffersAgree(
     expectOfferAgreement(item, listing, label);
   }
 }
+
+export async function expectDeveloperIdAgreesWithApp(
+  items: readonly AppItem[],
+  label: string,
+): Promise<void> {
+  const linked = items.find((item) => item.developerId !== undefined);
+  expect(
+    linked,
+    `${label}: no item carries a developerId, the cluster developer link drifted`,
+  ).toBeDefined();
+  if (linked === undefined) {
+    return;
+  }
+  const listing = await liveClient.app({ appId: linked.appId });
+  expect(listing.developerId, `${label} ${linked.appId}: developerId must match app()`).toBe(
+    linked.developerId,
+  );
+}
