@@ -477,9 +477,10 @@ Three e2e tests pin the current Google Play serving regime instead of the code:
 The exact match tripwire is the only live gate on the card path. The card is
 parsed by `exactMatchSpecs`, which shares no path with the ordinary result
 specs, and four of its fields have a single source each in the page, so a
-drift there deletes the top result silently. `developerId` is produced by
-`exactMatchSpecs` alone, so a first result carrying one proves the card path
-ran rather than the list happening to rank the app first. No owned listing
+drift there deletes the top result silently. On the first result page
+`developerId` is produced by `exactMatchSpecs` alone (continuation results read
+it from the cluster item link), so a first result carrying one proves the card
+path ran rather than the list happening to rank the app first. No owned listing
 can carry this state: measured on 2026-09-11, a package id search for
 `com.adex77.WhereAmI` serves a list and no card in both the `us` and `pl`
 storefronts, so `EXACT_MATCH_CARD_CANDIDATES` is a maintained pool under the
