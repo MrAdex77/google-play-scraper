@@ -5,6 +5,7 @@ import {
   DEFAULT_REVIEWS_PAGE_SIZE,
   DEVICE_IDS,
   MAX_REVIEWS_PAGE_SIZE,
+  reviewUrl,
 } from './specs.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -99,5 +100,13 @@ describe('buildReviewsBody', () => {
   it('pins the measured page size bounds', () => {
     expect(DEFAULT_REVIEWS_PAGE_SIZE).toBe(150);
     expect(MAX_REVIEWS_PAGE_SIZE).toBe(4500);
+  });
+});
+
+describe('reviewUrl', () => {
+  it('links a review to its app details page', () => {
+    expect(reviewUrl(TRANSLATE, 'db02dc46-f4a0-4e4a-8079-7a136eb66689')).toBe(
+      'https://play.google.com/store/apps/details?id=com.google.android.apps.translate&reviewId=db02dc46-f4a0-4e4a-8079-7a136eb66689',
+    );
   });
 });

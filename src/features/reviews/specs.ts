@@ -4,6 +4,7 @@ import type { Path } from '../../core/path.ts';
 import { rawArrayPathSchema, rawOptionalArrayPathSchema } from '../../core/raw.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
 import { sanitizeText } from '../../core/text.ts';
+import { appDetailsUrl } from '../../core/url.ts';
 import { reviewSchema } from './schema.ts';
 
 export const REVIEWS_RPC_ID = 'UsvDTd';
@@ -47,6 +48,10 @@ export function buildReviewsBody(request: ReviewsRequest): string {
   const page = `%5B${request.count.toString()}%2Cnull%2C${tokenSlot(request.token)}%5D`;
   const filters = encodeSlot(filterSlot(request.score, request.device));
   return `f.req=%5B%5B%5B%22UsvDTd%22%2C%22%5Bnull%2Cnull%2C%5B2%2C${request.sort.toString()}%2C${page}%2Cnull%2C${filters}%5D%2C%5B%5C%22${request.appId}%5C%22%2C7%5D%5D%22%2Cnull%2C%22generic%22%5D%5D%5D`;
+}
+
+export function reviewUrl(appId: string, reviewId: string): string {
+  return appDetailsUrl({ id: appId, reviewId });
 }
 
 export const REVIEWS_RESPONSE_PATHS = {

@@ -12,6 +12,7 @@ export const reviewSchema = z.object({
   date: z.iso.datetime(),
   score: z.number().check(z.gte(0), z.lte(5)),
   scoreText: z.string(),
+  url: z.url(),
   title: z.optional(z.nullable(z.string())),
   text: z.optional(z.string()),
   replyDate: z.optional(z.iso.datetime()),
