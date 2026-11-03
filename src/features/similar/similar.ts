@@ -4,6 +4,7 @@ import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options
 import { getPath } from '../../core/path.ts';
 import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { fetchClusterApps } from '../../core/pagination.ts';
+import { narrowByFlag } from '../../core/flagNarrowed.ts';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { resolveScriptRoot } from '../../core/scriptRoot.ts';
@@ -119,4 +120,6 @@ export function createSimilar(
   };
 }
 
-export const similar = createSimilar(app);
+export const narrowSimilar = narrowByFlag<'fullDetail', SimilarOptions, SimilarApp[], App[]>;
+
+export const similar = narrowSimilar(createSimilar(app));

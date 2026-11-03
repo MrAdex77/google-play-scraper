@@ -9,7 +9,7 @@ import { extract } from '../../core/spec.ts';
 import type { DegradationEvent } from '../../core/degradation.ts';
 import { fetchSearchFirstPage, search } from './search.ts';
 import { searchIterator } from './searchIterator.ts';
-import { searchResultSchema, type SearchResult } from './schema.ts';
+import { searchResultSchema } from './schema.ts';
 import { CLUSTER_MAPPINGS } from './specs.ts';
 import { clusterBatchResponse } from '../../../test/helpers/clusterResponse.ts';
 
@@ -94,12 +94,12 @@ describe('search over a recorded continuation', () => {
     const events: DegradationEvent[] = [];
     const { fetchImpl } = recordedFetch([firstPageHtml, continuationText]);
 
-    const results = (await search({
+    const results = await search({
       term: QUERY.term,
       num,
       onDegradation: (event) => events.push(event),
       requestOptions: { fetchImpl },
-    })) as SearchResult[];
+    });
 
     const ids = results.map((item) => item.appId);
     expect(events).toEqual([]);
@@ -129,11 +129,11 @@ describe('search over a recorded continuation', () => {
     const firstIds = await firstPageIds();
     const { fetchImpl, bodies } = recordedFetch([firstPageHtml, continuationText]);
 
-    const results = (await search({
+    const results = await search({
       term: QUERY.term,
       num: firstIds.length,
       requestOptions: { fetchImpl },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(firstIds);
     expect(bodies).toHaveLength(1);

@@ -20,9 +20,8 @@ liveDescribe('permissions live contract', () => {
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
 
-    for (const entry of result) {
-      expect(typeof entry).toBe('object');
-      const item = entry as AppPermission;
+    for (const item of result) {
+      expect(typeof item).toBe('object');
       expect(typeof item.permission).toBe('string');
       expect(item.permission.length).toBeGreaterThan(0);
       expect([permission.COMMON, permission.OTHER]).toContain(item.type);
@@ -32,8 +31,7 @@ liveDescribe('permissions live contract', () => {
   });
 
   it('returns entries from both permission sections for the Where Am I geography game', async () => {
-    const result = await liveClient.permissions({ appId: WHERE_AM_I });
-    const items = result as AppPermission[];
+    const items = await liveClient.permissions({ appId: WHERE_AM_I });
 
     for (const item of items) {
       expect(item.permission.length).toBeGreaterThan(0);
@@ -59,8 +57,7 @@ liveDescribe('permissions live contract', () => {
     const result = await liveClient.permissions({ appId: TRANSLATE, lang: 'de' });
 
     expect(result.length).toBeGreaterThan(0);
-    for (const entry of result) {
-      const item = entry as AppPermission;
+    for (const item of result) {
       expect(item.permission.length).toBeGreaterThan(0);
       expect([permission.COMMON, permission.OTHER]).toContain(item.type);
       expect(item.group.length).toBeGreaterThan(0);
@@ -69,8 +66,8 @@ liveDescribe('permissions live contract', () => {
 
   it('returns each short permission once and in the order of the detailed entries', async () => {
     for (const appId of [TRANSLATE, WHATSAPP, WHERE_AM_I]) {
-      const detailed = (await liveClient.permissions({ appId })) as AppPermission[];
-      const short = (await liveClient.permissions({ appId, short: true })) as string[];
+      const detailed = await liveClient.permissions({ appId });
+      const short = await liveClient.permissions({ appId, short: true });
 
       expect(new Set(short).size, `${appId} short output repeats a permission`).toBe(short.length);
       expect(short, `${appId} short output drifted from the detailed entries`).toEqual(
@@ -82,7 +79,7 @@ liveDescribe('permissions live contract', () => {
   it('names a group for every entry of a listing that spreads permissions over groups', async ({
     annotate,
   }) => {
-    const detailed = (await liveClient.permissions({ appId: WHATSAPP })) as AppPermission[];
+    const detailed = await liveClient.permissions({ appId: WHATSAPP });
 
     for (const entry of detailed) {
       expect(typeof entry.group).toBe('string');
@@ -97,13 +94,13 @@ liveDescribe('permissions live contract', () => {
   });
 
   it('names every group of an other only listing and keeps short in step', async ({ annotate }) => {
-    const detailed = (await liveClient.permissions({
+    const detailed = await liveClient.permissions({
       appId: OTHER_ONLY_PREREGISTRATION,
-    })) as AppPermission[];
-    const short = (await liveClient.permissions({
+    });
+    const short = await liveClient.permissions({
       appId: OTHER_ONLY_PREREGISTRATION,
       short: true,
-    })) as string[];
+    });
 
     for (const entry of detailed) {
       expect(entry.group.length).toBeGreaterThan(0);

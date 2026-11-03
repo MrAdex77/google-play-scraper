@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { createSimilar, similar, type SimilarOptions } from './similar.ts';
-import { similarAppSchema, type SimilarApp } from './schema.ts';
+import { similarAppSchema } from './schema.ts';
 import { findSimilarClusterPath, similarClusterUrl } from './specs.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import type { App } from '../app/schema.ts';
@@ -97,10 +97,10 @@ describe('similar fixture parsing', () => {
   it('parses at least five validated apps from the cluster fixture', async () => {
     const { fetchImpl } = sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]);
 
-    const items = (await similar({
+    const items = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: { fetchImpl },
-    })) as SimilarApp[];
+    });
 
     expect(items.length).toBeGreaterThanOrEqual(5);
     for (const item of items) {
@@ -114,10 +114,10 @@ describe('similar fixture parsing', () => {
     plainTextSpy.mockClear();
     const { fetchImpl } = sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]);
 
-    const items = (await similar({
+    const items = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: { fetchImpl },
-    })) as SimilarApp[];
+    });
 
     expectConvertedSummaries(plainTextSpy, items, 'translate cluster');
     expectHtmlSummaries(items, 'translate cluster');
@@ -126,28 +126,28 @@ describe('similar fixture parsing', () => {
   it('never returns the source app among the similar results', async () => {
     const { fetchImpl } = sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]);
 
-    const items = (await similar({
+    const items = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: { fetchImpl },
-    })) as SimilarApp[];
+    });
 
     expect(items.some((item) => item.appId === SOURCE_APP_ID)).toBe(false);
   });
 
   it('keeps the final continuation page whose token node is null', async () => {
     const firstPage = sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]);
-    const baseline = (await similar({
+    const baseline = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: { fetchImpl: firstPage.fetchImpl },
-    })) as SimilarApp[];
+    });
     const { fetchImpl, count } = sequenceFetch([detailsHtml, clusterHtml, lastContinuation]);
     const events: DegradationEvent[] = [];
 
-    const items = (await similar({
+    const items = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: { fetchImpl },
       onDegradation: (event) => events.push(event),
-    })) as SimilarApp[];
+    });
 
     expect(events).toEqual([]);
     expect(count()).toBe(3);
@@ -162,10 +162,10 @@ describe('similar fixture parsing', () => {
   it('returns an empty list when the details page has no similar cluster', async () => {
     const { fetchImpl, count } = sequenceFetch([noClusterDetails]);
 
-    const items = (await similar({
+    const items = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: { fetchImpl },
-    })) as SimilarApp[];
+    });
 
     expect(items).toEqual([]);
     expect(count()).toBe(1);
@@ -228,10 +228,10 @@ describe('similar cluster fallbacks', () => {
     ]);
     const { fetchImpl } = sequenceFetch([details, clusterPage]);
 
-    const items = (await similar({
+    const items = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: { fetchImpl },
-    })) as SimilarApp[];
+    });
 
     expect(items).toHaveLength(1);
     expect(items[0]?.appId).toBe('com.priceless.app');
@@ -247,10 +247,10 @@ describe('similar cluster fallbacks', () => {
     const emptyClusterPage = `<script>AF_initDataCallback({key: 'ds:3', hash: '1', data:[[]], sideChannel: {}});</script>`;
     const { fetchImpl, count } = sequenceFetch([details, emptyClusterPage]);
 
-    const items = (await similar({
+    const items = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: { fetchImpl },
-    })) as SimilarApp[];
+    });
 
     expect(items).toEqual([]);
     expect(count()).toBe(2);
@@ -316,12 +316,12 @@ describe('similar fullDetail', () => {
   });
 
   it('resolves each app through the injected getApp exactly once', async () => {
-    const plain = (await similar({
+    const plain = await similar({
       appId: SOURCE_APP_ID,
       requestOptions: {
         fetchImpl: sequenceFetch([detailsHtml, clusterHtml, emptyClusterBatch()]).fetchImpl,
       },
-    })) as SimilarApp[];
+    });
 
     const requested: string[] = [];
     const detailed = createSimilar((params) => {
@@ -396,12 +396,12 @@ describe('similar continuation offers', () => {
       ]),
     ]);
 
-    const result = (await similar({
+    const result = await similar({
       appId: SOURCE_APP_ID,
       country: 'de',
       lang: 'de',
       requestOptions: { fetchImpl },
-    })) as SimilarApp[];
+    });
 
     expect(result.map((item) => [item.appId, item.price, item.free, item.currency])).toEqual([
       ['com.first.page', 4.69, false, 'EUR'],
@@ -422,13 +422,13 @@ describe('similar continuation offers', () => {
     ]);
     const events: DegradationEvent[] = [];
 
-    const result = (await similar({
+    const result = await similar({
       appId: SOURCE_APP_ID,
       country: 'sa',
       lang: 'ar',
       onDegradation: (event) => events.push(event),
       requestOptions: { fetchImpl },
-    })) as SimilarApp[];
+    });
 
     expect(events).toEqual([]);
     expect(result.map((item) => [item.appId, item.price, item.currency])).toEqual([

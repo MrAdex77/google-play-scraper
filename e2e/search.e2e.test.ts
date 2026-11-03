@@ -41,11 +41,11 @@ liveDescribe('search live contract', () => {
   it('returns unique valid apps for a broad term', async () => {
     const events: IntegrityEvent[] = [];
     const num = 30;
-    const results = (await liveClient.search({
+    const results = await liveClient.search({
       term: 'panda',
       num,
       onIntegrityEvent: (event) => events.push(event),
-    })) as SearchResult[];
+    });
 
     expectRequestedCountContract(results.length, num, 'broad term search');
     expectAppItemsContract(results, 'broad term search');
@@ -57,7 +57,7 @@ liveDescribe('search live contract', () => {
     const page = await clientFromOptions({ throttle: 1 }).request({
       url: `https://play.google.com/store/search?q=${encodeURIComponent(BLOCK_MARKER_TERM)}&c=apps&hl=en&gl=us`,
     });
-    const results = (await liveClient.search({ term: BLOCK_MARKER_TERM, num })) as SearchResult[];
+    const results = await liveClient.search({ term: BLOCK_MARKER_TERM, num });
 
     expect(page).toContain(BLOCK_MARKER_TERM);
     expectRequestedCountContract(results.length, num, 'block marker search');
@@ -66,7 +66,7 @@ liveDescribe('search live contract', () => {
 
   it('agrees with the listing surface for the Where Am I game', async (ctx) => {
     const listing = await liveClient.app({ appId: GEO_GAME });
-    const results = (await liveClient.search({ term: listing.title, num: 30 })) as SearchResult[];
+    const results = await liveClient.search({ term: listing.title, num: 30 });
 
     expectAppItemsContract(results, 'owned title search');
 
@@ -83,11 +83,11 @@ liveDescribe('search live contract', () => {
 
   it('returns only free apps when the price filter is free', async () => {
     const num = 20;
-    const results = (await liveClient.search({
+    const results = await liveClient.search({
       term: 'vpn',
       price: 'free',
       num,
-    })) as SearchResult[];
+    });
 
     expectRequestedCountContract(results.length, num, 'free filtered search');
     expectAppItemsContract(results, 'free filtered search');
@@ -105,11 +105,11 @@ liveDescribe('search live contract', () => {
 
   it('returns only paid apps when the price filter is paid', async () => {
     const num = 10;
-    const results = (await liveClient.search({
+    const results = await liveClient.search({
       term: 'minecraft',
       price: 'paid',
       num,
-    })) as SearchResult[];
+    });
 
     expectRequestedCountContract(results.length, num, 'paid filtered search');
     expectAppItemsContract(results, 'paid filtered search');
@@ -121,7 +121,7 @@ liveDescribe('search live contract', () => {
 
   it('returns results for a non latin search term', async () => {
     const num = 10;
-    const results = (await liveClient.search({ term: 'ポケモン', num })) as SearchResult[];
+    const results = await liveClient.search({ term: 'ポケモン', num });
 
     expectRequestedCountContract(results.length, num, 'non latin search');
     expectAppItemsContract(results, 'non latin search');
@@ -129,12 +129,12 @@ liveDescribe('search live contract', () => {
 
   it('returns localized results for a german term with diacritics', async () => {
     const num = 20;
-    const results = (await liveClient.search({
+    const results = await liveClient.search({
       term: 'übersetzer',
       lang: 'de',
       country: 'de',
       num,
-    })) as SearchResult[];
+    });
 
     expectRequestedCountContract(results.length, num, 'german search');
     expectAppItemsContract(results, 'german search');
@@ -191,11 +191,11 @@ liveDescribe('search live contract', () => {
 
     const surfaced: string[] = [];
     for (const appId of EXACT_MATCH_CARD_CANDIDATES) {
-      const results = (await liveClient.search({
+      const results = await liveClient.search({
         term: appId,
         num: 5,
         onIntegrityEvent: (event) => events.push(event),
-      })) as SearchResult[];
+      });
 
       expectAppItemsContract(results, 'exact match search');
       const first = results[0];

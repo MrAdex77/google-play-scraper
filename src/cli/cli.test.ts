@@ -99,7 +99,8 @@ describe('runCli scrape failures', () => {
 
   it('returns 1 for a plain GooglePlayError with its message on stderr', async () => {
     const { api } = createStubApi();
-    api.search = () => Promise.reject(new GooglePlayError('rate limited by google play'));
+    api.search = (): Promise<never> =>
+      Promise.reject(new GooglePlayError('rate limited by google play'));
     const { io, stdout, stderr } = createIo();
     const code = await runCli(['search', 'panda'], io, api);
     expect(code).toBe(1);

@@ -27,13 +27,21 @@ import {
 import type { dataSafety } from './features/datasafety/datasafety.ts';
 import { createDataSafety, dataSafetyOptionsSchema } from './features/datasafety/datasafety.ts';
 import type { developer } from './features/developer/developer.ts';
-import { createDeveloper, developerOptionsSchema } from './features/developer/developer.ts';
+import {
+  createDeveloper,
+  developerOptionsSchema,
+  narrowDeveloper,
+} from './features/developer/developer.ts';
 import type { developerIterator } from './features/developer/developerIterator.ts';
 import { createDeveloperIterator } from './features/developer/developerIterator.ts';
 import type { list } from './features/list/list.ts';
-import { createList, listOptionsSchema } from './features/list/list.ts';
+import { createList, listOptionsSchema, narrowList } from './features/list/list.ts';
 import type { permissions } from './features/permissions/permissions.ts';
-import { createPermissions, permissionsOptionsSchema } from './features/permissions/permissions.ts';
+import {
+  createPermissions,
+  narrowPermissions,
+  permissionsOptionsSchema,
+} from './features/permissions/permissions.ts';
 import type { reviews } from './features/reviews/reviews.ts';
 import { createReviews, reviewsOptionsSchema } from './features/reviews/reviews.ts';
 import type { reviewsAll } from './features/reviews/reviewsAll.ts';
@@ -41,11 +49,11 @@ import { createReviewsAll } from './features/reviews/reviewsAll.ts';
 import type { reviewsIterator } from './features/reviews/reviewsIterator.ts';
 import { createReviewsIterator } from './features/reviews/reviewsIterator.ts';
 import type { search } from './features/search/search.ts';
-import { createSearch, searchOptionsSchema } from './features/search/search.ts';
+import { createSearch, narrowSearch, searchOptionsSchema } from './features/search/search.ts';
 import type { searchIterator } from './features/search/searchIterator.ts';
 import { createSearchIterator } from './features/search/searchIterator.ts';
 import type { similar } from './features/similar/similar.ts';
-import { createSimilar, similarOptionsSchema } from './features/similar/similar.ts';
+import { createSimilar, narrowSimilar, similarOptionsSchema } from './features/similar/similar.ts';
 import type { suggest } from './features/suggest/suggest.ts';
 import { createSuggest, suggestOptionsSchema } from './features/suggest/suggest.ts';
 
@@ -125,18 +133,22 @@ export function buildClientSurface(
       availabilityOptionsSchema,
       createAvailability(resolveClient),
     ),
-    search: cached('search', searchOptionsSchema, createSearch(cachedApp, resolveClient)),
-    suggest: cached('suggest', suggestOptionsSchema, createSuggest(resolveClient)),
-    list: cached('list', listOptionsSchema, createList(cachedApp, resolveClient)),
-    categories: (options?: CategoriesOptions) => cachedCategories(options ?? {}),
-    developer: cached(
-      'developer',
-      developerOptionsSchema,
-      createDeveloper(cachedApp, resolveClient),
+    search: narrowSearch(
+      cached('search', searchOptionsSchema, createSearch(cachedApp, resolveClient)),
     ),
-    similar: cached('similar', similarOptionsSchema, createSimilar(cachedApp, resolveClient)),
+    suggest: cached('suggest', suggestOptionsSchema, createSuggest(resolveClient)),
+    list: narrowList(cached('list', listOptionsSchema, createList(cachedApp, resolveClient))),
+    categories: (options?: CategoriesOptions) => cachedCategories(options ?? {}),
+    developer: narrowDeveloper(
+      cached('developer', developerOptionsSchema, createDeveloper(cachedApp, resolveClient)),
+    ),
+    similar: narrowSimilar(
+      cached('similar', similarOptionsSchema, createSimilar(cachedApp, resolveClient)),
+    ),
     reviews: cached('reviews', reviewsOptionsSchema, createReviews(resolveClient)),
-    permissions: cached('permissions', permissionsOptionsSchema, createPermissions(resolveClient)),
+    permissions: narrowPermissions(
+      cached('permissions', permissionsOptionsSchema, createPermissions(resolveClient)),
+    ),
     dataSafety: cached('dataSafety', dataSafetyOptionsSchema, createDataSafety(resolveClient)),
     reviewsIterator: passthrough(createReviewsIterator(resolveClient)),
     reviewsAll: passthrough(createReviewsAll(resolveClient)),

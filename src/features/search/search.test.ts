@@ -106,11 +106,11 @@ const clusterBatch = (ids: string[], nextToken: string | null): string =>
 
 describe('search fixture parsing', () => {
   it('parses the recorded panda page into validated results', async () => {
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       num: 30,
       requestOptions: { fetchImpl: fetchReturning(pandaHtml) },
-    })) as SearchResult[];
+    });
 
     expect(results.length).toBeGreaterThanOrEqual(20);
     for (const item of results) {
@@ -126,11 +126,11 @@ describe('search fixture parsing', () => {
 
     for (const html of fixtures) {
       plainTextSpy.mockClear();
-      const results = (await search({
+      const results = await search({
         term: 'recorded',
         num: 30,
         requestOptions: { fetchImpl: fetchReturning(html) },
-      })) as SearchResult[];
+      });
 
       expectConvertedSummaries(plainTextSpy, results, 'recorded search');
       expectHtmlSummaries(results, 'recorded search');
@@ -138,11 +138,11 @@ describe('search fixture parsing', () => {
   });
 
   it('decodes the entities and line breaks of a recorded panda summary', async () => {
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       num: 30,
       requestOptions: { fetchImpl: fetchReturning(pandaHtml) },
-    })) as SearchResult[];
+    });
 
     const restaurant = results.find((item) => item.summary?.startsWith('If you are an avid fan'));
     expect(restaurant?.summary).toContain("Little Panda's Restaurant");
@@ -151,11 +151,11 @@ describe('search fixture parsing', () => {
   });
 
   it('finds the Where Am I game among the where am i results', async () => {
-    const results = (await search({
+    const results = await search({
       term: 'where am i',
       num: 30,
       requestOptions: { fetchImpl: fetchReturning(whereAmIHtml) },
-    })) as SearchResult[];
+    });
 
     const game = results.find((item) => item.appId === 'com.adex77.WhereAmI');
     expect(game).toBeDefined();
@@ -166,10 +166,10 @@ describe('search fixture parsing', () => {
   });
 
   it('prepends the exact match app as the first result', async () => {
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(pandaHtml) },
-    })) as SearchResult[];
+    });
 
     expect(results[0]?.appId).toBe('com.pandaexpress.app');
     expect(results[0]?.title).toBe('Panda Express');
@@ -182,10 +182,10 @@ describe('search fixture parsing', () => {
       searchPageRoot(['routed'], ''),
     )}${buildServiceTable({ 'ds:11': SEARCH_RPC_ID })}`;
 
-    const results = (await search({
+    const results = await search({
       term: 'routed',
       requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['routed']);
   });
@@ -196,11 +196,11 @@ describe('search pagination', () => {
     const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
     const secondPage = clusterBatch(['d', 'e', 'f'], null);
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       num: 5,
       requestOptions: { fetchImpl: sequenceFetch([firstPage, secondPage]) },
-    })) as SearchResult[];
+    });
 
     expect(results).toHaveLength(5);
     expect(results.map((item) => item.appId)).toEqual(['a', 'b', 'c', 'd', 'e']);
@@ -211,12 +211,12 @@ describe('search pagination', () => {
     const malformedPage = clusterBatchResponse([[42]], null);
     const events: DegradationEvent[] = [];
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       num: 5,
       onDegradation: (event) => events.push(event),
       requestOptions: { fetchImpl: sequenceFetch([firstPage, malformedPage]) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b', 'c']);
     expect(events).toHaveLength(1);
@@ -229,11 +229,11 @@ describe('search pagination', () => {
     const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
     const secondPage = clusterBatch(['c', 'd', 'e'], null);
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       num: 5,
       requestOptions: { fetchImpl: sequenceFetch([firstPage, secondPage]) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b', 'c', 'd', 'e']);
   });
@@ -250,12 +250,12 @@ describe('search pagination', () => {
       null,
     );
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       price: 'paid',
       num: 3,
       requestOptions: { fetchImpl: sequenceFetch([firstPage, secondPage]) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['paid1', 'paid2', 'paid3']);
     expect(results.every((item) => !item.free && item.price > 0)).toBe(true);
@@ -264,11 +264,11 @@ describe('search pagination', () => {
   it('returns only the first page when it already satisfies num', async () => {
     const firstPage = searchPageHtml(['a', 'b', 'c'], 'page-2-token');
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       num: 2,
       requestOptions: { fetchImpl: fetchReturning(firstPage) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
   });
@@ -368,10 +368,10 @@ describe('search malformed pages', () => {
     const emptySection: unknown[] = [];
     emptySection[22] = [[]];
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(emptySection)) },
-    })) as SearchResult[];
+    });
 
     expect(results).toEqual([]);
   });
@@ -381,11 +381,11 @@ describe('search malformed pages', () => {
     section[23] = ['garbage'];
     const events: IntegrityEvent[] = [];
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       onIntegrityEvent: (event) => events.push(event),
       requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
     expect(events).toHaveLength(1);
@@ -396,13 +396,13 @@ describe('search malformed pages', () => {
 
   it('emits nothing when the exact match block is absent', async () => {
     const events: IntegrityEvent[] = [];
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       onIntegrityEvent: (event) => events.push(event),
       requestOptions: {
         fetchImpl: fetchReturning(searchPageWithSection(sectionWithApps(['a', 'b']))),
       },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
     expect(events).toEqual([]);
@@ -412,10 +412,10 @@ describe('search malformed pages', () => {
     const section = sectionWithApps(['a', 'b']);
     section[23] = ['garbage'];
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
   });
@@ -439,10 +439,10 @@ describe('search malformed pages', () => {
     const section = sectionWithApps(['a', 'b']);
     section[23] = exactMatchNode('a');
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['a', 'b']);
   });
@@ -451,10 +451,10 @@ describe('search malformed pages', () => {
     const section = sectionWithApps(['a']);
     section[23] = exactMatchNode('x');
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
     expect(results[0]?.developerId).toBe('x-dev');
@@ -474,10 +474,10 @@ describe('search malformed pages', () => {
     developerLink[2] = '/store/apps/developer?id=AT%26T+Services,+Inc.';
     section[23] = exactMatch;
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
-    })) as SearchResult[];
+    });
 
     expect(results[0]?.developerId).toBe('AT&T Services, Inc.');
   });
@@ -493,10 +493,10 @@ describe('search malformed pages', () => {
     developerLink[2] = 42;
     section[23] = exactMatch;
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(searchPageWithSection(section)) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
     expect(results[0]?.developerId).toBeUndefined();
@@ -526,11 +526,11 @@ describe('search price filtering', () => {
   it('keeps only paid apps when price is paid even if the page mixes both', async () => {
     const html = mixedPageHtml(['free1', 'free2'], ['paid1', 'paid2']);
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       price: 'paid',
       requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['paid1', 'paid2']);
     expect(results.every((item) => !item.free)).toBe(true);
@@ -539,11 +539,11 @@ describe('search price filtering', () => {
   it('keeps only free apps when price is free', async () => {
     const html = mixedPageHtml(['free1'], ['paid1', 'paid2']);
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       price: 'free',
       requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['free1']);
     expect(results.every((item) => item.free)).toBe(true);
@@ -552,11 +552,11 @@ describe('search price filtering', () => {
   it('returns both free and paid apps when price is all', async () => {
     const html = mixedPageHtml(['free1'], ['paid1']);
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       price: 'all',
       requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId).sort()).toEqual(['free1', 'paid1']);
   });
@@ -567,10 +567,10 @@ describe('search price filtering', () => {
     section[22] = [apps];
     const html = buildScriptData('ds:4', [[null, [section]]]);
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['free1', 'prereg1', 'paid1']);
     const preregister = results.find((item) => item.appId === 'prereg1');
@@ -585,11 +585,11 @@ describe('search price filtering', () => {
     section[22] = [apps];
     const html = buildScriptData('ds:4', [[null, [section]]]);
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       price: 'free',
       requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['free1']);
   });
@@ -688,11 +688,11 @@ describe('search fullDetail', () => {
   });
 
   it('resolves each result through the injected getApp exactly once', async () => {
-    const plain = (await search({
+    const plain = await search({
       term: 'panda',
       num: 3,
       requestOptions: { fetchImpl: fetchReturning(pandaHtml) },
-    })) as SearchResult[];
+    });
 
     const requested: string[] = [];
     const stubbedApp = (appId: string): App => ({ appId, description: `detail ${appId}` }) as App;
@@ -941,10 +941,10 @@ describe('search exact match resolution', () => {
       sectionWithApps(['a']),
     ]);
 
-    const results = (await search({
+    const results = await search({
       term: 'panda',
       requestOptions: { fetchImpl: fetchReturning(html) },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(['x', 'a']);
   });

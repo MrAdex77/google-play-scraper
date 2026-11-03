@@ -36,10 +36,10 @@ const fetchReturning =
 
 describe('permissions fixture parsing', () => {
   it('maps the fixture into typed permission entries', async () => {
-    const result = (await permissions({
+    const result = await permissions({
       appId: TRANSLATE,
       requestOptions: { fetchImpl: fetchReturning(fixture) },
-    })) as AppPermission[];
+    });
 
     expect(result.length).toBeGreaterThan(3);
     const types = new Set(result.map((entry) => entry.type));
