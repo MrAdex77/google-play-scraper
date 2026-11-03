@@ -27,7 +27,11 @@ import {
 import type { dataSafety } from './features/datasafety/datasafety.ts';
 import { createDataSafety, dataSafetyOptionsSchema } from './features/datasafety/datasafety.ts';
 import type { developer } from './features/developer/developer.ts';
-import { createDeveloper, developerOptionsSchema } from './features/developer/developer.ts';
+import {
+  createDeveloper,
+  developerOptionsSchema,
+  narrowDeveloper,
+} from './features/developer/developer.ts';
 import type { developerIterator } from './features/developer/developerIterator.ts';
 import { createDeveloperIterator } from './features/developer/developerIterator.ts';
 import type { list } from './features/list/list.ts';
@@ -131,10 +135,8 @@ export function buildClientSurface(
     suggest: cached('suggest', suggestOptionsSchema, createSuggest(resolveClient)),
     list: narrowList(cached('list', listOptionsSchema, createList(cachedApp, resolveClient))),
     categories: (options?: CategoriesOptions) => cachedCategories(options ?? {}),
-    developer: cached(
-      'developer',
-      developerOptionsSchema,
-      createDeveloper(cachedApp, resolveClient),
+    developer: narrowDeveloper(
+      cached('developer', developerOptionsSchema, createDeveloper(cachedApp, resolveClient)),
     ),
     similar: cached('similar', similarOptionsSchema, createSimilar(cachedApp, resolveClient)),
     reviews: cached('reviews', reviewsOptionsSchema, createReviews(resolveClient)),

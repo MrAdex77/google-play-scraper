@@ -2,6 +2,8 @@ import { describe, expectTypeOf, it } from 'vitest';
 import gplay, {
   type App,
   createClient,
+  developer,
+  type DeveloperApp,
   list,
   type ListItem,
   memoized,
@@ -59,6 +61,35 @@ describe('search return type', () => {
   it('keeps a boolean fullDetail invalidatable on the memoized client', () => {
     expectTypeOf(() =>
       cachedClient.cache.invalidate('search', { term: 'panda', fullDetail: flag }),
+    ).returns.toEqualTypeOf<boolean>();
+  });
+});
+
+describe('developer return type', () => {
+  it('is the same narrowed signature on every entry point', () => {
+    expectTypeOf(gplay.developer).toEqualTypeOf(developer);
+    expectTypeOf(client.developer).toEqualTypeOf(developer);
+    expectTypeOf(cachedClient.developer).toEqualTypeOf(developer);
+  });
+
+  it('selects the result type from a literal fullDetail', () => {
+    expectTypeOf(() =>
+      developer({ devId: 'DevCo', fullDetail: true }),
+    ).returns.resolves.toEqualTypeOf<App[]>();
+    expectTypeOf(() =>
+      developer({ devId: 'DevCo', fullDetail: false }),
+    ).returns.resolves.toEqualTypeOf<DeveloperApp[]>();
+    expectTypeOf(() => developer({ devId: 'DevCo' })).returns.resolves.toEqualTypeOf<
+      DeveloperApp[]
+    >();
+    expectTypeOf(() =>
+      developer({ devId: 'DevCo', fullDetail: flag }),
+    ).returns.resolves.toEqualTypeOf<DeveloperApp[] | App[]>();
+  });
+
+  it('keeps a boolean fullDetail invalidatable on the memoized client', () => {
+    expectTypeOf(() =>
+      cachedClient.cache.invalidate('developer', { devId: 'DevCo', fullDetail: flag }),
     ).returns.toEqualTypeOf<boolean>();
   });
 });
