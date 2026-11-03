@@ -3,13 +3,14 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { createDeveloper, developer, type DeveloperOptions } from './developer.ts';
 import { developerAppSchema, type DeveloperApp } from './schema.ts';
-import { developerUrl } from './specs.ts';
+import { developerUrl, NAME_CLUSTER_LAYOUT, NUMERIC_CLUSTER_LAYOUT } from './specs.ts';
 import { app } from '../app/app.ts';
 import type { App } from '../app/schema.ts';
 import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 import { plainText } from '../../core/htmlText.ts';
+import { clusterDeveloperLinks } from '../../../test/helpers/clusterDeveloperLinks.ts';
 import { expectConvertedSummaries, expectHtmlSummaries } from '../../../test/helpers/plainText.ts';
 
 vi.mock(import('../../core/htmlText.ts'), { spy: true });
@@ -363,6 +364,39 @@ describe('developer recorded continuation layouts', () => {
     expect(degradations).toEqual([]);
     expect(integrity).toEqual([]);
   });
+
+  it.each([
+    {
+      devId: GOOGLE_NAME,
+      firstPage: googleNameHtml,
+      continuation: googleNameContinuation,
+      appsPath: NAME_CLUSTER_LAYOUT.apps,
+      firstPageCount: NAME_FIRST_PAGE,
+    },
+    {
+      devId: GOOGLE_NUMERIC_ID,
+      firstPage: googleHtml,
+      continuation: googleContinuation,
+      appsPath: NUMERIC_CLUSTER_LAYOUT.apps,
+      firstPageCount: NUMERIC_FIRST_PAGE,
+    },
+  ])(
+    'reads the developer link of every continuation item for $devId',
+    async ({ devId, firstPage, continuation, appsPath, firstPageCount }) => {
+      const { items } = await runRecorded(devId, [firstPage, continuation]);
+      const continuationItems = items.slice(firstPageCount);
+
+      expect(
+        items.slice(0, firstPageCount).filter((item) => item.developerId !== undefined),
+      ).toEqual([]);
+      expect(continuationItems.map((item) => [item.appId, item.developerId])).toEqual(
+        clusterDeveloperLinks(continuation, appsPath),
+      );
+      expect(new Set(continuationItems.map((item) => item.developerId))).toEqual(
+        new Set([GOOGLE_NUMERIC_ID]),
+      );
+    },
+  );
 
   it('reports an anchor fallback when a numeric developer is served the name layout', async () => {
     const { items, degradations, integrity } = await runRecorded(GOOGLE_NUMERIC_ID, [
