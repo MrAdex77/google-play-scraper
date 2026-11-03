@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { categories, category, type ListItem } from '../src/index.ts';
+import { categories, category } from '../src/index.ts';
 import { liveClient, liveDescribe } from './helpers.ts';
 
 liveDescribe('categories live contract', () => {
@@ -15,11 +15,11 @@ liveDescribe('categories live contract', () => {
 
     for (const cat of sample) {
       expect(all).toContain(cat);
-      const items = (await liveClient.list({
+      const items = await liveClient.list({
         collection: 'TOP_FREE',
         category: cat,
         num: 3,
-      })) as ListItem[];
+      });
       expect(items.length).toBeGreaterThan(0);
       expect(items[0]!.appId.length).toBeGreaterThan(0);
     }

@@ -9,6 +9,7 @@ import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
 import { parseRaw } from '../../core/raw.ts';
+import { narrowByFlag } from '../../core/flagNarrowed.ts';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
 import { extract } from '../../core/spec.ts';
 import { app } from '../app/app.ts';
@@ -68,4 +69,6 @@ export function createList(getApp: GetApp<App>, resolveClient: ResolveClient = c
   };
 }
 
-export const list = createList(app);
+export const narrowList = narrowByFlag<'fullDetail', ListOptions, ListItem[], App[]>;
+
+export const list = narrowList(createList(app));

@@ -31,7 +31,7 @@ import { createDeveloper, developerOptionsSchema } from './features/developer/de
 import type { developerIterator } from './features/developer/developerIterator.ts';
 import { createDeveloperIterator } from './features/developer/developerIterator.ts';
 import type { list } from './features/list/list.ts';
-import { createList, listOptionsSchema } from './features/list/list.ts';
+import { createList, listOptionsSchema, narrowList } from './features/list/list.ts';
 import type { permissions } from './features/permissions/permissions.ts';
 import { createPermissions, permissionsOptionsSchema } from './features/permissions/permissions.ts';
 import type { reviews } from './features/reviews/reviews.ts';
@@ -127,7 +127,7 @@ export function buildClientSurface(
     ),
     search: cached('search', searchOptionsSchema, createSearch(cachedApp, resolveClient)),
     suggest: cached('suggest', suggestOptionsSchema, createSuggest(resolveClient)),
-    list: cached('list', listOptionsSchema, createList(cachedApp, resolveClient)),
+    list: narrowList(cached('list', listOptionsSchema, createList(cachedApp, resolveClient))),
     categories: (options?: CategoriesOptions) => cachedCategories(options ?? {}),
     developer: cached(
       'developer',

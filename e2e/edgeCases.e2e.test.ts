@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { permission } from '../src/index.ts';
-import type { App, IntegrityEvent, ListItem, SearchResult, SimilarApp } from '../src/index.ts';
+import type { App, IntegrityEvent, SearchResult, SimilarApp } from '../src/index.ts';
 import {
   expectAppItemsContract,
   expectListingContract,
@@ -227,11 +227,11 @@ liveDescribe('availability and catalogue edges live contract', () => {
     const counts: string[] = [];
 
     for (const { category, collection } of SPARSE_PAID_COLLECTIONS) {
-      const results = (await liveClient.list({
+      const results = await liveClient.list({
         category,
         collection,
         num: SPARSE_COLLECTION_NUM,
-      })) as ListItem[];
+      });
 
       expect(results.length).toBeLessThanOrEqual(SPARSE_COLLECTION_NUM);
       expectAppItemsContract(results, `${category} ${collection}`);
