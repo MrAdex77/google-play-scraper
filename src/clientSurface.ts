@@ -49,7 +49,7 @@ import { createSearch, narrowSearch, searchOptionsSchema } from './features/sear
 import type { searchIterator } from './features/search/searchIterator.ts';
 import { createSearchIterator } from './features/search/searchIterator.ts';
 import type { similar } from './features/similar/similar.ts';
-import { createSimilar, similarOptionsSchema } from './features/similar/similar.ts';
+import { createSimilar, narrowSimilar, similarOptionsSchema } from './features/similar/similar.ts';
 import type { suggest } from './features/suggest/suggest.ts';
 import { createSuggest, suggestOptionsSchema } from './features/suggest/suggest.ts';
 
@@ -138,7 +138,9 @@ export function buildClientSurface(
     developer: narrowDeveloper(
       cached('developer', developerOptionsSchema, createDeveloper(cachedApp, resolveClient)),
     ),
-    similar: cached('similar', similarOptionsSchema, createSimilar(cachedApp, resolveClient)),
+    similar: narrowSimilar(
+      cached('similar', similarOptionsSchema, createSimilar(cachedApp, resolveClient)),
+    ),
     reviews: cached('reviews', reviewsOptionsSchema, createReviews(resolveClient)),
     permissions: cached('permissions', permissionsOptionsSchema, createPermissions(resolveClient)),
     dataSafety: cached('dataSafety', dataSafetyOptionsSchema, createDataSafety(resolveClient)),

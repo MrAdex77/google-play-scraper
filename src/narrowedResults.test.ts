@@ -9,6 +9,8 @@ import gplay, {
   memoized,
   search,
   type SearchResult,
+  similar,
+  type SimilarApp,
 } from './index.ts';
 
 const flag = Math.random() < 2;
@@ -90,6 +92,35 @@ describe('developer return type', () => {
   it('keeps a boolean fullDetail invalidatable on the memoized client', () => {
     expectTypeOf(() =>
       cachedClient.cache.invalidate('developer', { devId: 'DevCo', fullDetail: flag }),
+    ).returns.toEqualTypeOf<boolean>();
+  });
+});
+
+describe('similar return type', () => {
+  it('is the same narrowed signature on every entry point', () => {
+    expectTypeOf(gplay.similar).toEqualTypeOf(similar);
+    expectTypeOf(client.similar).toEqualTypeOf(similar);
+    expectTypeOf(cachedClient.similar).toEqualTypeOf(similar);
+  });
+
+  it('selects the result type from a literal fullDetail', () => {
+    expectTypeOf(() =>
+      similar({ appId: 'com.example.app', fullDetail: true }),
+    ).returns.resolves.toEqualTypeOf<App[]>();
+    expectTypeOf(() =>
+      similar({ appId: 'com.example.app', fullDetail: false }),
+    ).returns.resolves.toEqualTypeOf<SimilarApp[]>();
+    expectTypeOf(() => similar({ appId: 'com.example.app' })).returns.resolves.toEqualTypeOf<
+      SimilarApp[]
+    >();
+    expectTypeOf(() =>
+      similar({ appId: 'com.example.app', fullDetail: flag }),
+    ).returns.resolves.toEqualTypeOf<SimilarApp[] | App[]>();
+  });
+
+  it('keeps a boolean fullDetail invalidatable on the memoized client', () => {
+    expectTypeOf(() =>
+      cachedClient.cache.invalidate('similar', { appId: 'com.example.app', fullDetail: flag }),
     ).returns.toEqualTypeOf<boolean>();
   });
 });

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { permission } from '../src/index.ts';
-import type { App, IntegrityEvent, SimilarApp } from '../src/index.ts';
+import type { App, IntegrityEvent } from '../src/index.ts';
 import {
   expectAppItemsContract,
   expectListingContract,
@@ -207,10 +207,10 @@ liveDescribe('availability and catalogue edges live contract', () => {
 
   it('returns a well formed similar cluster for a low profile listing', async ({ annotate }) => {
     const events: IntegrityEvent[] = [];
-    const results = (await liveClient.similar({
+    const results = await liveClient.similar({
       appId: SPARSE_SIMILAR_ANCHOR,
       onIntegrityEvent: (event) => events.push(event),
-    })) as SimilarApp[];
+    });
 
     expect(Array.isArray(results)).toBe(true);
     expectAppItemsContract(results, 'low profile similar cluster');
@@ -374,7 +374,7 @@ liveDescribe('preregistration listings live contract', () => {
     if (safety.privacyPolicyUrl !== undefined) {
       expect(safety.privacyPolicyUrl.startsWith('http')).toBe(true);
     }
-    expectAppItemsContract(similar as SimilarApp[], 'candidate similar cluster');
+    expectAppItemsContract(similar, 'candidate similar cluster');
 
     if (listing.ratings === undefined) {
       expect(reviews.data).toEqual([]);
