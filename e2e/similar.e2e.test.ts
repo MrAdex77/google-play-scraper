@@ -5,7 +5,7 @@ import { buildClusterBody, CLUSTER_PAGE_SIZE, CLUSTER_RPC_ID } from '../src/core
 import { getPath } from '../src/core/path.ts';
 import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/similar/similar.ts';
 import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
-import { NotFoundError, type DegradationEvent, type SimilarApp } from '../src/index.ts';
+import { NotFoundError, type DegradationEvent } from '../src/index.ts';
 import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
 import { expectFieldFilledOnEachPageShape } from './fieldPresence.ts';
 import {
@@ -49,7 +49,7 @@ function describeTokenNode(tokenNode: unknown): string {
 liveDescribe('similar live contract', () => {
   it('returns a well formed cluster for the Where Am I geography game', async ({ annotate }) => {
     const sourceAppId = 'com.adex77.WhereAmI';
-    const items = (await liveClient.similar({ appId: sourceAppId })) as SimilarApp[];
+    const items = await liveClient.similar({ appId: sourceAppId });
 
     expectAppItemsContract(items, 'geography game similar cluster');
     expect(items.some((item) => item.appId === sourceAppId)).toBe(false);
@@ -65,10 +65,10 @@ liveDescribe('similar live contract', () => {
     const events: DegradationEvent[] = [];
     const { apps, token } = await fetchSimilarFirstPage(FLAGSHIP_QUERY, clientFromOptions);
 
-    const items = (await liveClient.similar({
+    const items = await liveClient.similar({
       appId: FLAGSHIP_APP_ID,
       onDegradation: (event) => events.push(event),
-    })) as SimilarApp[];
+    });
 
     expectContinuationContract(
       { firstPageCount: apps.length, token },
@@ -110,10 +110,10 @@ liveDescribe('similar live contract', () => {
       'notice',
     );
 
-    const items = (await liveClient.similar({
+    const items = await liveClient.similar({
       appId: SPARSE_APP_ID,
       onDegradation: (event) => events.push(event),
-    })) as SimilarApp[];
+    });
 
     expect(events).toEqual([]);
     expectContinuationContract(
@@ -133,11 +133,11 @@ liveDescribe('similar live contract', () => {
       clientFromOptions,
     );
 
-    const items = (await liveClient.similar({
+    const items = await liveClient.similar({
       appId: GAME_APP_ID,
       ...GERMAN_STOREFRONT,
       onDegradation: (event) => events.push(event),
-    })) as SimilarApp[];
+    });
 
     expect(events, 'the german game cluster degraded').toEqual([]);
     expectContinuationContract(

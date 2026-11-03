@@ -95,12 +95,12 @@ describe('search over a recorded continuation', () => {
     const events: DegradationEvent[] = [];
     const { fetchImpl } = recordedFetch([firstPageHtml, continuationText]);
 
-    const results = (await search({
+    const results = await search({
       term: QUERY.term,
       num,
       onDegradation: (event) => events.push(event),
       requestOptions: { fetchImpl },
-    })) as SearchResult[];
+    });
 
     const ids = results.map((item) => item.appId);
     expect(events).toEqual([]);
@@ -130,11 +130,11 @@ describe('search over a recorded continuation', () => {
     const firstIds = await firstPageIds();
     const { fetchImpl, bodies } = recordedFetch([firstPageHtml, continuationText]);
 
-    const results = (await search({
+    const results = await search({
       term: QUERY.term,
       num: firstIds.length,
       requestOptions: { fetchImpl },
-    })) as SearchResult[];
+    });
 
     expect(results.map((item) => item.appId)).toEqual(firstIds);
     expect(bodies).toHaveLength(1);
@@ -148,11 +148,11 @@ describe('search over a recorded continuation', () => {
       clusterBatchResponse([], null),
     ]);
 
-    const results = (await search({
+    const results = await search({
       term: QUERY.term,
       num: firstIds.length + CLUSTER_PAGE_SIZE,
       requestOptions: { fetchImpl },
-    })) as SearchResult[];
+    });
     const appended = results.slice(firstIds.length);
 
     expect(appended.map((item) => [item.appId, item.developerId])).toEqual(

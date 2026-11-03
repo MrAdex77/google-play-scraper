@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { permission } from '../src/index.ts';
-import type { App, IntegrityEvent, ListItem, SearchResult, SimilarApp } from '../src/index.ts';
+import type { App, IntegrityEvent } from '../src/index.ts';
 import {
   expectAppItemsContract,
   expectListingContract,
@@ -152,7 +152,7 @@ liveDescribe('sparse listings live contract', () => {
 
   it('keeps rating fields consistent across a mixed search page', async ({ annotate }) => {
     const num = 30;
-    const results = (await liveClient.search({ term: 'hobby tracker', num })) as SearchResult[];
+    const results = await liveClient.search({ term: 'hobby tracker', num });
 
     expectRequestedCountContract(results.length, num, 'hobby tracker search');
     expectAppItemsContract(results, 'hobby tracker search');
@@ -207,10 +207,10 @@ liveDescribe('availability and catalogue edges live contract', () => {
 
   it('returns a well formed similar cluster for a low profile listing', async ({ annotate }) => {
     const events: IntegrityEvent[] = [];
-    const results = (await liveClient.similar({
+    const results = await liveClient.similar({
       appId: SPARSE_SIMILAR_ANCHOR,
       onIntegrityEvent: (event) => events.push(event),
-    })) as SimilarApp[];
+    });
 
     expect(Array.isArray(results)).toBe(true);
     expectAppItemsContract(results, 'low profile similar cluster');
@@ -227,11 +227,11 @@ liveDescribe('availability and catalogue edges live contract', () => {
     const counts: string[] = [];
 
     for (const { category, collection } of SPARSE_PAID_COLLECTIONS) {
-      const results = (await liveClient.list({
+      const results = await liveClient.list({
         category,
         collection,
         num: SPARSE_COLLECTION_NUM,
-      })) as ListItem[];
+      });
 
       expect(results.length).toBeLessThanOrEqual(SPARSE_COLLECTION_NUM);
       expectAppItemsContract(results, `${category} ${collection}`);
@@ -374,7 +374,7 @@ liveDescribe('preregistration listings live contract', () => {
     if (safety.privacyPolicyUrl !== undefined) {
       expect(safety.privacyPolicyUrl.startsWith('http')).toBe(true);
     }
-    expectAppItemsContract(similar as SimilarApp[], 'candidate similar cluster');
+    expectAppItemsContract(similar, 'candidate similar cluster');
 
     if (listing.ratings === undefined) {
       expect(reviews.data).toEqual([]);
@@ -391,10 +391,10 @@ liveDescribe('preregistration listings live contract', () => {
   it('resolves a candidate identically on the listing and search surfaces', async (ctx) => {
     const appId = PRIMARY_CANDIDATE;
     const listing = await liveClient.app({ appId });
-    const results = (await liveClient.search({
+    const results = await liveClient.search({
       term: listing.title,
       num: 20,
-    })) as SearchResult[];
+    });
 
     expectAppItemsContract(results, 'candidate title search');
 

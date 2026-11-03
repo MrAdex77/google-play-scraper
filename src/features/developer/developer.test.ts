@@ -103,10 +103,10 @@ const namePageHtml = (ids: string[]): string => {
 
 describe('developer degraded pages', () => {
   it('parses a priceless name page item as costing zero', async () => {
-    const items = (await developer({
+    const items = await developer({
       devId: 'Adex77',
       requestOptions: { fetchImpl: fetchReturning(namePageHtml(['com.adex77.WhereAmI'])) },
-    })) as DeveloperApp[];
+    });
 
     expect(items).toHaveLength(1);
     expect(items[0]?.appId).toBe('com.adex77.WhereAmI');
@@ -136,29 +136,29 @@ describe('developer degraded pages', () => {
   });
 
   it('falls back to the name layout when a numeric dev page serves it instead', async () => {
-    const items = (await developer({
+    const items = await developer({
       devId: '7502834977667077022',
       requestOptions: { fetchImpl: fetchReturning(namePageHtml(['com.adex77.WhereAmI'])) },
-    })) as DeveloperApp[];
+    });
 
     expect(items).toHaveLength(1);
     expect(items[0]?.appId).toBe('com.adex77.WhereAmI');
   });
 
   it('returns an empty list when the developer page carries no apps', async () => {
-    const items = (await developer({
+    const items = await developer({
       devId: '5700313618786177705',
       requestOptions: { fetchImpl: fetchReturning(buildDsThree([[]])) },
-    })) as DeveloperApp[];
+    });
 
     expect(items).toEqual([]);
   });
 
   it('returns an empty list from a valid empty developer layout', async () => {
-    const items = (await developer({
+    const items = await developer({
       devId: 'Adex77',
       requestOptions: { fetchImpl: fetchReturning(namePageHtml([])) },
-    })) as DeveloperApp[];
+    });
 
     expect(items).toEqual([]);
   });
@@ -235,11 +235,11 @@ describe('developer fixture parsing', () => {
       developerBatch(['g0', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'], null),
     ]);
 
-    const items = (await developer({
+    const items = await developer({
       devId: '5700313618786177705',
       num: 40,
       requestOptions: { fetchImpl },
-    })) as DeveloperApp[];
+    });
 
     expect(items.length).toBeGreaterThanOrEqual(20);
     for (const item of items) {
@@ -250,10 +250,10 @@ describe('developer fixture parsing', () => {
   });
 
   it('parses at least three validated apps from the Mojang name fixture', async () => {
-    const items = (await developer({
+    const items = await developer({
       devId: 'Mojang',
       requestOptions: { fetchImpl: fetchReturning(mojangHtml) },
-    })) as DeveloperApp[];
+    });
 
     expect(items.length).toBeGreaterThanOrEqual(3);
     for (const item of items) {
@@ -264,14 +264,14 @@ describe('developer fixture parsing', () => {
 
   it('returns plain text summaries for both recorded developer pages', async () => {
     plainTextSpy.mockClear();
-    const mojang = (await developer({
+    const mojang = await developer({
       devId: 'Mojang',
       requestOptions: { fetchImpl: fetchReturning(mojangHtml) },
-    })) as DeveloperApp[];
-    const google = (await developer({
+    });
+    const google = await developer({
       devId: '5700313618786177705',
       requestOptions: { fetchImpl: fetchReturning(googleHtml) },
-    })) as DeveloperApp[];
+    });
 
     expectConvertedSummaries(plainTextSpy, mojang, 'mojang');
     expectHtmlSummaries(mojang, 'mojang');
@@ -289,11 +289,11 @@ describe('developer pagination', () => {
       developerBatch(['x0', 'x1', 'x2'], null),
     ]);
 
-    const items = (await developer({
+    const items = await developer({
       devId: '5700313618786177705',
       num: 13,
       requestOptions: { fetchImpl },
-    })) as DeveloperApp[];
+    });
 
     expect(count()).toBe(2);
     expect(items).toHaveLength(13);
@@ -303,11 +303,11 @@ describe('developer pagination', () => {
   it('skips pagination when the first page already satisfies num', async () => {
     const { fetchImpl, count } = sequenceFetch([googleHtml, developerBatch(['x0'], null)]);
 
-    const items = (await developer({
+    const items = await developer({
       devId: '5700313618786177705',
       num: 5,
       requestOptions: { fetchImpl },
-    })) as DeveloperApp[];
+    });
 
     expect(count()).toBe(1);
     expect(items).toHaveLength(5);
@@ -324,13 +324,13 @@ const runRecorded = async (devId: string, bodies: string[]): Promise<RecordedRun
   const degradations: DegradationEvent[] = [];
   const integrity: IntegrityEvent[] = [];
   const { fetchImpl } = sequenceFetch(bodies);
-  const items = (await developer({
+  const items = await developer({
     devId,
     num: 500,
     requestOptions: { fetchImpl },
     onDegradation: (event) => degradations.push(event),
     onIntegrityEvent: (event) => integrity.push(event),
-  })) as DeveloperApp[];
+  });
   return { items, degradations, integrity };
 };
 
@@ -485,10 +485,10 @@ describe('developer fullDetail', () => {
   });
 
   it('resolves each app through the injected getApp exactly once', async () => {
-    const plain = (await developer({
+    const plain = await developer({
       devId: 'Mojang',
       requestOptions: { fetchImpl: fetchReturning(mojangHtml) },
-    })) as DeveloperApp[];
+    });
 
     const requested: string[] = [];
     const detailed = createDeveloper((params) => {

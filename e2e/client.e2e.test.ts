@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createClient, memoized, type SearchResult } from '../src/index.ts';
+import { createClient, memoized } from '../src/index.ts';
 import { liveClient, liveDescribe } from './helpers.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
@@ -13,7 +13,7 @@ liveDescribe('createClient live contract', () => {
     expect(details.appId).toBe(TRANSLATE);
     expect(details.title.length).toBeGreaterThan(0);
 
-    const results = (await liveClient.search({ term: 'where am i', num: 5 })) as SearchResult[];
+    const results = await liveClient.search({ term: 'where am i', num: 5 });
     expect(results.length).toBeGreaterThan(0);
     for (const item of results) {
       expect(item.appId.length).toBeGreaterThan(0);

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { createList, list, type ListOptions } from './list.ts';
-import { listItemSchema, type ListItem } from './schema.ts';
+import { listItemSchema } from './schema.ts';
 import { buildListBody, CLUSTER_NAMES, LIST_RPC_ID } from './specs.ts';
 import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
@@ -60,20 +60,20 @@ const listPayload = (ids: string[]): unknown => {
 
 describe('list degraded payloads', () => {
   it('returns an empty list when the payload carries an empty apps collection', async () => {
-    const items = (await list({
+    const items = await list({
       requestOptions: { fetchImpl: fetchReturning(listBatch(listPayload([]))) },
-    })) as ListItem[];
+    });
 
     expect(items).toEqual([]);
   });
 
   it('returns an empty list when google reports a collection with no entries', async () => {
-    const items = (await list({
+    const items = await list({
       collection: 'TOP_PAID',
       requestOptions: {
         fetchImpl: fetchReturning(listBatch([[null, null, null, [], false, ['token']]])),
       },
-    })) as ListItem[];
+    });
 
     expect(items).toEqual([]);
   });
@@ -105,9 +105,9 @@ describe('list degraded payloads', () => {
   });
 
   it('parses a priceless item as costing zero without a currency', async () => {
-    const items = (await list({
+    const items = await list({
       requestOptions: { fetchImpl: fetchReturning(listBatch(listPayload(['com.free.app']))) },
-    })) as ListItem[];
+    });
 
     expect(items).toHaveLength(1);
     expect(items[0]?.appId).toBe('com.free.app');
@@ -119,12 +119,12 @@ describe('list degraded payloads', () => {
 
 describe('list fixture parsing', () => {
   it('decodes the recorded collection into at least fifty validated apps', async () => {
-    const items = (await list({
+    const items = await list({
       collection: 'TOP_FREE',
       category: 'GAME',
       num: 100,
       requestOptions: { fetchImpl: fetchReturning(topFreeGame) },
-    })) as ListItem[];
+    });
 
     expect(items.length).toBeGreaterThanOrEqual(50);
     for (const item of items) {
@@ -137,12 +137,12 @@ describe('list fixture parsing', () => {
 
   it('returns plain text summaries for every recorded item', async () => {
     plainTextSpy.mockClear();
-    const items = (await list({
+    const items = await list({
       collection: 'TOP_FREE',
       category: 'GAME',
       num: 100,
       requestOptions: { fetchImpl: fetchReturning(topFreeGame) },
-    })) as ListItem[];
+    });
 
     expectConvertedSummaries(plainTextSpy, items, 'top free game');
     expectHtmlSummaries(items, 'top free game');
@@ -252,12 +252,12 @@ describe('list fullDetail', () => {
   });
 
   it('resolves each item through the injected getApp exactly once', async () => {
-    const plain = (await list({
+    const plain = await list({
       collection: 'TOP_FREE',
       category: 'GAME',
       num: 100,
       requestOptions: { fetchImpl: fetchReturning(topFreeGame) },
-    })) as ListItem[];
+    });
 
     const requested: string[] = [];
     const listWithStub = createList((params) => {

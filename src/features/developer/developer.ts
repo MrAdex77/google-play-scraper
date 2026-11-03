@@ -4,6 +4,7 @@ import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
 import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { fetchClusterApps, type ClusterPagesParams } from '../../core/pagination.ts';
+import { narrowByFlag } from '../../core/flagNarrowed.ts';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.ts';
@@ -157,4 +158,6 @@ export function createDeveloper(
   };
 }
 
-export const developer = createDeveloper(app);
+export const narrowDeveloper = narrowByFlag<'fullDetail', DeveloperOptions, DeveloperApp[], App[]>;
+
+export const developer = narrowDeveloper(createDeveloper(app));

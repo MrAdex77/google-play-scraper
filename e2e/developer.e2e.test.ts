@@ -60,12 +60,12 @@ async function continuationOffersAgreeing(storefront: Storefront): Promise<Devel
     throttle: 1,
   });
 
-  const items = (await liveClient.developer({
+  const items = await liveClient.developer({
     devId: PAID_CATALOGUE_DEV_ID,
     num: PAID_CATALOGUE_NUM,
     ...storefront,
     onDegradation: (event) => events.push(event),
-  })) as DeveloperApp[];
+  });
 
   expect(events, `${label} degraded`).toEqual([]);
   expectContinuationContract(anchor, items.length, PAID_CATALOGUE_NUM, label);
@@ -90,10 +90,10 @@ liveDescribe('developer live contract', () => {
   it('returns the whole first page when num matches it', async () => {
     const { firstPageCount } = await googleFirstPage();
 
-    const items = (await liveClient.developer({
+    const items = await liveClient.developer({
       devId: GOOGLE_DEV_ID,
       num: firstPageCount,
-    })) as DeveloperApp[];
+    });
 
     expect(items).toHaveLength(firstPageCount);
     expectAppItemsContract(items, 'google developer page');
@@ -106,10 +106,10 @@ liveDescribe('developer live contract', () => {
     const anchor = await googleFirstPage();
     const num = anchor.firstPageCount + 1;
 
-    const items = (await liveClient.developer({
+    const items = await liveClient.developer({
       devId: GOOGLE_DEV_ID,
       num,
-    })) as DeveloperApp[];
+    });
 
     expectContinuationContract(anchor, items.length, num, 'google developer boundary slice');
     expectAppItemsContract(items, 'google developer boundary slice');
@@ -120,12 +120,12 @@ liveDescribe('developer live contract', () => {
     const integrity: IntegrityEvent[] = [];
     const anchor = await googleFirstPage();
 
-    const items = (await liveClient.developer({
+    const items = await liveClient.developer({
       devId: GOOGLE_DEV_ID,
       num: MULTI_PAGE_NUM,
       onDegradation: (event) => events.push(event),
       onIntegrityEvent: (event) => integrity.push(event),
-    })) as DeveloperApp[];
+    });
 
     expectContinuationContract(anchor, items.length, MULTI_PAGE_NUM, 'google developer');
     expectAppItemsContract(items, 'google developer continuation');
@@ -148,12 +148,12 @@ liveDescribe('developer live contract', () => {
     const integrity: IntegrityEvent[] = [];
     const anchor = await firstPageOf(GOOGLE_NAME_QUERY);
 
-    const items = (await liveClient.developer({
+    const items = await liveClient.developer({
       devId: GOOGLE_NAME,
       num: CATALOG_PROBE,
       onDegradation: (event) => events.push(event),
       onIntegrityEvent: (event) => integrity.push(event),
-    })) as DeveloperApp[];
+    });
 
     expectContinuationContract(anchor, items.length, CATALOG_PROBE, 'google name developer');
     expectAppItemsContract(items, 'google name developer continuation');
@@ -175,13 +175,13 @@ liveDescribe('developer live contract', () => {
   });
 
   it('includes Minecraft when resolving the Mojang name id', async () => {
-    const items = (await liveClient.developer({ devId: 'Mojang' })) as DeveloperApp[];
+    const items = await liveClient.developer({ devId: 'Mojang' });
 
     expect(items.map((item) => item.appId)).toContain('com.mojang.minecraftpe');
   });
 
   it('includes the Where Am I game when resolving the Adex77 name id', async () => {
-    const items = (await liveClient.developer({ devId: 'Adex77' })) as DeveloperApp[];
+    const items = await liveClient.developer({ devId: 'Adex77' });
 
     expect(items.map((item) => item.appId)).toContain('com.adex77.WhereAmI');
     expectAppItemsContract(items, 'adex77 developer page');
@@ -193,10 +193,10 @@ liveDescribe('developer live contract', () => {
   it('resolves a developer name containing a comma and space', async () => {
     const events: DegradationEvent[] = [];
 
-    const items = (await liveClient.developer({
+    const items = await liveClient.developer({
       devId: NETFLIX_NAME,
       onDegradation: (event) => events.push(event),
-    })) as DeveloperApp[];
+    });
 
     expect(items.map((item) => item.appId)).toContain('com.netflix.mediaclient');
     expectAppItemsContract(items, 'comma developer page');
@@ -212,10 +212,10 @@ liveDescribe('developer live contract', () => {
       const details = await liveClient.app({ appId });
 
       expect(details.developerId, `${appId} developerId must be the plain name`).toBe(developer);
-      const items = (await liveClient.developer({
+      const items = await liveClient.developer({
         devId: details.developerId,
         num: 10,
-      })) as DeveloperApp[];
+      });
 
       expect(items.length, `${appId} developer page served no apps`).toBeGreaterThan(0);
       expectAppItemsContract(items, `${appId} round trip`);
@@ -250,10 +250,10 @@ liveDescribe('developer live contract', () => {
   });
 
   it('returns the full catalog and stops when num exceeds it', async () => {
-    const items = (await liveClient.developer({
+    const items = await liveClient.developer({
       devId: 'Adex77',
       num: CATALOG_PROBE,
-    })) as DeveloperApp[];
+    });
 
     expect(items.length).toBeGreaterThanOrEqual(1);
     expect(items.length).toBeLessThan(CATALOG_PROBE);

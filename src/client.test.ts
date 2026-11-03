@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client.ts';
 import { app } from './features/app/app.ts';
-import type { App } from './features/app/schema.ts';
 import type { DegradationEvent } from './core/degradation.ts';
 import { ValidationError } from './core/errors.ts';
 import { MALFORMED_APP_IDS } from '../test/helpers/appIds.ts';
@@ -242,7 +241,7 @@ describe('createClient', () => {
 
     const pending = client.search({ term: 'panda', num: 3, fullDetail: true });
     await vi.runAllTimersAsync();
-    const results = (await pending) as App[];
+    const results = await pending;
 
     expect(results).toHaveLength(3);
     for (const item of results) {
