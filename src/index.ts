@@ -34,6 +34,8 @@ export type {
   RetryEvent,
 } from './core/http.ts';
 
+export type { FlagNarrowed } from './core/flagNarrowed.ts';
+
 export { createCountryFetch, countryFetchSettingsSchema } from './core/countryFetch.ts';
 export type { CountryFetchSettings } from './core/countryFetch.ts';
 
