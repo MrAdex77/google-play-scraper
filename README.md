@@ -213,7 +213,7 @@ try {
 
 ### Return types
 
-`list`, `search`, `developer` and `similar` return their item type, or `App[]` when `fullDetail` is `true`. `permissions` returns `AppPermission[]`, or `string[]` when `short` is `true`. TypeScript follows the flag on every entry point (the named exports, the default export, `createClient()` and `memoized()`): pass the literal `true` and the result is typed `App[]` (or `string[]`), leave the flag out or pass `false` and it is the item type, so no cast is needed. A flag held in a `boolean` variable gives the union of both types, because the shape then depends on its value at runtime.
+`list`, `search`, `developer` and `similar` return their item type, or `App[]` when `fullDetail` is `true`. `permissions` returns `AppPermission[]`, or `string[]` when `short` is `true`. TypeScript follows the flag on every entry point (the named exports, the default export, `createClient()` and `memoized()`): pass the literal `true` and the result is typed `App[]` (or `string[]`), leave the flag out or pass `false` and it is the item type, so no cast is needed. A flag held in a `boolean` variable gives the union of both types, because the shape then depends on its value at runtime. The same happens to an options object stored in a variable before the call, since TypeScript widens its `true` to `boolean`; write the object inline or declare it `as const` to keep the narrow type.
 
 ```typescript
 import { list, permissions } from '@mradex77/google-play-scraper';
