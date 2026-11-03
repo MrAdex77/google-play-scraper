@@ -2,6 +2,7 @@ import * as z from 'zod/mini';
 import { permission } from '../../constants.ts';
 import { legacyBatchUrl, parseBatchResponse } from '../../core/batchexecute.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import { narrowByFlag } from '../../core/flagNarrowed.ts';
 import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { parseRaw } from '../../core/raw.ts';
 import { permissionSchema, type AppPermission } from './schema.ts';
@@ -56,4 +57,11 @@ export function createPermissions(resolveClient: ResolveClient = clientFromOptio
   };
 }
 
-export const permissions = createPermissions();
+export const narrowPermissions = narrowByFlag<
+  'short',
+  PermissionsOptions,
+  AppPermission[],
+  string[]
+>;
+
+export const permissions = narrowPermissions(createPermissions());

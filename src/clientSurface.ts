@@ -37,7 +37,11 @@ import { createDeveloperIterator } from './features/developer/developerIterator.
 import type { list } from './features/list/list.ts';
 import { createList, listOptionsSchema, narrowList } from './features/list/list.ts';
 import type { permissions } from './features/permissions/permissions.ts';
-import { createPermissions, permissionsOptionsSchema } from './features/permissions/permissions.ts';
+import {
+  createPermissions,
+  narrowPermissions,
+  permissionsOptionsSchema,
+} from './features/permissions/permissions.ts';
 import type { reviews } from './features/reviews/reviews.ts';
 import { createReviews, reviewsOptionsSchema } from './features/reviews/reviews.ts';
 import type { reviewsAll } from './features/reviews/reviewsAll.ts';
@@ -142,7 +146,9 @@ export function buildClientSurface(
       cached('similar', similarOptionsSchema, createSimilar(cachedApp, resolveClient)),
     ),
     reviews: cached('reviews', reviewsOptionsSchema, createReviews(resolveClient)),
-    permissions: cached('permissions', permissionsOptionsSchema, createPermissions(resolveClient)),
+    permissions: narrowPermissions(
+      cached('permissions', permissionsOptionsSchema, createPermissions(resolveClient)),
+    ),
     dataSafety: cached('dataSafety', dataSafetyOptionsSchema, createDataSafety(resolveClient)),
     reviewsIterator: passthrough(createReviewsIterator(resolveClient)),
     reviewsAll: passthrough(createReviewsAll(resolveClient)),

@@ -1,12 +1,14 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import gplay, {
   type App,
+  type AppPermission,
   createClient,
   developer,
   type DeveloperApp,
   list,
   type ListItem,
   memoized,
+  permissions,
   search,
   type SearchResult,
   similar,
@@ -121,6 +123,35 @@ describe('similar return type', () => {
   it('keeps a boolean fullDetail invalidatable on the memoized client', () => {
     expectTypeOf(() =>
       cachedClient.cache.invalidate('similar', { appId: 'com.example.app', fullDetail: flag }),
+    ).returns.toEqualTypeOf<boolean>();
+  });
+});
+
+describe('permissions return type', () => {
+  it('is the same narrowed signature on every entry point', () => {
+    expectTypeOf(gplay.permissions).toEqualTypeOf(permissions);
+    expectTypeOf(client.permissions).toEqualTypeOf(permissions);
+    expectTypeOf(cachedClient.permissions).toEqualTypeOf(permissions);
+  });
+
+  it('selects the result type from a literal short', () => {
+    expectTypeOf(() =>
+      permissions({ appId: 'com.example.app', short: true }),
+    ).returns.resolves.toEqualTypeOf<string[]>();
+    expectTypeOf(() =>
+      permissions({ appId: 'com.example.app', short: false }),
+    ).returns.resolves.toEqualTypeOf<AppPermission[]>();
+    expectTypeOf(() => permissions({ appId: 'com.example.app' })).returns.resolves.toEqualTypeOf<
+      AppPermission[]
+    >();
+    expectTypeOf(() =>
+      permissions({ appId: 'com.example.app', short: flag }),
+    ).returns.resolves.toEqualTypeOf<AppPermission[] | string[]>();
+  });
+
+  it('keeps a boolean short invalidatable on the memoized client', () => {
+    expectTypeOf(() =>
+      cachedClient.cache.invalidate('permissions', { appId: 'com.example.app', short: flag }),
     ).returns.toEqualTypeOf<boolean>();
   });
 });
