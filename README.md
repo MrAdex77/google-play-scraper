@@ -211,6 +211,20 @@ try {
 }
 ```
 
+### Return types
+
+`list`, `search`, `developer` and `similar` return their item type, or `App[]` when `fullDetail` is `true`. `permissions` returns `AppPermission[]`, or `string[]` when `short` is `true`. TypeScript follows the flag on every entry point (the named exports, the default export, `createClient()` and `memoized()`): pass the literal `true` and the result is typed `App[]` (or `string[]`), leave the flag out or pass `false` and it is the item type, so no cast is needed. A flag held in a `boolean` variable gives the union of both types, because the shape then depends on its value at runtime.
+
+```typescript
+import { list, permissions } from '@mradex77/google-play-scraper';
+
+const detailed = await list({ num: 5, fullDetail: true });
+const firstDescription = detailed[0]?.description;
+
+const names = await permissions({ appId: 'com.whatsapp', short: true });
+const upper = names.map((name) => name.toUpperCase());
+```
+
 ### app
 
 Retrieves the full detail of an application.
@@ -385,7 +399,7 @@ import { search } from '@mradex77/google-play-scraper';
 const results = await search({ term: 'panda', num: 5 });
 ```
 
-Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
+Returns `SearchResult[]`, or `App[]` when `fullDetail` is `true` (see [Return types](#return-types)). Trimmed:
 
 ```javascript
 [
@@ -453,7 +467,7 @@ const items = await list({
 });
 ```
 
-Returns `ListItem[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result.
+Returns `ListItem[]`, or `App[]` when `fullDetail` is `true` (see [Return types](#return-types)), each item shaped like a [search](#search) result.
 
 Google Play serves at most roughly 200 list items per request (verified July 2026), so a `num` above that ceiling, including the default `500`, returns fewer items than requested.
 
@@ -473,7 +487,7 @@ import { developer } from '@mradex77/google-play-scraper';
 const apps = await developer({ devId: '5700313618786177705' });
 ```
 
-Returns `DeveloperApp[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result.
+Returns `DeveloperApp[]`, or `App[]` when `fullDetail` is `true` (see [Return types](#return-types)), each item shaped like a [search](#search) result.
 
 The `developerId` that [app](#app) returns (and the one a [search](#search) exact match carries) is already in this form, so it can be passed straight back: a numeric id for developers Google links by number, otherwise the plain developer name such as `WhatsApp LLC`, `H&M` or `Moon+`. It is the decoded name, never the form encoded query value (`WhatsApp+LLC`, `H%26M`) that the Google Play link holds; the library encodes it again when it builds the request.
 
@@ -499,7 +513,7 @@ import { similar } from '@mradex77/google-play-scraper';
 const apps = await similar({ appId: 'com.google.android.apps.translate' });
 ```
 
-Returns `SimilarApp[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result.
+Returns `SimilarApp[]`, or `App[]` when `fullDetail` is `true` (see [Return types](#return-types)), each item shaped like a [search](#search) result.
 
 ### reviews
 
@@ -598,7 +612,7 @@ const detailed = await permissions({ appId: 'com.google.android.apps.translate' 
 const names = await permissions({ appId: 'com.google.android.apps.translate', short: true });
 ```
 
-Returns `AppPermission[]` (or `string[]` when `short` is `true`):
+Returns `AppPermission[]`, or `string[]` when `short` is `true` (see [Return types](#return-types)):
 
 ```javascript
 [
@@ -614,9 +628,7 @@ The `type` is `permission.COMMON` (`0`) or `permission.OTHER` (`1`).
 The `group` is the name of the permission group Google Play files the permission under, in the language of the requested `lang`, or an empty string when Google Play omits the name. A few legacy permissions belong to two groups (the USB storage permissions sit under both `Photos/Media/Files` and `Storage`), so the detailed list repeats such a permission once per group. To list each permission once, drop the group:
 
 ```typescript
-const unique = [
-  ...new Set(detailed.map((entry) => (typeof entry === 'string' ? entry : entry.permission))),
-];
+const unique = [...new Set(detailed.map((entry) => entry.permission))];
 ```
 
 The `short` list already does this for the common permissions, in the order Google Play serves them.
