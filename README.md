@@ -406,7 +406,7 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
 ];
 ```
 
-First page results have no `developerId`, except the exact match entry that Google shows first for a term naming an app. Results from a continuation page carry one, read from the developer link Google serves with each of them, see [Migrating from google-play-scraper](#migrating-from-google-play-scraper).
+First page results have no `developerId`, except the exact match entry that Google shows first for a term naming an app. Results from a continuation page carry the id of the developer link Google serves with them, and keep `developerId` undefined when that link is missing, see [Migrating from google-play-scraper](#migrating-from-google-play-scraper).
 
 The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. `summaryHTML` carries the same cell with its markup, for callers that render HTML (sanitize it first, as for [app](#app)).
 
@@ -474,7 +474,7 @@ import { developer } from '@mradex77/google-play-scraper';
 const apps = await developer({ devId: '5700313618786177705' });
 ```
 
-Returns `DeveloperApp[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result. Items past the first page carry `developerId`, read from the developer link Google serves with each of them, and items on the first page have none, as in the original. For a developer Google links by number it is the numeric id, even when `devId` was the name (`Google LLC` items carry `5700313618786177705`). Pass `fullDetail: true` to get it for every item.
+Returns `DeveloperApp[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result. Items past the first page carry `developerId` when Google serves a developer link with them (it stays undefined otherwise), and items on the first page have none, as in the original. For a developer Google links by number it is the numeric id, even when `devId` was the name (`Google LLC` items carry `5700313618786177705`). Pass `fullDetail: true` to get it for every item.
 
 The `developerId` that [app](#app) returns (and the one a [search](#search) exact match or a continuation item of `search`, `developer` or `similar` carries) is already in this form, so it can be passed straight back: a numeric id for developers Google links by number, otherwise the plain developer name such as `WhatsApp LLC`, `H&M` or `Moon+`. It is the decoded name, never the form encoded query value (`WhatsApp+LLC`, `H%26M`) that the Google Play link holds; the library encodes it again when it builds the request.
 
@@ -500,7 +500,7 @@ import { similar } from '@mradex77/google-play-scraper';
 const apps = await similar({ appId: 'com.google.android.apps.translate' });
 ```
 
-Returns `SimilarApp[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result. Items past the first page carry `developerId`, read from the developer link Google serves with each of them, and items on the first page have none, as in the original. Pass `fullDetail: true` to get it for every item.
+Returns `SimilarApp[]` (or `App[]` when `fullDetail` is `true`), each shaped like a [search](#search) result. Items past the first page carry `developerId` when Google serves a developer link with them (it stays undefined otherwise), and items on the first page have none, as in the original. Pass `fullDetail: true` to get it for every item.
 
 ### reviews
 
@@ -1184,7 +1184,7 @@ The method names, options and constants are the same, so most code keeps working
 - Errors are the typed classes above instead of plain `Error`.
 - `appId` must be a well-formed Android package name (see [App ids](#app-ids)). The original only checks that it is present, so a malformed id throws `ValidationError` here before any request instead of answering `404`, an empty result, or for non ASCII ids the reviews of another app.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
-- On `search` results, `developerId` is set on the exact match entry Google shows for a term that names an app and on every result from a continuation page. Other first page results have none: the first result page carries no developer link for them (the original copied the developer name into it, which is wrong for developers Google links by number). Read `developerId` from `app()`, or pass `fullDetail: true`, which works for named and numeric developers alike.
+- On `search` results, `developerId` is set on the exact match entry Google shows for a term that names an app and on continuation page results that come with a developer link. Other first page results have none: the first result page carries no developer link for them (the original copied the developer name into it, which is wrong for developers Google links by number). Read `developerId` from `app()`, or pass `fullDetail: true`, which works for named and numeric developers alike.
 - `permissions` entries have `type` set to `permission.COMMON` or `permission.OTHER`, where the original put the group name in `type`. The group name now lives in `group`. `short` returns each common permission string once, where the original returned the names of the common groups.
 - The package is ESM first with a CommonJS build; the default export is the aggregate client and named exports are also available.
 
