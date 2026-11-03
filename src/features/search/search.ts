@@ -7,6 +7,7 @@ import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
 import { clusterPages } from '../../core/pagination.ts';
+import { narrowByFlag } from '../../core/flagNarrowed.ts';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { resolveScriptRoot } from '../../core/scriptRoot.ts';
@@ -255,4 +256,6 @@ export function createSearch(
   };
 }
 
-export const search = createSearch(app);
+export const narrowSearch = narrowByFlag<'fullDetail', SearchOptions, SearchResult[], App[]>;
+
+export const search = narrowSearch(createSearch(app));

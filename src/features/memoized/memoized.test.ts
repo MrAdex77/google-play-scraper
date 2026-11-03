@@ -7,7 +7,6 @@ import type { DegradationEvent } from '../../core/degradation.ts';
 import { NotFoundError, ValidationError } from '../../core/errors.ts';
 import type { RequestOptions } from '../../core/options.ts';
 import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
-import type { App } from '../app/schema.ts';
 
 const readFixture = (dir: string, name: string): string =>
   readFileSync(
@@ -196,12 +195,12 @@ describe('memoized', () => {
     });
     expect(appFetches).toBe(1);
 
-    const detailed = (await client.search({
+    const detailed = await client.search({
       term: 'translate',
       num: 1,
       fullDetail: true,
       requestOptions: requestOptionsFor(fetchImpl),
-    })) as App[];
+    });
 
     expect(appFetches).toBe(1);
     expect(detailed).toHaveLength(1);

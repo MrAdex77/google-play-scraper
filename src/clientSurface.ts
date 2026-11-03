@@ -41,7 +41,7 @@ import { createReviewsAll } from './features/reviews/reviewsAll.ts';
 import type { reviewsIterator } from './features/reviews/reviewsIterator.ts';
 import { createReviewsIterator } from './features/reviews/reviewsIterator.ts';
 import type { search } from './features/search/search.ts';
-import { createSearch, searchOptionsSchema } from './features/search/search.ts';
+import { createSearch, narrowSearch, searchOptionsSchema } from './features/search/search.ts';
 import type { searchIterator } from './features/search/searchIterator.ts';
 import { createSearchIterator } from './features/search/searchIterator.ts';
 import type { similar } from './features/similar/similar.ts';
@@ -125,7 +125,9 @@ export function buildClientSurface(
       availabilityOptionsSchema,
       createAvailability(resolveClient),
     ),
-    search: cached('search', searchOptionsSchema, createSearch(cachedApp, resolveClient)),
+    search: narrowSearch(
+      cached('search', searchOptionsSchema, createSearch(cachedApp, resolveClient)),
+    ),
     suggest: cached('suggest', suggestOptionsSchema, createSuggest(resolveClient)),
     list: narrowList(cached('list', listOptionsSchema, createList(cachedApp, resolveClient))),
     categories: (options?: CategoriesOptions) => cachedCategories(options ?? {}),

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { permission } from '../src/index.ts';
-import type { App, IntegrityEvent, SearchResult, SimilarApp } from '../src/index.ts';
+import type { App, IntegrityEvent, SimilarApp } from '../src/index.ts';
 import {
   expectAppItemsContract,
   expectListingContract,
@@ -152,7 +152,7 @@ liveDescribe('sparse listings live contract', () => {
 
   it('keeps rating fields consistent across a mixed search page', async ({ annotate }) => {
     const num = 30;
-    const results = (await liveClient.search({ term: 'hobby tracker', num })) as SearchResult[];
+    const results = await liveClient.search({ term: 'hobby tracker', num });
 
     expectRequestedCountContract(results.length, num, 'hobby tracker search');
     expectAppItemsContract(results, 'hobby tracker search');
@@ -391,10 +391,10 @@ liveDescribe('preregistration listings live contract', () => {
   it('resolves a candidate identically on the listing and search surfaces', async (ctx) => {
     const appId = PRIMARY_CANDIDATE;
     const listing = await liveClient.app({ appId });
-    const results = (await liveClient.search({
+    const results = await liveClient.search({
       term: listing.title,
       num: 20,
-    })) as SearchResult[];
+    });
 
     expectAppItemsContract(results, 'candidate title search');
 
