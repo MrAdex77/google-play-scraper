@@ -97,7 +97,7 @@ describe('app', () => {
     expect(result.free).toBe(false);
     expect(result.price).toBeGreaterThan(0);
     expect(result.currency).toMatch(/^[A-Z]{3}$/);
-    expect(typeof result.offersIAP).toBe('boolean');
+    expect(result.offersIAP).toBe(true);
     expect(result.comments).toEqual([]);
   });
 
@@ -322,7 +322,8 @@ describe('app', () => {
       requestOptions: { fetchImpl: fetchReturning(translateHtml) },
     });
 
-    expect(absent.offersIAP).toBeUndefined();
+    expect(absent.offersIAP).toBe(false);
+    expect(absent.IAPRange).toBeUndefined();
     expect(absent.adSupported).toBe(false);
     expect(absent.earlyAccessEnabled).toBe(false);
     expect(absent.isAvailableInPlayPass).toBe(false);
@@ -333,6 +334,7 @@ describe('app', () => {
     const availability = details[18] as unknown[];
     availability[2] = 'early-access';
     details[62] = ['play-pass'];
+    details[19] = ['$0.99 per item', [0]];
     const enabledHtml = buildScriptData('ds:5', ds5);
 
     const enabled = await app({
@@ -342,6 +344,20 @@ describe('app', () => {
 
     expect(enabled.earlyAccessEnabled).toBe(true);
     expect(enabled.isAvailableInPlayPass).toBe(true);
+    expect(enabled.offersIAP).toBe(true);
+    expect(enabled.IAPRange).toBe('$0.99 per item');
+  });
+
+  it.each([
+    ['com.google.android.apps.translate', translateHtml, false],
+    ['com.mojang.minecraftpe', minecraftHtml, true],
+    ['com.adex77.WhereAmI', whereAmIHtml, true],
+    ['com.whatsapp', whatsappHtml, true],
+  ])('reads offersIAP for %s from the same cell as IAPRange', async (appId, html, offers) => {
+    const result = await app({ appId, requestOptions: { fetchImpl: fetchReturning(html) } });
+
+    expect(result.offersIAP).toBe(offers);
+    expect(result.offersIAP).toBe(Boolean(result.IAPRange));
   });
 
   it('parses a preregistration listing that carries no offer node', async () => {

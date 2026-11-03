@@ -34,7 +34,7 @@
 | app          | `currency`                  | optional                                      | pinned reference | absent currency remains undefined                                                         |
 | app          | `priceText`                 | default `Free`                                | live probe       | preregistration listings carry no offer node, yielding `priceText: Free`                  |
 | app          | `available`                 | default `false`                               | established test | absent availability source yields an unavailable listing                                  |
-| app          | `offersIAP`                 | optional                                      | recorded fixture | absent in `translate.html`                                                                |
+| app          | `offersIAP`                 | default `false`                               | recorded fixture | null purchase cell in `translate.html` yields `false`                                     |
 | app          | `IAPRange`                  | optional                                      | recorded fixture | absent in `translate.html`                                                                |
 | app          | `androidVersion`            | default `VARY`                                | established test | absent version block yields `VARY`                                                        |
 | app          | `androidVersionText`        | default `Varies with device`                  | established test | absent version block yields the device-varying label                                      |
