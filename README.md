@@ -395,7 +395,6 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
     url: 'https://play.google.com/store/apps/details?id=com.example.pandavpn',
     icon: 'https://play-lh.googleusercontent.com/...',
     developer: 'Panda Labs',
-    developerId: '1234567890',
     currency: 'USD',
     price: 0,
     free: true,
@@ -406,6 +405,8 @@ Returns `SearchResult[]` (or `App[]` when `fullDetail` is `true`). Trimmed:
   },
 ];
 ```
+
+Regular results have no `developerId`. Only the exact match entry that Google shows first for a term naming an app carries one, see [Migrating from google-play-scraper](#migrating-from-google-play-scraper).
 
 The `summary` of a search result, like the `summary` of every `list`, `developer` and `similar` item, is plain text. Google fills that cell with the app description markup (often thousands of characters), and the library strips the tags, decodes the entities and turns each `<br>` into a newline. `summaryHTML` carries the same cell with its markup, for callers that render HTML (sanitize it first, as for [app](#app)).
 
@@ -1179,10 +1180,12 @@ The method names, options and constants are the same, so most code keeps working
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
 - `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text: `<br>` becomes `\n`, other tags are dropped and entities are decoded, as for `description`. The original returns them with the markup and entities Google serves. Do not decode or strip them a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that used `innerHTML` should read the markup twins `summaryHTML` and `recentChangesHTML` through an HTML sanitizer instead, or render the escaped text with `white-space: pre-line`. **Security:** never pass `summary` or `recentChanges` to `innerHTML` after upgrading. Text a developer typed as `<img src=x onerror=...>` now reaches you as that literal string, which `innerHTML` would execute, while the original returned it escaped.
 - `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept, and `descriptionHTML` keeps the original markup.
-- Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
+- Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` and `discountEndDate` are millisecond timestamps. The original returns `discountEndDate` as Google's display text, such as `'Sale ends in 5 days'`.
+- A missing value is `undefined`, never `null`. The original returns `null` for many of them, for example review `replyDate`, `replyText` and `version`, or `installs`, `minInstalls` and `IAPRange` on preregistration listings, so code that checks `=== null` stops matching. Only review `title`, `criterias[].rating`, `categories[].id` and `nextPaginationToken` can be `null`. Code that has to work with both libraries can test `value == null` or use `??`.
 - Errors are the typed classes above instead of plain `Error`.
 - `appId` must be a well-formed Android package name (see [App ids](#app-ids)). The original only checks that it is present, so a malformed id throws `ValidationError` here before any request instead of answering `404`, an empty result, or for non ASCII ids the reviews of another app.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.
+- On `search` results, `developerId` is only set on the exact match entry Google shows for a term that names an app. Other results have none, because search pages carry no developer link to read it from (the original copied the developer name into it, which is wrong for developers Google links by number). Read `developerId` from `app()`, or pass `fullDetail: true`, which works for named and numeric developers alike.
 - `permissions` entries have `type` set to `permission.COMMON` or `permission.OTHER`, where the original put the group name in `type`. The group name now lives in `group`. `short` returns each common permission string once, where the original returned the names of the common groups.
 - The package is ESM first with a CommonJS build; the default export is the aggregate client and named exports are also available.
 
