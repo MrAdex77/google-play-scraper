@@ -192,6 +192,48 @@ describe('buildListBody interpolation', () => {
   });
 });
 
+describe('list num cap', () => {
+  it('never returns more items than num when the server over-serves', async () => {
+    const items = await list({
+      collection: 'TOP_FREE',
+      category: 'GAME',
+      num: 5,
+      requestOptions: { fetchImpl: fetchReturning(topFreeGame) },
+    });
+
+    expect(items).toHaveLength(5);
+  });
+
+  it('keeps the server order when slicing to num', async () => {
+    const ids = ['com.a.one', 'com.a.two', 'com.a.three'];
+    const items = await list({
+      num: 2,
+      requestOptions: { fetchImpl: fetchReturning(listBatch(listPayload(ids))) },
+    });
+
+    expect(items.map((item) => item.appId)).toEqual(['com.a.one', 'com.a.two']);
+  });
+
+  it('resolves full detail only for the first num items', async () => {
+    const requested: string[] = [];
+    const detailed = createList((params) => {
+      requested.push(params.appId);
+      return Promise.resolve({ appId: params.appId } as App);
+    });
+
+    const ids = ['com.a.one', 'com.a.two', 'com.a.three', 'com.a.four'];
+
+    const items = await detailed({
+      num: 2,
+      fullDetail: true,
+      requestOptions: { fetchImpl: fetchReturning(listBatch(listPayload(ids))) },
+    });
+
+    expect(requested).toEqual(['com.a.one', 'com.a.two']);
+    expect(items.map((item) => item.appId)).toEqual(['com.a.one', 'com.a.two']);
+  });
+});
+
 describe('list option validation', () => {
   it('rejects an invalid collection naming the field', async () => {
     const error = await list({ collection: 'NOPE' } as unknown as ListOptions).catch(
