@@ -35,6 +35,10 @@
     "url": "https://github.com/MrAdex77/google-play-scraper/issues"
   },
   "author": "MrAdex77 (https://github.com/MrAdex77)",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/MrAdex77"
+  },
   "license": "MIT",
   "publishConfig": {
     "access": "public"
