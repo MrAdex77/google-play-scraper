@@ -4,6 +4,7 @@ import { REVIEWS_RPC_ID } from './specs.ts';
 import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ValidationError } from '../../core/errors.ts';
 import type { IntegrityEvent } from '../../core/integrity.ts';
+import { expectReviewLink } from '../../../test/helpers/reviewLink.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -67,6 +68,9 @@ describe('reviewsAll', () => {
 
     expect(result.map((review) => review.id)).toEqual(['a', 'b', 'c']);
     expect(count()).toBe(2);
+    for (const review of result) {
+      expectReviewLink(review, TRANSLATE);
+    }
   });
 
   it('drains the stream when no maxReviews is given', async () => {

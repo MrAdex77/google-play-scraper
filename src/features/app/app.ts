@@ -1,10 +1,10 @@
 import * as z from 'zod/mini';
-import { BASE_URL } from '../../constants.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import { resolveScriptRoot } from '../../core/scriptRoot.ts';
 import { extract } from '../../core/spec.ts';
+import { appDetailsUrl } from '../../core/url.ts';
 import { appSchema, type App } from './schema.ts';
 import {
   appCommentsRootSpec,
@@ -20,18 +20,11 @@ export const appOptionsSchema = z.extend(baseOptionsSchema, {
 
 export type AppOptions = z.input<typeof appOptionsSchema>;
 
-const DETAILS_URL = `${BASE_URL}/store/apps/details`;
-
 export function createApp(resolveClient: ResolveClient = clientFromOptions) {
   return async function app(options: AppOptions): Promise<App> {
     const parsed = parseOptions(appOptionsSchema, options, 'app');
 
-    const params = new URLSearchParams({
-      id: parsed.appId,
-      hl: parsed.lang,
-      gl: parsed.country,
-    });
-    const url = `${DETAILS_URL}?${params.toString()}`;
+    const url = appDetailsUrl({ id: parsed.appId, hl: parsed.lang, gl: parsed.country });
 
     const client = resolveClient(parsed);
     const html = await client.request({ url });

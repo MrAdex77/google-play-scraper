@@ -8,7 +8,7 @@ import { appIdSchema, baseOptionsSchema, parseOptions } from '../../core/options
 import { getPath } from '../../core/path.ts';
 import { parseRaw } from '../../core/raw.ts';
 import { extract, type Extracted } from '../../core/spec.ts';
-import { reviewsResultSchema, type ReviewsResult } from './schema.ts';
+import { reviewsResultSchema, type Review, type ReviewsResult } from './schema.ts';
 import {
   buildReviewsBody,
   DEFAULT_REVIEWS_PAGE_SIZE,
@@ -18,6 +18,7 @@ import {
   reviewItemSpecs,
   reviewsCollectionResponseSchema,
   reviewsTokenResponseSchema,
+  reviewUrl,
 } from './specs.ts';
 
 const REVIEWS_CONTEXT = 'reviews';
@@ -45,7 +46,7 @@ export const reviewsOptionsSchema = z.extend(baseOptionsSchema, {
 export type ReviewsOptions = z.input<typeof reviewsOptionsSchema>;
 
 type ParsedReviewsOptions = z.infer<typeof reviewsOptionsSchema>;
-type ReviewItem = Extracted<typeof reviewItemSpecs>;
+type ReviewItem = Extracted<typeof reviewItemSpecs> & Pick<Review, 'url'>;
 
 export type ReviewPageQuery = Pick<
   ParsedReviewsOptions,
@@ -63,6 +64,11 @@ export type ReviewPageQuery = Pick<
 export interface ReviewsPage {
   reviews: ReviewItem[];
   token: string | undefined;
+}
+
+function extractReview(item: unknown, appId: string): ReviewItem {
+  const review = extract(item, reviewItemSpecs, REVIEWS_CONTEXT);
+  return { ...review, url: reviewUrl(appId, review.id) };
 }
 
 async function fetchReviewsPage(
@@ -89,7 +95,7 @@ async function fetchReviewsPage(
   parseRaw(reviewsTokenResponseSchema, payload, `${REVIEWS_CONTEXT} token response`);
   const rawReviews = getPath(payload, REVIEWS_RESPONSE_PATHS.reviews);
   const reviews = Array.isArray(rawReviews)
-    ? rawReviews.map((item) => extract(item, reviewItemSpecs, REVIEWS_CONTEXT))
+    ? rawReviews.map((item) => extractReview(item, options.appId))
     : [];
 
   const rawToken = getPath(payload, REVIEWS_RESPONSE_PATHS.token);

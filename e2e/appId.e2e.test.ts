@@ -22,7 +22,7 @@ liveDescribe('app id validation live contract', () => {
     expect(listing.appId).toBe(UPPERCASE_SEGMENTS_ID);
     expect(listing.url).toContain(`id=${UPPERCASE_SEGMENTS_ID}&`);
     expectRequestedCountContract(page.data.length, REVIEW_PROBE, 'uppercase segments id');
-    expectReviewsContract(page.data, 'uppercase segments id');
+    expectReviewsContract(page.data, UPPERCASE_SEGMENTS_ID, 'uppercase segments id');
   });
 
   it('still serves details and reviews for an id with underscores', async () => {
@@ -31,7 +31,7 @@ liveDescribe('app id validation live contract', () => {
 
     expect(listing.appId).toBe(UNDERSCORE_ID);
     expectRequestedCountContract(page.data.length, REVIEW_PROBE, 'underscore id');
-    expectReviewsContract(page.data, 'underscore id');
+    expectReviewsContract(page.data, UNDERSCORE_ID, 'underscore id');
   });
 
   it('still serves the report surfaces for a mixed case id', async () => {

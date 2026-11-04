@@ -584,6 +584,8 @@ Returns `ReviewsResult`. Trimmed:
       userImage: 'https://play-lh.googleusercontent.com/...',
       date: '2026-06-30T12:00:00.000Z',
       score: 5,
+      scoreText: '5',
+      url: 'https://play.google.com/store/apps/details?id=com.google.android.apps.translate&reviewId=gp%3AAOqpTOH...',
       title: null,
       text: 'Works offline and the camera translation is great.',
       thumbsUp: 42,
@@ -596,6 +598,8 @@ Returns `ReviewsResult`. Trimmed:
 ```
 
 `score` is the star rating from `1` to `5`. A few legacy reviews from the early years of Google Play carry no star rating and come back with `score: 0`, matching the original `google-play-scraper`. The `score` filter never serves them.
+
+`scoreText` is the same score as a string (`'0'` for those legacy reviews). `url` is the review's link on Google Play, built from the requested `appId` and the review `id`; the id is percent encoded (the original inserts it as is), so read it back with `new URL(review.url).searchParams.get('reviewId')` instead of comparing strings.
 
 ### permissions
 
@@ -1192,7 +1196,8 @@ The method names, options and constants are the same, so most code keeps working
 - `reviews` always returns the `{ data, nextPaginationToken }` envelope, never a bare array.
 - `summary` (on `app` and on every `search`, `list`, `developer` and `similar` item) and `app().recentChanges` are plain text: `<br>` becomes `\n`, other tags are dropped and entities are decoded, as for `description`. The original returns them with the markup and entities Google serves. Do not decode or strip them a second time (a developer's `Type <Username>` is now literal text), and escape them before inserting them into HTML, for example through `textContent`. Code that used `innerHTML` should read the markup twins `summaryHTML` and `recentChangesHTML` through an HTML sanitizer instead, or render the escaped text with `white-space: pre-line`. **Security:** never pass `summary` or `recentChanges` to `innerHTML` after upgrading. Text a developer typed as `<img src=x onerror=...>` now reaches you as that literal string, which `innerHTML` would execute, while the original returned it escaped.
 - `dataSafety().securityPractices[].description` is plain text. The original returns the link Google appends to some practices as raw `<a href=...>` markup; here the tag is removed and its text kept, and `descriptionHTML` keeps the original markup.
-- Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` is a millisecond timestamp.
+- Dates are ISO 8601 strings (review `date`, `replyDate`), and `updated` and `discountEndDate` are millisecond timestamps. The original returns `discountEndDate` as Google's display text, such as `'Sale ends in 5 days'`.
+- A missing value is `undefined`, never `null`. The original returns `null` for many of them, for example review `replyDate`, `replyText` and `version`, or `installs`, `minInstalls` and `IAPRange` on preregistration listings, so code that checks `=== null` stops matching. Only review `title`, `criterias[].rating`, `categories[].id` and `nextPaginationToken` can be `null`. Code that has to work with both libraries can test `value == null` or use `??`.
 - Errors are the typed classes above instead of plain `Error`.
 - `appId` must be a well-formed Android package name (see [App ids](#app-ids)). The original only checks that it is present, so a malformed id throws `ValidationError` here before any request instead of answering `404`, an empty result, or for non ASCII ids the reviews of another app.
 - `developerId` and `developerInternalID` are the decoded developer name (`H&M`, not `H%26M`), so encode them, for example with `URLSearchParams`, before building a Google Play link by hand.

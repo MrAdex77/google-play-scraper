@@ -97,7 +97,7 @@ liveDescribe('sparse listings live contract', () => {
       return;
     }
 
-    expectReviewsContract(page.data, SPARSE_REVIEW_ANCHOR);
+    expectReviewsContract(page.data, SPARSE_REVIEW_ANCHOR, SPARSE_REVIEW_ANCHOR);
     await annotate(
       `${SPARSE_REVIEW_ANCHOR} now reports ${describeRatingState(listing)} and serves ${page.data.length.toString()} reviews`,
       'notice',
@@ -298,7 +298,7 @@ liveDescribe('commercial model edges live contract', () => {
       expect(typeof listing.adSupported).toBe('boolean');
     }
 
-    const offering = listings.filter((listing) => listing.offersIAP === true);
+    const offering = listings.filter((listing) => listing.offersIAP);
     expect(
       offering.length,
       'no in app purchase anchor advertises a range, re-anchor the pool',
@@ -380,7 +380,7 @@ liveDescribe('preregistration listings live contract', () => {
       expect(reviews.data).toEqual([]);
       expect(reviews.nextPaginationToken).toBeNull();
     }
-    expectReviewsContract(reviews.data, 'candidate reviews');
+    expectReviewsContract(reviews.data, appId, 'candidate reviews');
 
     await annotate(
       `${appId}: ${permissions.length.toString()} permissions, ${safety.collectedData.length.toString()} collected entries, ${similar.length.toString()} neighbours, ${describeRatingState(listing)}`,
