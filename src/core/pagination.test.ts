@@ -5,6 +5,8 @@ import {
   clusterPages,
   CLUSTER_PAGE_SIZE,
   fetchClusterApps,
+  MAX_REPEATED_PAGES,
+  uniqueAppPages,
 } from './pagination.ts';
 import type { DegradationEvent } from './degradation.ts';
 import { ParseError } from './errors.ts';
@@ -13,7 +15,7 @@ import type { IntegrityEvent } from './integrity.ts';
 import { required, type SpecMap } from './spec.ts';
 
 const itemSpecs = {
-  id: { paths: [[0]], missing: required(), schema: z.string() },
+  appId: { paths: [[0]], missing: required(), schema: z.string() },
 } satisfies SpecMap;
 
 const APPS_PATH = [0, 0, 0];
@@ -105,7 +107,7 @@ describe('clusterPages', () => {
         client,
         lang: 'en',
         country: 'us',
-        initialApps: [{ id: 'seed' }],
+        initialApps: [{ appId: 'seed' }],
         initialToken: 't1',
         itemSpecs,
         appsPath: APPS_PATH,
@@ -114,7 +116,7 @@ describe('clusterPages', () => {
       }),
     );
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([
       ['seed'],
       ['a', 'b'],
       ['c', 'd'],
@@ -139,7 +141,7 @@ describe('clusterPages', () => {
       }),
     );
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([['a']]);
   });
 
   it('ends when a page returns no continuation token', async () => {
@@ -180,7 +182,7 @@ describe('clusterPages', () => {
       }),
     );
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([['a']]);
     expect(requests).toHaveLength(1);
   });
 
@@ -196,7 +198,7 @@ describe('clusterPages', () => {
         client,
         lang: 'en',
         country: 'us',
-        initialApps: [{ id: 'seed' }],
+        initialApps: [{ appId: 'seed' }],
         initialToken: 't1',
         itemSpecs,
         appsPath: APPS_PATH,
@@ -206,7 +208,11 @@ describe('clusterPages', () => {
       }),
     );
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed'], ['a'], ['b', 'c']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([
+      ['seed'],
+      ['a'],
+      ['b', 'c'],
+    ]);
     expect(requests).toHaveLength(2);
     expect(events).toEqual([]);
   });
@@ -220,7 +226,7 @@ describe('clusterPages', () => {
         client,
         lang: 'en',
         country: 'us',
-        initialApps: [{ id: 'seed' }],
+        initialApps: [{ appId: 'seed' }],
         initialToken: 't1',
         itemSpecs,
         appsPath: APPS_PATH,
@@ -230,7 +236,7 @@ describe('clusterPages', () => {
       }),
     );
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([['seed']]);
     expect(events).toHaveLength(1);
     expect(events[0]?.reason).toBe('cluster-page-parse');
     expect(events[0]?.error.message).toContain('0.0.7');
@@ -277,7 +283,7 @@ describe('clusterPages', () => {
       }),
     );
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['a']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([['a']]);
     expect(requests).toHaveLength(1);
     expect(events).toHaveLength(1);
     expect(events[0]?.context).toBe('test');
@@ -315,7 +321,7 @@ describe('clusterPages', () => {
         client,
         lang: 'en',
         country: 'us',
-        initialApps: [{ id: 'seed' }],
+        initialApps: [{ appId: 'seed' }],
         initialToken: 't1',
         itemSpecs,
         appsPath: APPS_PATH,
@@ -325,7 +331,7 @@ describe('clusterPages', () => {
       }),
     );
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([['seed']]);
     expect(requests).toHaveLength(1);
     expect(events).toHaveLength(1);
     expect(events[0]?.context).toBe('test');
@@ -342,7 +348,7 @@ describe('clusterPages', () => {
         client,
         lang: 'en',
         country: 'us',
-        initialApps: [{ id: 'seed' }],
+        initialApps: [{ appId: 'seed' }],
         initialToken: 't1',
         itemSpecs,
         appsPath: APPS_PATH,
@@ -403,6 +409,110 @@ describe('clusterPages', () => {
   });
 });
 
+describe('uniqueAppPages', () => {
+  const pagesFrom = (responses: string[]) => {
+    const { client, requests } = queuedClient(responses);
+    const pages = collectPages(
+      uniqueAppPages(
+        clusterPages({
+          client,
+          lang: 'en',
+          country: 'us',
+          initialApps: [{ appId: 'seed' }, { appId: 'a' }],
+          initialToken: 't1',
+          itemSpecs,
+          appsPath: APPS_PATH,
+          tokenPath: TOKEN_PATH,
+          context: 'test',
+        }),
+      ),
+    );
+    return { pages, requests };
+  };
+
+  const fromArrays = async function* (pages: { appId: string }[][]) {
+    for (const page of pages) {
+      await Promise.resolve();
+      yield page;
+    }
+  };
+
+  const idsOf = (pages: { appId: string }[][]): string[][] =>
+    pages.map((page) => page.map((item) => item.appId));
+
+  const repeats = (count: number): { appId: string }[][] =>
+    Array.from({ length: count }, () => [{ appId: 'seed' }]);
+
+  it('yields an app served again on a later page only once', async () => {
+    const { pages } = pagesFrom([
+      batchResponse([['a'], ['b'], ['seed']], 't2'),
+      batchResponse([['b'], ['c']], null),
+    ]);
+
+    expect(idsOf(await pages)).toEqual([['seed', 'a'], ['b'], ['c']]);
+  });
+
+  it('keeps following the token past a page made only of repeated apps', async () => {
+    const { pages, requests } = pagesFrom([
+      batchResponse([['seed'], ['a']], 't2'),
+      batchResponse([['d']], null),
+    ]);
+
+    expect(idsOf(await pages)).toEqual([['seed', 'a'], ['d']]);
+    expect(requests).toHaveLength(2);
+  });
+
+  it('stops requesting after consecutive pages that repeat only earlier apps', async () => {
+    const responses = Array.from({ length: MAX_REPEATED_PAGES + 2 }, (_, index) =>
+      batchResponse([['seed'], ['a']], `repeat-${index.toString()}`),
+    );
+    const { pages, requests } = pagesFrom(responses);
+
+    expect(idsOf(await pages)).toEqual([['seed', 'a']]);
+    expect(requests).toHaveLength(MAX_REPEATED_PAGES);
+  });
+
+  it('restarts the repeated page count when a page brings a new app', async () => {
+    const pages = await collectPages(
+      uniqueAppPages(
+        fromArrays([
+          [{ appId: 'seed' }],
+          ...repeats(MAX_REPEATED_PAGES - 1),
+          [{ appId: 'b' }],
+          ...repeats(MAX_REPEATED_PAGES - 1),
+          [{ appId: 'c' }],
+        ]),
+      ),
+    );
+
+    expect(idsOf(pages)).toEqual([['seed'], ['b'], ['c']]);
+  });
+
+  it('does not count an empty page as a repeated page', async () => {
+    const pages = await collectPages(
+      uniqueAppPages(
+        fromArrays([
+          [{ appId: 'seed' }],
+          ...repeats(MAX_REPEATED_PAGES - 1),
+          [],
+          [],
+          [{ appId: 'b' }],
+        ]),
+      ),
+    );
+
+    expect(idsOf(pages)).toEqual([['seed'], ['b']]);
+  });
+
+  it('drops an app repeated inside one page', async () => {
+    const pages = await collectPages(
+      uniqueAppPages(fromArrays([[{ appId: 'seed' }, { appId: 'seed' }]])),
+    );
+
+    expect(pages).toEqual([[{ appId: 'seed' }]]);
+  });
+});
+
 describe('clusterPages null continuation payload', () => {
   const runNull = async (responses: string[]) => {
     const { client, requests } = queuedClient(responses);
@@ -413,7 +523,7 @@ describe('clusterPages null continuation payload', () => {
         client,
         lang: 'en',
         country: 'us',
-        initialApps: [{ id: 'seed' }],
+        initialApps: [{ appId: 'seed' }],
         initialToken: 't1',
         itemSpecs,
         appsPath: APPS_PATH,
@@ -430,7 +540,7 @@ describe('clusterPages null continuation payload', () => {
   it('ends the stream without an event when the server answers with a null payload', async () => {
     const { pages, requests, events, degradations } = await runNull([NULL_PAYLOAD_RESPONSE]);
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([['seed']]);
     expect(requests).toHaveLength(1);
     expect(events).toEqual([]);
     expect(degradations).toEqual([]);
@@ -440,7 +550,7 @@ describe('clusterPages null continuation payload', () => {
     const invalidRequest = NULL_PAYLOAD_RESPONSE.replace('[5,null,', '[3,null,');
     const { pages, events, degradations } = await runNull([invalidRequest]);
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([['seed']]);
     expect(events).toEqual([]);
     expect(degradations).toHaveLength(1);
     expect(degradations[0]?.reason).toBe('cluster-page-parse');
@@ -453,7 +563,7 @@ describe('clusterPages null continuation payload', () => {
       NULL_PAYLOAD_RESPONSE,
     ]);
 
-    expect(pages.map((page) => page.map((item) => item.id))).toEqual([['seed'], ['a']]);
+    expect(pages.map((page) => page.map((item) => item.appId))).toEqual([['seed'], ['a']]);
     expect(requests).toHaveLength(2);
     expect(degradations).toEqual([]);
   });
@@ -490,7 +600,7 @@ describe('clusterPages layout fallbacks', () => {
   it('reads a continuation from the fallback layout and reports the anchor fallback', async () => {
     const { pages, events, degradations } = run([fallbackBatchResponse([['a'], ['b']], null)]);
 
-    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['a', 'b']]);
+    expect((await pages).map((page) => page.map((item) => item.appId))).toEqual([['a', 'b']]);
     expect(degradations).toEqual([]);
     expect(events).toHaveLength(1);
     expect(events[0]?.context).toBe('test');
@@ -507,7 +617,7 @@ describe('clusterPages layout fallbacks', () => {
       fallbackBatchResponse([['b']], null),
     ]);
 
-    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['a'], ['b']]);
+    expect((await pages).map((page) => page.map((item) => item.appId))).toEqual([['a'], ['b']]);
     expect(requests).toHaveLength(2);
     expect(events.map((event) => event.reason)).toEqual([
       'rpc-anchor-fallback',
@@ -518,7 +628,7 @@ describe('clusterPages layout fallbacks', () => {
   it('keeps the primary layout without an event when it carries the apps', async () => {
     const { pages, events } = run([batchResponse([['a']], 't2'), batchResponse([['b']], null)]);
 
-    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['a'], ['b']]);
+    expect((await pages).map((page) => page.map((item) => item.appId))).toEqual([['a'], ['b']]);
     expect(events).toEqual([]);
   });
 
@@ -528,7 +638,7 @@ describe('clusterPages layout fallbacks', () => {
     wrap[6] = [[['fallback']]];
     const { pages, events } = run([framedBatchResponse([wrap])]);
 
-    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['primary']]);
+    expect((await pages).map((page) => page.map((item) => item.appId))).toEqual([['primary']]);
     expect(events).toEqual([]);
   });
 
@@ -538,7 +648,7 @@ describe('clusterPages layout fallbacks', () => {
     wrap[6] = [[['fallback']]];
     const { pages, events, degradations } = run([framedBatchResponse([wrap])]);
 
-    expect((await pages).map((page) => page.map((item) => item.id))).toEqual([['fallback']]);
+    expect((await pages).map((page) => page.map((item) => item.appId))).toEqual([['fallback']]);
     expect(degradations).toEqual([]);
     expect(events.map((event) => event.reason)).toEqual(['rpc-anchor-fallback']);
   });
@@ -579,7 +689,7 @@ describe('fetchClusterApps', () => {
       lang: 'en',
       country: 'us',
       num: 10,
-      initialApps: [{ id: 'seed' }],
+      initialApps: [{ appId: 'seed' }],
       initialToken: 't1',
       itemSpecs,
       appsPath: APPS_PATH,
@@ -588,7 +698,7 @@ describe('fetchClusterApps', () => {
       onDegradation: (event) => events.push(event),
     });
 
-    expect(result).toEqual([{ id: 'seed' }]);
+    expect(result).toEqual([{ appId: 'seed' }]);
     expect(requests).toHaveLength(1);
     expect(events).toHaveLength(1);
     expect(events[0]?.context).toBe('test');
@@ -615,7 +725,7 @@ describe('fetchClusterApps', () => {
       context: 'test',
     });
 
-    expect(result.map((item) => item.id)).toEqual(['a', 'b', 'c', 'd']);
+    expect(result.map((item) => item.appId)).toEqual(['a', 'b', 'c', 'd']);
     expect(requests).toHaveLength(2);
     expect(requests[0]?.method).toBe('POST');
   });
@@ -651,7 +761,7 @@ describe('fetchClusterApps', () => {
       lang: 'en',
       country: 'us',
       num: 10,
-      initialApps: [{ id: 'seed' }],
+      initialApps: [{ appId: 'seed' }],
       initialToken: 't1',
       itemSpecs,
       appsPath: APPS_PATH,
@@ -659,7 +769,7 @@ describe('fetchClusterApps', () => {
       context: 'test',
     });
 
-    expect(result).toEqual([{ id: 'seed' }]);
+    expect(result).toEqual([{ appId: 'seed' }]);
     expect(requests).toHaveLength(1);
   });
 
@@ -671,7 +781,7 @@ describe('fetchClusterApps', () => {
       lang: 'en',
       country: 'us',
       num: 10,
-      initialApps: [{ id: 'seed' }],
+      initialApps: [{ appId: 'seed' }],
       initialToken: undefined,
       itemSpecs,
       appsPath: APPS_PATH,
@@ -679,7 +789,30 @@ describe('fetchClusterApps', () => {
       context: 'test',
     });
 
-    expect(result).toEqual([{ id: 'seed' }]);
+    expect(result).toEqual([{ appId: 'seed' }]);
     expect(requests).toHaveLength(0);
+  });
+
+  it('does not count repeated apps toward num', async () => {
+    const { client, requests } = queuedClient([
+      batchResponse([['seed'], ['a']], 't2'),
+      batchResponse([['b'], ['c']], null),
+    ]);
+
+    const result = await fetchClusterApps({
+      client,
+      lang: 'en',
+      country: 'us',
+      num: 3,
+      initialApps: [{ appId: 'seed' }],
+      initialToken: 't1',
+      itemSpecs,
+      appsPath: APPS_PATH,
+      tokenPath: TOKEN_PATH,
+      context: 'test',
+    });
+
+    expect(result.map((item) => item.appId)).toEqual(['seed', 'a', 'b']);
+    expect(requests).toHaveLength(2);
   });
 });

@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { developer } from './developer.ts';
 import { createDeveloperIterator, developerIterator } from './developerIterator.ts';
 import { developerAppSchema } from './schema.ts';
+import { NAME_CLUSTER_LAYOUT, NUMERIC_CLUSTER_LAYOUT } from './specs.ts';
 import type { DegradationEvent } from '../../core/degradation.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 import type { IntegrityEvent } from '../../core/integrity.ts';
+import { clusterAppIds, orderedUnion } from '../../../test/helpers/clusterDeveloperLinks.ts';
 import { clusterOfferItems } from '../../../test/helpers/clusterOfferItems.ts';
 
 const readFixture = (name: string): string =>
@@ -23,6 +25,9 @@ const nullContinuation = readFixture('null-continuation.txt');
 
 const GOOGLE_NUMERIC_ID = '5700313618786177705';
 const GOOGLE_NAME = 'Google LLC';
+const FIRST_PAGE = 10;
+const NUMERIC_APPS_PATH = NUMERIC_CLUSTER_LAYOUT.apps;
+const NAME_APPS_PATH = NAME_CLUSTER_LAYOUT.apps;
 
 const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () => number } => {
   let index = 0;
@@ -219,7 +224,9 @@ describe('developerIterator recorded continuation layouts', () => {
       googleContinuation,
     ]);
 
-    expect(ids).toHaveLength(110);
+    expect(ids).toEqual(
+      orderedUnion(ids.slice(0, FIRST_PAGE), clusterAppIds(googleContinuation, NUMERIC_APPS_PATH)),
+    );
     expect(degradations).toEqual([]);
     expect(integrity).toEqual([]);
   });
@@ -241,7 +248,9 @@ describe('developerIterator recorded continuation layouts', () => {
       googleNameContinuation,
     ]);
 
-    expect(ids).toHaveLength(80);
+    expect(ids).toEqual(
+      orderedUnion(ids.slice(0, FIRST_PAGE), clusterAppIds(googleNameContinuation, NAME_APPS_PATH)),
+    );
     expect(degradations).toEqual([]);
     expect(integrity.map((event) => event.reason)).toEqual(['rpc-anchor-fallback']);
     expect(integrity[0]?.context).toBe('developer');

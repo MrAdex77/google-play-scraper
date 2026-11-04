@@ -5,12 +5,13 @@ import type { HttpClient } from './http.ts';
 import { detectPaginationTokenCycle, type OnIntegrityEvent } from './integrity.ts';
 import { getPath, type Path } from './path.ts';
 import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.ts';
-import { extract, type Extracted, type SpecMap } from './spec.ts';
+import { extract, type Extracted, type FieldSpec, type SpecMap } from './spec.ts';
 import * as z from 'zod/mini';
 import { safeParse } from 'zod/v4/core';
 
 export const CLUSTER_RPC_ID = 'qnKhOb';
 export const CLUSTER_PAGE_SIZE = 100;
+export const MAX_REPEATED_PAGES = 3;
 
 const NOT_FOUND_STATUS = 5;
 
@@ -25,6 +26,8 @@ function asToken(value: unknown): string | undefined {
 function isExhausted(envelope: BatchEnvelope): boolean {
   return envelope.payload === null && envelope.status === NOT_FOUND_STATUS;
 }
+
+type AppSpecMap = SpecMap & { appId: FieldSpec<string> };
 
 export interface ClusterLayout {
   apps: Path;
@@ -46,7 +49,7 @@ export interface ClusterPagesParams<M extends SpecMap> {
   onIntegrityEvent?: OnIntegrityEvent;
 }
 
-export interface FetchClusterAppsParams<M extends SpecMap> extends ClusterPagesParams<M> {
+export interface FetchClusterAppsParams<M extends AppSpecMap> extends ClusterPagesParams<M> {
   num: number;
 }
 
@@ -114,6 +117,39 @@ function reportFallbackLayout(
   onIntegrityEvent?.({ context, reason: 'rpc-anchor-fallback', error });
 }
 
+function takeUnseen<Item extends { appId: string }>(
+  items: Item[],
+  seenAppIds: Set<string>,
+): Item[] {
+  return items.filter((item) => {
+    if (seenAppIds.has(item.appId)) {
+      return false;
+    }
+    seenAppIds.add(item.appId);
+    return true;
+  });
+}
+
+export async function* uniqueAppPages<Item extends { appId: string }>(
+  pages: AsyncIterable<Item[]>,
+): AsyncGenerator<Item[], void, undefined> {
+  const seenAppIds = new Set<string>();
+  let repeatedPages = 0;
+
+  for await (const page of pages) {
+    const unseen = takeUnseen(page, seenAppIds);
+    if (unseen.length > 0) {
+      repeatedPages = 0;
+      yield unseen;
+    } else if (page.length > 0) {
+      repeatedPages += 1;
+      if (repeatedPages >= MAX_REPEATED_PAGES) {
+        return;
+      }
+    }
+  }
+}
+
 export async function* clusterPages<M extends SpecMap>(
   params: ClusterPagesParams<M>,
 ): AsyncGenerator<Extracted<M>[], void, undefined> {
@@ -167,13 +203,13 @@ export async function* clusterPages<M extends SpecMap>(
   }
 }
 
-export async function fetchClusterApps<M extends SpecMap>(
+export async function fetchClusterApps<M extends AppSpecMap>(
   params: FetchClusterAppsParams<M>,
 ): Promise<Extracted<M>[]> {
   const { num, ...pageParams } = params;
   const collected: Extracted<M>[] = [];
 
-  for await (const page of clusterPages(pageParams)) {
+  for await (const page of uniqueAppPages(clusterPages(pageParams))) {
     for (const item of page) {
       collected.push(item);
     }

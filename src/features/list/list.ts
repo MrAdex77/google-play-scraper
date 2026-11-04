@@ -58,7 +58,7 @@ export function createList(getApp: GetApp<App>, resolveClient: ResolveClient = c
     parseRaw(listResponseSchema, payload, `${LIST_CONTEXT} response`);
     const appsData = getPath(payload, APPS_PATH);
     const items = Array.isArray(appsData)
-      ? appsData.map((item) => extract(item, listItemSpecs, LIST_CONTEXT))
+      ? appsData.slice(0, parsed.num).map((item) => extract(item, listItemSpecs, LIST_CONTEXT))
       : [];
 
     if (parsed.fullDetail) {

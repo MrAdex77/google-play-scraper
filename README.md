@@ -1158,6 +1158,7 @@ A degradation event never marks a normal end of results. Google ends a cluster b
 Boundaries to know:
 
 - An empty continuation page emits nothing: that is the normal end-of-results signal. A continuation answered with a null payload and a not found status is read the same way. Any other error status emits `cluster-page-parse`.
+- Google Play can serve an app again on a later page of `developer`, `similar` or `search`. Each app is returned once, at its first position, emits no event and does not count toward `num`, so `developerIterator` and `searchIterator` never repeat an app either. After three pages in a row that only repeat earlier apps, the call stops paginating and returns what it has.
 - `developer` reads a continuation page from the layout that matches the kind of `devId` (numeric id or name). When Google serves the other layout, the page is still read and `rpc-anchor-fallback` reports it, so treat that event as a scheduled repair.
 - `app` emits `optional-section-parse` with context `app comments` when the comment roots are structurally invalid. A valid empty comment root returns an empty list without an event. Treat a rising event rate as the signal.
 - `reviews` pagination never swallows a parse failure: malformed pages reject with `ParseError`, a repeated token stops the walk and emits `pagination-token-cycle`, and an exhausted request budget returns the partial set and emits `request-budget-exhausted`.

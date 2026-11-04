@@ -15,13 +15,25 @@ const linkedDeveloperId = (item: unknown): [unknown, string | undefined] => {
   return [getPath(item, APP_ID_PATH), developerId];
 };
 
-export function clusterDeveloperLinks(
-  batch: string,
-  appsPath: Path,
-): [unknown, string | undefined][] {
+const recordedApps = (batch: string, appsPath: Path): unknown[] => {
   const apps = getPath(parseBatchResponse(batch, CLUSTER_RPC_ID), appsPath);
   if (!Array.isArray(apps)) {
     throw new Error('the recorded continuation carries no apps array');
   }
-  return apps.map(linkedDeveloperId);
+  return apps;
+};
+
+export function clusterDeveloperLinks(
+  batch: string,
+  appsPath: Path,
+): [unknown, string | undefined][] {
+  return recordedApps(batch, appsPath).map(linkedDeveloperId);
+}
+
+export function clusterAppIds(batch: string, appsPath: Path): unknown[] {
+  return recordedApps(batch, appsPath).map((item) => getPath(item, APP_ID_PATH));
+}
+
+export function orderedUnion(...idLists: (readonly unknown[])[]): unknown[] {
+  return [...new Set(idLists.flat())];
 }
