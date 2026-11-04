@@ -583,6 +583,8 @@ Returns `ReviewsResult`. Trimmed:
       userImage: 'https://play-lh.googleusercontent.com/...',
       date: '2026-06-30T12:00:00.000Z',
       score: 5,
+      scoreText: '5',
+      url: 'https://play.google.com/store/apps/details?id=com.google.android.apps.translate&reviewId=gp%3AAOqpTOH...',
       title: null,
       text: 'Works offline and the camera translation is great.',
       thumbsUp: 42,
@@ -595,6 +597,8 @@ Returns `ReviewsResult`. Trimmed:
 ```
 
 `score` is the star rating from `1` to `5`. A few legacy reviews from the early years of Google Play carry no star rating and come back with `score: 0`, matching the original `google-play-scraper`. The `score` filter never serves them.
+
+`scoreText` is the same score as a string (`'0'` for those legacy reviews). `url` is the review's link on Google Play, built from the requested `appId` and the review `id`; the id is percent encoded (the original inserts it as is), so read it back with `new URL(review.url).searchParams.get('reviewId')` instead of comparing strings.
 
 ### permissions
 

@@ -9,6 +9,7 @@ import { sort } from '../../constants.ts';
 import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 import type { IntegrityEvent } from '../../core/integrity.ts';
+import { expectReviewLink } from '../../../test/helpers/reviewLink.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -60,6 +61,8 @@ describe('reviews fixture parsing', () => {
       expect(() => reviewSchema.parse(review)).not.toThrow();
       expect(review.score).toBeGreaterThanOrEqual(1);
       expect(review.score).toBeLessThanOrEqual(5);
+      expect(review.scoreText).toBe(String(review.score));
+      expectReviewLink(review, TRANSLATE);
       expect(Number.isNaN(Date.parse(review.date))).toBe(false);
     }
   });
@@ -89,6 +92,28 @@ describe('reviews fixture parsing', () => {
     expect(result.data).toHaveLength(200);
     expect(result.nextPaginationToken).toBeNull();
     expect(new Set(result.data.map((review) => review.id)).size).toBe(200);
+    for (const review of result.data) {
+      expectReviewLink(review, TRANSLATE);
+    }
+  });
+
+  it('links each review to its own app when the same page is served for another id', async () => {
+    const otherApp = 'com.example.Other_App';
+    const result = await reviews({
+      appId: otherApp,
+      paginate: true,
+      requestOptions: {
+        fetchImpl: fetchReturning(reviewsBatch([reviewEntry('gp:AOqp+/=&x')], null)),
+      },
+    });
+
+    const review = result.data[0];
+    expect(review?.url).toBe(
+      'https://play.google.com/store/apps/details?id=com.example.Other_App&reviewId=gp%3AAOqp%2B%2F%3D%26x',
+    );
+    for (const entry of result.data) {
+      expectReviewLink(entry, otherApp);
+    }
   });
 });
 
@@ -261,6 +286,7 @@ describe('reviews degraded payloads', () => {
     });
 
     expect(result.data.map((review) => review.score)).toEqual([5, 0]);
+    expect(result.data.map((review) => review.scoreText)).toEqual(['5', '0']);
     expect(result.data[1]?.date).toBe('2013-03-06T10:05:16.637Z');
   });
 
@@ -467,6 +493,22 @@ describe('reviews degraded payloads', () => {
     const failedFields = (thrown as SpecError).failures.map((failure) => failure.field);
     expect(failedFields).toContain('criterias');
   });
+
+  it('names both score fields when the score cell is missing', async () => {
+    const entry = reviewEntry('r1');
+    entry[2] = null;
+
+    const attempt = reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
+
+    await expect(attempt).rejects.toBeInstanceOf(SpecError);
+    await expect(attempt).rejects.toMatchObject({
+      failures: [{ field: 'score' }, { field: 'scoreText' }],
+    });
+  });
 });
 
 const pageQuery = (overrides: Partial<ReviewPageQuery> = {}): ReviewPageQuery => ({
@@ -663,6 +705,9 @@ describe('reviews score filter', () => {
 
     expect(result.data).toHaveLength(10);
     expect(result.data.every((review) => review.score === 5)).toBe(true);
+    for (const review of result.data) {
+      expectReviewLink(review, TRANSLATE);
+    }
     expect(typeof result.nextPaginationToken).toBe('string');
   });
 
@@ -746,6 +791,7 @@ describe('reviews device filter', () => {
     expect(result.data).toHaveLength(10);
     for (const review of result.data) {
       expect(() => reviewSchema.parse(review)).not.toThrow();
+      expectReviewLink(review, TRANSLATE);
     }
   });
 

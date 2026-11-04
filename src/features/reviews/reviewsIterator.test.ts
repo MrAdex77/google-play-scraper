@@ -8,6 +8,7 @@ import { reviewSchema } from './schema.ts';
 import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ValidationError } from '../../core/errors.ts';
 import type { IntegrityEvent } from '../../core/integrity.ts';
+import { expectReviewLink } from '../../../test/helpers/reviewLink.ts';
 
 const TRANSLATE = 'com.google.android.apps.translate';
 
@@ -107,6 +108,7 @@ describe('reviewsIterator streaming', () => {
       requestOptions: { fetchImpl },
     })) {
       expect(() => reviewSchema.parse(review)).not.toThrow();
+      expectReviewLink(review, TRANSLATE);
       streamed.push(review.id);
     }
 
@@ -121,6 +123,9 @@ describe('reviewsIterator streaming', () => {
 
     expect(streamed).toEqual(['a', 'b', 'c', 'd']);
     expect(streamed).toEqual(eager.data.map((review) => review.id));
+    for (const review of eager.data) {
+      expectReviewLink(review, TRANSLATE);
+    }
   });
 
   it('resumes mid-stream from a provided pagination token', async () => {

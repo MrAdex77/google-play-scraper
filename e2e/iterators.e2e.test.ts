@@ -64,7 +64,7 @@ liveDescribe('iterators live contract', () => {
       appId: WHATSAPP,
       onIntegrityEvent: (event) => events.push(event),
     })) {
-      expectReviewContract(review, 'streamed review');
+      expectReviewContract(review, WHATSAPP, 'streamed review');
       collected.push(review.id);
       if (collected.length === limit) {
         break;
@@ -261,7 +261,7 @@ liveDescribe('iterators live contract', () => {
     const reviews: Review[] = await liveClient.reviewsAll({ appId: WHATSAPP, maxReviews });
 
     expect(reviews).toHaveLength(maxReviews);
-    expectReviewsContract(reviews, 'reviewsAll page');
+    expectReviewsContract(reviews, WHATSAPP, 'reviewsAll page');
   });
 
   it('drains reviewsAll without maxReviews on a small catalog app', async () => {
@@ -269,7 +269,7 @@ liveDescribe('iterators live contract', () => {
 
     expect(reviews.length).toBeGreaterThan(0);
     expect(reviews.length).toBeLessThan(REVIEWS_ALL_CEILING);
-    expectReviewsContract(reviews, 'drained reviewsAll');
+    expectReviewsContract(reviews, GEO_GAME, 'drained reviewsAll');
   });
 
   it('stops a filtered stream after the first review without fetching a second page', async () => {
@@ -301,6 +301,6 @@ liveDescribe('iterators live contract', () => {
     for (const review of collected) {
       expect(review.score).toBe(FIVE_STARS);
     }
-    expectReviewsContract(collected, 'filtered stream');
+    expectReviewsContract(collected, anchor.appId, 'filtered stream');
   });
 });

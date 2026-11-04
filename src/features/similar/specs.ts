@@ -8,7 +8,7 @@ import { resolveScriptRoot, type ScriptRootSpec } from '../../core/scriptRoot.ts
 import { deriveScriptDataSelection, type ScriptData } from '../../core/scriptData.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import { defaulted, optional, required, type SpecMap } from '../../core/spec.ts';
-import { parseUrl } from '../../core/url.ts';
+import { appDetailsUrl, parseUrl } from '../../core/url.ts';
 import { similarAppSchema } from './schema.ts';
 import * as z from 'zod/mini';
 
@@ -66,8 +66,7 @@ export const PAGINATION_MAPPINGS = {
 } satisfies Record<string, Path>;
 
 export function similarDetailsUrl(appId: string, country: string): string {
-  const params = new URLSearchParams({ id: appId, hl: 'en', gl: country });
-  return `${BASE_URL}/store/apps/details?${params.toString()}`;
+  return appDetailsUrl({ id: appId, hl: 'en', gl: country });
 }
 
 export function similarClusterUrl(clusterPath: string, lang: string, country: string): string {

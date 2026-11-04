@@ -91,7 +91,7 @@ liveDescribe('reviews live contract', () => {
     const result = await liveClient.reviews({ appId: GEO_GAME, paginate: true });
 
     expect(result.data.length).toBeGreaterThan(0);
-    expectReviewsContract(result.data, 'geography game reviews');
+    expectReviewsContract(result.data, GEO_GAME, 'geography game reviews');
   });
 
   it('accumulates exactly one review past the live first page with unique ids', async () => {
@@ -109,7 +109,7 @@ liveDescribe('reviews live contract', () => {
 
     expectContinuationContract(anchor, result.data.length, num, 'accumulated reviews');
     expect(result.nextPaginationToken).toBeNull();
-    expectReviewsContract(result.data, 'accumulated reviews');
+    expectReviewsContract(result.data, TRANSLATE, 'accumulated reviews');
     expect(events).toEqual([]);
   });
 
@@ -145,8 +145,8 @@ liveDescribe('reviews live contract', () => {
 
     expect(byRating.data.length).toBeGreaterThan(0);
     expect(byHelpfulness.data.length).toBeGreaterThan(0);
-    expectReviewsContract(byRating.data, 'rating sorted reviews');
-    expectReviewsContract(byHelpfulness.data, 'helpfulness sorted reviews');
+    expectReviewsContract(byRating.data, TRANSLATE, 'rating sorted reviews');
+    expectReviewsContract(byHelpfulness.data, TRANSLATE, 'helpfulness sorted reviews');
 
     expectFieldFilledSomewhere('helpfulness sorted reviews', byHelpfulness.data, [
       'text',
@@ -161,7 +161,7 @@ liveDescribe('reviews live contract', () => {
       result.data.length,
       'newest sorted reviews: an order needs at least two reviews to compare',
     ).toBeGreaterThan(1);
-    expectReviewsContract(result.data, 'newest sorted reviews');
+    expectReviewsContract(result.data, WHATSAPP, 'newest sorted reviews');
     const timestamps = result.data.map((review) => Date.parse(review.date));
     for (const [index, timestamp] of timestamps.entries()) {
       if (index > 0) {
@@ -182,7 +182,7 @@ liveDescribe('reviews live contract', () => {
     expect(defaultPage.data.length).toBeGreaterThan(0);
     expect(polishPage.data.length).toBeGreaterThan(0);
     expect(polishPage.nextPaginationToken).not.toBeNull();
-    expectReviewsContract(polishPage.data, 'polish storefront reviews');
+    expectReviewsContract(polishPage.data, WHATSAPP, 'polish storefront reviews');
 
     const defaultIds = new Set(defaultPage.data.map((review) => review.id));
     const overlap = polishPage.data.filter((review) => defaultIds.has(review.id)).length;
@@ -215,7 +215,7 @@ liveDescribe('reviews live contract', () => {
     expect(result.data.length).toBeGreaterThan(0);
     expect(result.data.length).toBeLessThan(EXHAUSTION_PROBE);
     expect(result.nextPaginationToken).toBeNull();
-    expectReviewsContract(result.data, 'exhausted reviews');
+    expectReviewsContract(result.data, GEO_GAME, 'exhausted reviews');
   });
 
   it('follows continuations sized to the remaining count under an explicit pageSize', async () => {
@@ -233,7 +233,7 @@ liveDescribe('reviews live contract', () => {
     expectSizedRequestFloor(counter.count(), result.data.length, SMALL_PAGE, 'sized continuation');
 
     expectRequestedCountContract(result.data.length, SIZED_CONTINUATION_NUM, 'sized continuation');
-    expectReviewsContract(result.data, 'sized continuation');
+    expectReviewsContract(result.data, TRANSLATE, 'sized continuation');
     expect(events).toEqual([]);
   });
 
@@ -253,7 +253,7 @@ liveDescribe('reviews live contract', () => {
     expectRequestedCountContract(first.data.length, MANUAL_PAGE_SIZE, 'manual page size page one');
     expectRequestedCountContract(second.data.length, MANUAL_PAGE_SIZE, 'manual page size page two');
     expect(sharedIds(second.data, first.data)).toBe(0);
-    expectReviewsContract([...first.data, ...second.data], 'manual page size');
+    expectReviewsContract([...first.data, ...second.data], TRANSLATE, 'manual page size');
   });
 
   it.for(SCORE_SORTS)(
@@ -278,7 +278,7 @@ liveDescribe('reviews live contract', () => {
 
       expectOnlyScore(first, ONE_STAR, `${label} page one`);
       expectOnlyScore(second.data, ONE_STAR, `${label} page two`);
-      expectReviewsContract([...first, ...second.data], label);
+      expectReviewsContract([...first, ...second.data], anchor.appId, label);
       expect(sharedIds(second.data, first)).toBe(0);
       expect(events).toEqual([]);
       await annotate(
@@ -315,7 +315,7 @@ liveDescribe('reviews live contract', () => {
         unfiltered.data.length,
         `${label}: the unfiltered window of ${anchor.appId} is empty`,
       ).toBeGreaterThan(0);
-      expectReviewsContract(secondary, label);
+      expectReviewsContract(secondary, anchor.appId, label);
       expect(
         sharedIds(secondary, mobile.data),
         `${label}: a ${deviceName} review of ${anchor.appId} leaked into the mobile stream`,
@@ -352,7 +352,7 @@ liveDescribe('reviews live contract', () => {
     });
     const unrated = watch.data.filter((review) => review.score === 0);
 
-    expectReviewsContract(watch.data, label);
+    expectReviewsContract(watch.data, anchor.appId, label);
     for (const review of unrated) {
       expect(
         Date.parse(review.date),
@@ -391,7 +391,7 @@ liveDescribe('reviews live contract', () => {
         unfiltered.data.length,
         `${label}: the unfiltered page of ${anchor.appId} is empty`,
       ).toBeGreaterThan(0);
-      expectReviewsContract([...first, ...second.data], label);
+      expectReviewsContract([...first, ...second.data], anchor.appId, label);
       const depth = Math.min(first.length, unfiltered.data.length);
       expect(
         nthNewestDate(first, depth),

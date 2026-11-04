@@ -1,6 +1,7 @@
 import { expect } from 'vitest';
 import { category, type App, type AppItem, type Review, type ReviewsResult } from '../src/index.ts';
 import { expectHtmlTwin, oraclePlainText } from '../test/helpers/plainText.ts';
+import { expectReviewLink } from '../test/helpers/reviewLink.ts';
 
 const PLAY_ORIGIN = 'https://play.google.com';
 const HTTPS_PROTOCOL = 'https:';
@@ -231,7 +232,7 @@ export function expectTaxonomyMembership(listing: App, label: string): void {
   }
 }
 
-export function expectReviewContract(review: Review, label: string): void {
+export function expectReviewContract(review: Review, appId: string, label: string): void {
   const scoped = `${label} ${review.id}`;
 
   expect(review.id.length, `${label}: review id must not be empty`).toBeGreaterThan(0);
@@ -244,6 +245,8 @@ export function expectReviewContract(review: Review, label: string): void {
     review.score,
     `${scoped}: score must not exceed ${MAX_SCORE.toString()}`,
   ).toBeLessThanOrEqual(MAX_SCORE);
+  expect(review.scoreText, `${scoped}: scoreText must spell the score`).toBe(String(review.score));
+  expectReviewLink(review, appId, label);
   expect(Number.isNaN(Date.parse(review.date)), `${scoped}: date must parse`).toBe(false);
   expect(
     Date.parse(review.date),
@@ -273,9 +276,13 @@ export function expectReviewContract(review: Review, label: string): void {
   }
 }
 
-export function expectReviewsContract(reviews: readonly Review[], label: string): void {
+export function expectReviewsContract(
+  reviews: readonly Review[],
+  appId: string,
+  label: string,
+): void {
   for (const review of reviews) {
-    expectReviewContract(review, label);
+    expectReviewContract(review, appId, label);
   }
   expect(
     new Set(reviews.map((review) => review.id)).size,
