@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { createSimilar, similar, type SimilarOptions } from './similar.ts';
 import { similarAppSchema } from './schema.ts';
-import { findSimilarClusterPath, similarClusterUrl } from './specs.ts';
+import { findSimilarClusterPath, PAGINATION_MAPPINGS, similarClusterUrl } from './specs.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
 import type { App } from '../app/schema.ts';
 import type { OnIntegrityEvent } from '../../core/integrity.ts';
@@ -12,6 +12,7 @@ import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { ParseError, ValidationError } from '../../core/errors.ts';
 import { plainText } from '../../core/htmlText.ts';
 import { expectConvertedSummaries, expectHtmlSummaries } from '../../../test/helpers/plainText.ts';
+import { clusterDeveloperLinks } from '../../../test/helpers/clusterDeveloperLinks.ts';
 import { clusterOfferItems } from '../../../test/helpers/clusterOfferItems.ts';
 
 vi.mock(import('../../core/htmlText.ts'), { spy: true });
@@ -157,6 +158,24 @@ describe('similar fixture parsing', () => {
       expect(() => similarAppSchema.parse(item)).not.toThrow();
     }
     expect(new Set(items.map((item) => item.appId)).size).toBe(items.length);
+  });
+
+  it('reads the developer link of every final continuation item', async () => {
+    const { fetchImpl } = sequenceFetch([detailsHtml, clusterHtml, lastContinuation]);
+
+    const items = await similar({
+      appId: SOURCE_APP_ID,
+      requestOptions: { fetchImpl },
+    });
+    const firstPageItems = items.slice(0, -LAST_CONTINUATION_APP_COUNT);
+    const continuationItems = items.slice(-LAST_CONTINUATION_APP_COUNT);
+
+    expect(firstPageItems.length).toBeGreaterThan(0);
+    expect(firstPageItems.filter((item) => item.developerId !== undefined)).toEqual([]);
+    expect(continuationItems.map((item) => [item.appId, item.developerId])).toEqual(
+      clusterDeveloperLinks(lastContinuation, PAGINATION_MAPPINGS.apps),
+    );
+    expect(continuationItems.map((item) => item.developerId)).toContain('DHGAMES');
   });
 
   it('returns an empty list when the details page has no similar cluster', async () => {

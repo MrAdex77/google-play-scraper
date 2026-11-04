@@ -7,6 +7,7 @@
 | cluster item | `url`                       | required                                      | established test | missing link test requires a `SpecError` naming `url`                                     |
 | cluster item | `icon`                      | required                                      | established test | cluster item builders always provide the icon spine                                       |
 | cluster item | `developer`                 | required                                      | established test | cluster item builders always provide the developer spine                                  |
+| cluster item | `developerId`               | optional                                      | recorded fixture | developer link present on every item of the four recorded continuation fixtures           |
 | cluster item | `currency`                  | optional                                      | established test | missing price cell yields `currency: undefined`                                           |
 | cluster item | `price`                     | default `0`                                   | established test | missing price cell yields `price: 0`, recorded micros read as units                       |
 | cluster item | `free`                      | default `true`                                | established test | missing price cell yields `free: true`, zero micros yield `free: true`                    |
@@ -76,7 +77,7 @@
 | search       | `url`                       | required                                      | recorded fixture | list rows carry one link, the exact match card mirrors it in its detail node              |
 | search       | `icon`                      | required                                      | recorded fixture | search fixtures populate every result icon                                                |
 | search       | `developer`                 | required                                      | recorded fixture | search fixtures populate every result developer                                           |
-| search       | `developerId`               | optional                                      | pinned reference | exact-match developer id may be absent                                                    |
+| search       | `developerId`               | optional                                      | recorded fixture | exact match card and continuation items carry a developer link, first page rows do not    |
 | search       | `currency`                  | optional                                      | pinned reference | absent optional currency remains undefined, card falls back to its detail node            |
 | search       | `price`                     | default `0`                                   | live probe       | an offerless preregistration row yields `price: 0`, card falls back to its detail node    |
 | search       | `free`                      | default `false`                               | live probe       | an offerless preregistration row yields `free: false`, card falls back to its detail node |
@@ -101,6 +102,7 @@
 | developer    | `url`                       | required                                      | recorded fixture | both developer layouts populate item links                                                |
 | developer    | `icon`                      | required                                      | recorded fixture | both developer layouts populate item icons                                                |
 | developer    | `developer`                 | required                                      | recorded fixture | both developer layouts populate developer names                                           |
+| developer    | `developerId`               | optional                                      | recorded fixture | continuation items carry a developer link, first page rows do not                         |
 | developer    | `currency`                  | optional                                      | pinned reference | absent optional currency remains undefined                                                |
 | developer    | `price`                     | default `0`                                   | established test | priceless name-layout row yields `price: 0`                                               |
 | developer    | `free`                      | default `false`                               | established test | priceless name-layout row yields `free: false`                                            |
@@ -113,6 +115,7 @@
 | similar      | `url`                       | required                                      | recorded fixture | similar fixture populates item links                                                      |
 | similar      | `icon`                      | required                                      | recorded fixture | similar fixture populates item icons                                                      |
 | similar      | `developer`                 | required                                      | recorded fixture | similar fixture populates developer names                                                 |
+| similar      | `developerId`               | optional                                      | recorded fixture | continuation items carry a developer link, first page rows do not                         |
 | similar      | `currency`                  | optional                                      | pinned reference | absent optional currency remains undefined                                                |
 | similar      | `price`                     | default `0`                                   | established test | priceless similar row yields `price: 0`                                                   |
 | similar      | `free`                      | default `false`                               | established test | priceless similar row yields `free: false`                                                |

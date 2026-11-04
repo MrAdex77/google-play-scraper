@@ -75,6 +75,13 @@ async function continuationOffersAgreeing(storefront: Storefront): Promise<Devel
   return continuation;
 }
 
+function expectLinksToGoogle(items: readonly DeveloperApp[], label: string): void {
+  expect(
+    new Set(items.flatMap((item) => item.developerId ?? [])),
+    `${label}: every item that carries a developerId must link to the google developer id`,
+  ).toEqual(new Set([GOOGLE_DEV_ID]));
+}
+
 async function googleFirstPage(): Promise<ContinuationAnchor> {
   return firstPageOf(GOOGLE_QUERY);
 }
@@ -131,6 +138,7 @@ liveDescribe('developer live contract', () => {
       'scoreText',
       'summary',
     ]);
+    expectLinksToGoogle(items, 'google developer');
     expect(events).toEqual([]);
     expect(integrity).toEqual([]);
   });
@@ -152,6 +160,7 @@ liveDescribe('developer live contract', () => {
     for (const item of items) {
       expect(item.developer).toBe(GOOGLE_NAME);
     }
+    expectLinksToGoogle(items, 'google name developer');
     expect(events, 'a name developer continuation must parse without degrading').toEqual([]);
     expect(integrity, 'a name developer continuation must resolve at its own anchor').toEqual([]);
   });

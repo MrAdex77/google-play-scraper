@@ -16,6 +16,7 @@ import {
 } from './contracts.ts';
 import { expectFieldFilledOnEachPageShape, expectFieldFilledSomewhere } from './fieldPresence.ts';
 import {
+  expectDeveloperIdAgreesWithApp,
   expectListingOffersAgree,
   liveClient,
   liveDescribe,
@@ -267,6 +268,10 @@ liveDescribe('search live contract', () => {
       results,
       { firstPageCount: page.apps.length, token: page.token },
       ['score', 'scoreText', 'summary'],
+    );
+    await expectDeveloperIdAgreesWithApp(
+      results.slice(page.apps.length),
+      `${query.term} search continuation`,
     );
     expect(events).toEqual([]);
   });

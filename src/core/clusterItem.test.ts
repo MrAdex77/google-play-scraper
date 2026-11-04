@@ -18,6 +18,14 @@ const buildClusterItem = (priceCell: unknown[] | undefined, ...offerTail: unknow
   return item;
 };
 
+const linkDeveloper = (item: unknown[], link: string): unknown[] => {
+  item[4] = [
+    [['Cluster Dev', [null, null, null, null, [null, null, link]]]],
+    [null, [null, [null, 'A cluster summary']]],
+  ];
+  return item;
+};
+
 describe('cluster item extraction', () => {
   it('parses a paid item from its micros and currency', () => {
     const result = extract(
@@ -72,6 +80,28 @@ describe('cluster item extraction', () => {
 
     expect(result.price).toBe(2.5);
     expect(result.free).toBe(false);
+  });
+
+  it.each([
+    ['/store/apps/dev?id=5700313618786177705', '5700313618786177705'],
+    ['/store/apps/developer?id=Meta+Platforms,+Inc.', 'Meta Platforms, Inc.'],
+    ['/store/apps/developer?id=H%26M', 'H&M'],
+  ])('reads the developer id from the developer link %s', (link, developerId) => {
+    const result = extract(
+      linkDeveloper(buildClusterItem(undefined), link),
+      clusterItemSpecs,
+      'cluster-test',
+    );
+
+    expect(result.developer).toBe('Cluster Dev');
+    expect(result.developerId).toBe(developerId);
+  });
+
+  it('leaves the developer id undefined when the item carries no developer link', () => {
+    const result = extract(buildClusterItem(undefined), clusterItemSpecs, 'cluster-test');
+
+    expect(result.developer).toBe('Cluster Dev');
+    expect(result.developerId).toBeUndefined();
   });
 
   it('throws a SpecError naming url when the link cell is missing', () => {

@@ -119,7 +119,7 @@ export function developerClusterParams(
     'devId' | 'lang' | 'country' | 'onDegradation' | 'onIntegrityEvent'
   >,
   firstPage: DeveloperFirstPage,
-): ClusterPagesParams<typeof clusterItemSpecs> {
+): ClusterPagesParams<typeof numericItemSpecs> {
   const { primary, fallback } = developerClusterLayouts(options.devId);
   return {
     client: firstPage.client,

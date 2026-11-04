@@ -1,5 +1,10 @@
 import { appItemSchema } from './appItem.ts';
-import { isFreeMicros, microsToUnits, resolveAppUrl } from './appItemTransforms.ts';
+import {
+  developerIdFromUrl,
+  isFreeMicros,
+  microsToUnits,
+  resolveAppUrl,
+} from './appItemTransforms.ts';
 import { htmlText, plainText } from './htmlText.ts';
 import { defaulted, optional, required, type SpecMap } from './spec.ts';
 
@@ -14,6 +19,12 @@ export const clusterItemSpecs = {
   url: { paths: [[9, 4, 2]], missing: required(), schema: shape.url, transform: resolveAppUrl },
   icon: { paths: [[1, 1, 0, 3, 2]], missing: required(), schema: shape.icon },
   developer: { paths: [[4, 0, 0, 0]], missing: required(), schema: shape.developer },
+  developerId: {
+    paths: [[4, 0, 0, 1, 4, 2]],
+    missing: optional(),
+    schema: shape.developerId,
+    transform: developerIdFromUrl,
+  },
   currency: { paths: [[7, 0, 3, 2, 1, 0, 1]], missing: optional(), schema: shape.currency },
   price: {
     paths: [OFFER_MICROS_PATH],

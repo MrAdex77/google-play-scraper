@@ -9,8 +9,9 @@ import { extract } from '../../core/spec.ts';
 import type { DegradationEvent } from '../../core/degradation.ts';
 import { fetchSearchFirstPage, search } from './search.ts';
 import { searchIterator } from './searchIterator.ts';
-import { searchResultSchema } from './schema.ts';
+import { searchResultSchema, type SearchResult } from './schema.ts';
 import { CLUSTER_MAPPINGS } from './specs.ts';
+import { clusterDeveloperLinks } from '../../../test/helpers/clusterDeveloperLinks.ts';
 import { clusterBatchResponse } from '../../../test/helpers/clusterResponse.ts';
 
 const readFixture = (name: string): string =>
@@ -139,6 +140,33 @@ describe('search over a recorded continuation', () => {
     expect(bodies).toHaveLength(1);
   });
 
+  it('returns the developer id of every continuation item it appends', async () => {
+    const firstIds = await firstPageIds();
+    const { fetchImpl } = recordedFetch([
+      firstPageHtml,
+      continuationText,
+      clusterBatchResponse([], null),
+    ]);
+
+    const results = await search({
+      term: QUERY.term,
+      num: firstIds.length + CLUSTER_PAGE_SIZE,
+      requestOptions: { fetchImpl },
+    });
+    const appended = results.slice(firstIds.length);
+
+    expect(appended.map((item) => [item.appId, item.developerId])).toEqual(
+      clusterDeveloperLinks(continuationText, CLUSTER_MAPPINGS.apps),
+    );
+    expect(appended.map((item) => item.developerId)).toEqual(
+      expect.arrayContaining([
+        'Meta Platforms, Inc.',
+        'InShot Video Editor',
+        '5700313618786177705',
+      ]),
+    );
+  });
+
   it('streams the first page and every continuation item through the iterator', async () => {
     const firstIds = await firstPageIds();
     const { fetchImpl } = recordedFetch([
@@ -148,18 +176,22 @@ describe('search over a recorded continuation', () => {
     ]);
     const events: DegradationEvent[] = [];
 
-    const ids: string[] = [];
+    const items: SearchResult[] = [];
     for await (const item of searchIterator({
       term: QUERY.term,
       onDegradation: (event) => events.push(event),
       requestOptions: { fetchImpl },
     })) {
-      ids.push(item.appId);
+      items.push(item);
     }
+    const ids = items.map((item) => item.appId);
 
     expect(events).toEqual([]);
     expect(ids).toHaveLength(firstIds.length + CLUSTER_PAGE_SIZE);
     expect(ids.slice(0, firstIds.length)).toEqual(firstIds);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(items.slice(firstIds.length).map((item) => [item.appId, item.developerId])).toEqual(
+      clusterDeveloperLinks(continuationText, CLUSTER_MAPPINGS.apps),
+    );
   });
 });
