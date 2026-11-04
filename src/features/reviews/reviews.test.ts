@@ -498,20 +498,16 @@ describe('reviews degraded payloads', () => {
     const entry = reviewEntry('r1');
     entry[2] = null;
 
-    let thrown: unknown;
-    try {
-      await reviews({
-        appId: TRANSLATE,
-        paginate: true,
-        requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
-      });
-    } catch (error) {
-      thrown = error;
-    }
+    const attempt = reviews({
+      appId: TRANSLATE,
+      paginate: true,
+      requestOptions: { fetchImpl: fetchReturning(reviewsBatch([entry], null)) },
+    });
 
-    expect(thrown).toBeInstanceOf(SpecError);
-    const failedFields = (thrown as SpecError).failures.map((failure) => failure.field);
-    expect(failedFields).toEqual(['score', 'scoreText']);
+    await expect(attempt).rejects.toBeInstanceOf(SpecError);
+    await expect(attempt).rejects.toMatchObject({
+      failures: [{ field: 'score' }, { field: 'scoreText' }],
+    });
   });
 });
 
