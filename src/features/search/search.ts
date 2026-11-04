@@ -214,14 +214,8 @@ export async function* streamSearchItems(
     onIntegrityEvent: query.onIntegrityEvent,
   });
 
-  const seenAppIds = new Set<string>();
   for await (const clusterPage of pages) {
-    for (const item of filterByPrice(clusterPage, query.price)) {
-      if (!seenAppIds.has(item.appId)) {
-        seenAppIds.add(item.appId);
-        yield item;
-      }
-    }
+    yield* filterByPrice(clusterPage, query.price);
   }
 }
 
