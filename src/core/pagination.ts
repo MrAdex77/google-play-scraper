@@ -11,6 +11,7 @@ import { safeParse } from 'zod/v4/core';
 
 export const CLUSTER_RPC_ID = 'qnKhOb';
 export const CLUSTER_PAGE_SIZE = 100;
+export const MAX_REPEATED_PAGES = 3;
 
 const NOT_FOUND_STATUS = 5;
 
@@ -133,11 +134,18 @@ export async function* uniqueAppPages<Item extends { appId: string }>(
   pages: AsyncIterable<Item[]>,
 ): AsyncGenerator<Item[], void, undefined> {
   const seenAppIds = new Set<string>();
+  let repeatedPages = 0;
 
   for await (const page of pages) {
     const unseen = takeUnseen(page, seenAppIds);
     if (unseen.length > 0) {
+      repeatedPages = 0;
       yield unseen;
+    } else if (page.length > 0) {
+      repeatedPages += 1;
+      if (repeatedPages >= MAX_REPEATED_PAGES) {
+        return;
+      }
     }
   }
 }

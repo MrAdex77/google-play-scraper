@@ -5,6 +5,7 @@ import {
   clusterPages,
   CLUSTER_PAGE_SIZE,
   fetchClusterApps,
+  MAX_REPEATED_PAGES,
   uniqueAppPages,
 } from './pagination.ts';
 import type { DegradationEvent } from './degradation.ts';
@@ -439,6 +440,9 @@ describe('uniqueAppPages', () => {
   const idsOf = (pages: { appId: string }[][]): string[][] =>
     pages.map((page) => page.map((item) => item.appId));
 
+  const repeats = (count: number): { appId: string }[][] =>
+    Array.from({ length: count }, () => [{ appId: 'seed' }]);
+
   it('yields an app served again on a later page only once', async () => {
     const { pages } = pagesFrom([
       batchResponse([['a'], ['b'], ['seed']], 't2'),
@@ -456,6 +460,48 @@ describe('uniqueAppPages', () => {
 
     expect(idsOf(await pages)).toEqual([['seed', 'a'], ['d']]);
     expect(requests).toHaveLength(2);
+  });
+
+  it('stops requesting after consecutive pages that repeat only earlier apps', async () => {
+    const responses = Array.from({ length: MAX_REPEATED_PAGES + 2 }, (_, index) =>
+      batchResponse([['seed'], ['a']], `repeat-${index.toString()}`),
+    );
+    const { pages, requests } = pagesFrom(responses);
+
+    expect(idsOf(await pages)).toEqual([['seed', 'a']]);
+    expect(requests).toHaveLength(MAX_REPEATED_PAGES);
+  });
+
+  it('restarts the repeated page count when a page brings a new app', async () => {
+    const pages = await collectPages(
+      uniqueAppPages(
+        fromArrays([
+          [{ appId: 'seed' }],
+          ...repeats(MAX_REPEATED_PAGES - 1),
+          [{ appId: 'b' }],
+          ...repeats(MAX_REPEATED_PAGES - 1),
+          [{ appId: 'c' }],
+        ]),
+      ),
+    );
+
+    expect(idsOf(pages)).toEqual([['seed'], ['b'], ['c']]);
+  });
+
+  it('does not count an empty page as a repeated page', async () => {
+    const pages = await collectPages(
+      uniqueAppPages(
+        fromArrays([
+          [{ appId: 'seed' }],
+          ...repeats(MAX_REPEATED_PAGES - 1),
+          [],
+          [],
+          [{ appId: 'b' }],
+        ]),
+      ),
+    );
+
+    expect(idsOf(pages)).toEqual([['seed'], ['b']]);
   });
 
   it('drops an app repeated inside one page', async () => {
