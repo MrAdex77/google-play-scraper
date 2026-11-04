@@ -131,7 +131,7 @@ describe('batchexecute response root mutations', () => {
       request: () => Promise.resolve(`)]}'\n\n${JSON.stringify(frame)}`),
     };
     const itemSpecs = {
-      id: { paths: [[0]], missing: required(), schema: z.string() },
+      appId: { paths: [[0]], missing: required(), schema: z.string() },
     } satisfies SpecMap;
     const events: DegradationEvent[] = [];
     const pages: unknown[] = [];

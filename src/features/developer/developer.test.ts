@@ -10,7 +10,11 @@ import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 import type { DegradationEvent, OnDegradation } from '../../core/degradation.ts';
 import { ParseError, SpecError, ValidationError } from '../../core/errors.ts';
 import { plainText } from '../../core/htmlText.ts';
-import { clusterDeveloperLinks } from '../../../test/helpers/clusterDeveloperLinks.ts';
+import {
+  clusterAppIds,
+  clusterDeveloperLinks,
+  orderedUnion,
+} from '../../../test/helpers/clusterDeveloperLinks.ts';
 import { expectConvertedSummaries, expectHtmlSummaries } from '../../../test/helpers/plainText.ts';
 
 vi.mock(import('../../core/htmlText.ts'), { spy: true });
@@ -37,9 +41,13 @@ const nullContinuation = readFixture('null-continuation.txt');
 const GOOGLE_NUMERIC_ID = '5700313618786177705';
 const GOOGLE_NAME = 'Google LLC';
 const NUMERIC_FIRST_PAGE = 10;
-const NUMERIC_CONTINUATION = 100;
 const NAME_FIRST_PAGE = 20;
 const NAME_CONTINUATION = 70;
+const NUMERIC_CONTINUATION_REPEATS = [
+  'com.google.android.apps.adm',
+  'com.google.earth',
+  'com.google.android.apps.messaging',
+];
 
 const fetchReturning = (body: string): typeof fetch => {
   const impl: typeof fetch = () => Promise.resolve(new Response(body, { status: 200 }));
@@ -357,12 +365,30 @@ describe('developer recorded continuation layouts', () => {
       googleContinuation,
     ]);
 
-    expect(items).toHaveLength(NUMERIC_FIRST_PAGE + NUMERIC_CONTINUATION);
+    const firstPageIds = items.slice(0, NUMERIC_FIRST_PAGE).map((item) => item.appId);
+    expect(items.map((item) => item.appId)).toEqual(
+      orderedUnion(firstPageIds, clusterAppIds(googleContinuation, NUMERIC_CLUSTER_LAYOUT.apps)),
+    );
     for (const item of items) {
       expect(() => developerAppSchema.parse(item)).not.toThrow();
     }
     expect(degradations).toEqual([]);
     expect(integrity).toEqual([]);
+  });
+
+  it('returns once each first page app the recorded continuation serves again', async () => {
+    const { items } = await runRecorded(GOOGLE_NUMERIC_ID, [googleHtml, googleContinuation]);
+    const ids = items.map((item) => item.appId);
+    const firstPageIds = ids.slice(0, NUMERIC_FIRST_PAGE);
+    const repeated = clusterAppIds(googleContinuation, NUMERIC_CLUSTER_LAYOUT.apps).filter((id) =>
+      firstPageIds.includes(String(id)),
+    );
+
+    expect(repeated).toEqual(NUMERIC_CONTINUATION_REPEATS);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const appId of NUMERIC_CONTINUATION_REPEATS) {
+      expect(ids.filter((id) => id === appId)).toEqual([appId]);
+    }
   });
 
   it.each([
@@ -384,13 +410,16 @@ describe('developer recorded continuation layouts', () => {
     'reads the developer link of every continuation item for $devId',
     async ({ devId, firstPage, continuation, appsPath, firstPageCount }) => {
       const { items } = await runRecorded(devId, [firstPage, continuation]);
+      const firstPageIds = items.slice(0, firstPageCount).map((item) => item.appId);
       const continuationItems = items.slice(firstPageCount);
 
       expect(
         items.slice(0, firstPageCount).filter((item) => item.developerId !== undefined),
       ).toEqual([]);
       expect(continuationItems.map((item) => [item.appId, item.developerId])).toEqual(
-        clusterDeveloperLinks(continuation, appsPath),
+        clusterDeveloperLinks(continuation, appsPath).filter(
+          ([appId]) => !firstPageIds.includes(String(appId)),
+        ),
       );
       expect(new Set(continuationItems.map((item) => item.developerId))).toEqual(
         new Set([GOOGLE_NUMERIC_ID]),
@@ -403,8 +432,11 @@ describe('developer recorded continuation layouts', () => {
       googleHtml,
       googleNameContinuation,
     ]);
+    const firstPageIds = items.slice(0, NUMERIC_FIRST_PAGE).map((item) => item.appId);
 
-    expect(items).toHaveLength(NUMERIC_FIRST_PAGE + NAME_CONTINUATION);
+    expect(items.map((item) => item.appId)).toEqual(
+      orderedUnion(firstPageIds, clusterAppIds(googleNameContinuation, NAME_CLUSTER_LAYOUT.apps)),
+    );
     expect(degradations).toEqual([]);
     expect(integrity).toHaveLength(1);
     expect(integrity[0]?.context).toBe('developer');
@@ -419,8 +451,11 @@ describe('developer recorded continuation layouts', () => {
       googleNameHtml,
       googleContinuation,
     ]);
+    const firstPageIds = items.slice(0, NAME_FIRST_PAGE).map((item) => item.appId);
 
-    expect(items).toHaveLength(NAME_FIRST_PAGE + NUMERIC_CONTINUATION);
+    expect(items.map((item) => item.appId)).toEqual(
+      orderedUnion(firstPageIds, clusterAppIds(googleContinuation, NUMERIC_CLUSTER_LAYOUT.apps)),
+    );
     expect(degradations).toEqual([]);
     expect(integrity).toHaveLength(1);
     expect(integrity[0]?.reason).toBe('rpc-anchor-fallback');

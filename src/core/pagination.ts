@@ -5,7 +5,7 @@ import type { HttpClient } from './http.ts';
 import { detectPaginationTokenCycle, type OnIntegrityEvent } from './integrity.ts';
 import { getPath, type Path } from './path.ts';
 import { parseRaw, rawArrayPathSchema, rawOptionalArrayPathSchema } from './raw.ts';
-import { extract, type Extracted, type SpecMap } from './spec.ts';
+import { extract, type Extracted, type FieldSpec, type SpecMap } from './spec.ts';
 import * as z from 'zod/mini';
 import { safeParse } from 'zod/v4/core';
 
@@ -26,12 +26,14 @@ function isExhausted(envelope: BatchEnvelope): boolean {
   return envelope.payload === null && envelope.status === NOT_FOUND_STATUS;
 }
 
+type AppSpecMap = SpecMap & { appId: FieldSpec<string> };
+
 export interface ClusterLayout {
   apps: Path;
   token: Path;
 }
 
-export interface ClusterPagesParams<M extends SpecMap> {
+export interface ClusterPagesParams<M extends AppSpecMap> {
   client: HttpClient;
   lang: string;
   country: string;
@@ -46,7 +48,7 @@ export interface ClusterPagesParams<M extends SpecMap> {
   onIntegrityEvent?: OnIntegrityEvent;
 }
 
-export interface FetchClusterAppsParams<M extends SpecMap> extends ClusterPagesParams<M> {
+export interface FetchClusterAppsParams<M extends AppSpecMap> extends ClusterPagesParams<M> {
   num: number;
 }
 
@@ -114,13 +116,28 @@ function reportFallbackLayout(
   onIntegrityEvent?.({ context, reason: 'rpc-anchor-fallback', error });
 }
 
-export async function* clusterPages<M extends SpecMap>(
+function takeUnseen<Item extends { appId: string }>(
+  items: Item[],
+  seenAppIds: Set<string>,
+): Item[] {
+  return items.filter((item) => {
+    if (seenAppIds.has(item.appId)) {
+      return false;
+    }
+    seenAppIds.add(item.appId);
+    return true;
+  });
+}
+
+export async function* clusterPages<M extends AppSpecMap>(
   params: ClusterPagesParams<M>,
 ): AsyncGenerator<Extracted<M>[], void, undefined> {
   const { client, lang, country, itemSpecs, context } = params;
+  const seenAppIds = new Set<string>();
 
-  if (params.initialApps.length > 0) {
-    yield params.initialApps;
+  const initialApps = takeUnseen(params.initialApps, seenAppIds);
+  if (initialApps.length > 0) {
+    yield initialApps;
   }
 
   const seenTokens = new Set<string>();
@@ -163,11 +180,14 @@ export async function* clusterPages<M extends SpecMap>(
       throw error;
     }
     reportFallbackLayout(used, primary, context, params.onIntegrityEvent);
-    yield page;
+    const unseen = takeUnseen(page, seenAppIds);
+    if (unseen.length > 0) {
+      yield unseen;
+    }
   }
 }
 
-export async function fetchClusterApps<M extends SpecMap>(
+export async function fetchClusterApps<M extends AppSpecMap>(
   params: FetchClusterAppsParams<M>,
 ): Promise<Extracted<M>[]> {
   const { num, ...pageParams } = params;
