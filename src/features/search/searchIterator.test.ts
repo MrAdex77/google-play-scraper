@@ -17,13 +17,13 @@ const sequenceFetch = (bodies: string[]): { fetchImpl: typeof fetch; count: () =
 const buildScriptData = (key: string, value: unknown): string =>
   `<script>AF_initDataCallback({key: '${key}', hash: '1', data:${JSON.stringify(value)}, sideChannel: {}});</script>`;
 
-const coreData = (id: string): unknown[] => {
+const coreData = (id: string, priceMicros = 0): unknown[] => {
   const core: unknown[] = [];
   core[0] = [id];
   core[1] = [null, null, null, [null, null, `https://icon.example/${id}`]];
   core[3] = `App ${id}`;
   core[4] = ['4.5', 4.5];
-  core[8] = [null, [[0, 'USD']]];
+  core[8] = [null, [[priceMicros, 'USD']]];
   core[10] = [null, null, null, null, [null, null, `/store/apps/details?id=${id}`]];
   core[13] = [null, `Summary of ${id}`];
   core[14] = `Dev ${id}`;
@@ -163,6 +163,21 @@ describe('searchIterator streaming', () => {
 
     expect(ids).toEqual(['exact', 'a', 'b', 'c']);
     expect(ids.filter((id) => id === 'exact')).toHaveLength(1);
+  });
+
+  it('keeps a free continuation copy of an app the first page lists as paid', async () => {
+    const section: unknown[] = [];
+    section[22] = [[[coreData('dual', 990_000)]], [null, null, null, [null, 'next']]];
+    const { fetchImpl } = sequenceFetch([
+      buildScriptData('ds:4', [[null, [section]]]),
+      clusterBatch([{ id: 'dual' }, { id: 'free2' }], null),
+    ]);
+
+    const ids = await collect(
+      searchIterator({ term: 'panda', price: 'free', requestOptions: { fetchImpl } }),
+    );
+
+    expect(ids).toEqual(['dual', 'free2']);
   });
 
   it('keeps the exact match card over a continuation copy of the same app', async () => {

@@ -6,7 +6,7 @@ import { parseOptionalSection, type OnIntegrityEvent } from '../../core/integrit
 import { clusterItemSpecs } from '../../core/clusterItem.ts';
 import { baseOptionsSchema, parseOptions } from '../../core/options.ts';
 import { getPath } from '../../core/path.ts';
-import { clusterPages } from '../../core/pagination.ts';
+import { clusterPages, uniqueAppPages } from '../../core/pagination.ts';
 import { narrowByFlag } from '../../core/flagNarrowed.ts';
 import { resolveFullDetail, type GetApp } from '../../core/fullDetail.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
@@ -194,6 +194,15 @@ function firstPage(root: unknown, onIntegrityEvent?: OnIntegrityEvent): FirstPag
   return { apps: prependExactMatch(sections, [], onIntegrityEvent), token: undefined };
 }
 
+async function* pricedPages(
+  pages: AsyncIterable<SearchItem[]>,
+  price: SearchQuery['price'],
+): AsyncGenerator<SearchItem[], void, undefined> {
+  for await (const page of pages) {
+    yield filterByPrice(page, price);
+  }
+}
+
 export async function* streamSearchItems(
   query: SearchQuery,
   resolveClient: ResolveClient,
@@ -214,8 +223,8 @@ export async function* streamSearchItems(
     onIntegrityEvent: query.onIntegrityEvent,
   });
 
-  for await (const clusterPage of pages) {
-    yield* filterByPrice(clusterPage, query.price);
+  for await (const page of uniqueAppPages(pricedPages(pages, query.price))) {
+    yield* page;
   }
 }
 

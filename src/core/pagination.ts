@@ -33,7 +33,7 @@ export interface ClusterLayout {
   token: Path;
 }
 
-export interface ClusterPagesParams<M extends AppSpecMap> {
+export interface ClusterPagesParams<M extends SpecMap> {
   client: HttpClient;
   lang: string;
   country: string;
@@ -129,15 +129,26 @@ function takeUnseen<Item extends { appId: string }>(
   });
 }
 
-export async function* clusterPages<M extends AppSpecMap>(
+export async function* uniqueAppPages<Item extends { appId: string }>(
+  pages: AsyncIterable<Item[]>,
+): AsyncGenerator<Item[], void, undefined> {
+  const seenAppIds = new Set<string>();
+
+  for await (const page of pages) {
+    const unseen = takeUnseen(page, seenAppIds);
+    if (unseen.length > 0) {
+      yield unseen;
+    }
+  }
+}
+
+export async function* clusterPages<M extends SpecMap>(
   params: ClusterPagesParams<M>,
 ): AsyncGenerator<Extracted<M>[], void, undefined> {
   const { client, lang, country, itemSpecs, context } = params;
-  const seenAppIds = new Set<string>();
 
-  const initialApps = takeUnseen(params.initialApps, seenAppIds);
-  if (initialApps.length > 0) {
-    yield initialApps;
+  if (params.initialApps.length > 0) {
+    yield params.initialApps;
   }
 
   const seenTokens = new Set<string>();
@@ -180,10 +191,7 @@ export async function* clusterPages<M extends AppSpecMap>(
       throw error;
     }
     reportFallbackLayout(used, primary, context, params.onIntegrityEvent);
-    const unseen = takeUnseen(page, seenAppIds);
-    if (unseen.length > 0) {
-      yield unseen;
-    }
+    yield page;
   }
 }
 
@@ -193,7 +201,7 @@ export async function fetchClusterApps<M extends AppSpecMap>(
   const { num, ...pageParams } = params;
   const collected: Extracted<M>[] = [];
 
-  for await (const page of clusterPages(pageParams)) {
+  for await (const page of uniqueAppPages(clusterPages(pageParams))) {
     for (const item of page) {
       collected.push(item);
     }

@@ -1,7 +1,7 @@
 import * as z from 'zod/mini';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
 import { parseOptions } from '../../core/options.ts';
-import { clusterPages } from '../../core/pagination.ts';
+import { clusterPages, uniqueAppPages } from '../../core/pagination.ts';
 import {
   developerClusterParams,
   developerOptionsSchema,
@@ -25,7 +25,7 @@ async function* streamDeveloper(
   resolveClient: ResolveClient,
 ): AsyncGenerator<DeveloperApp, void, undefined> {
   const firstPage = await fetchDeveloperFirstPage(options, resolveClient);
-  const pages = clusterPages(developerClusterParams(options, firstPage));
+  const pages = uniqueAppPages(clusterPages(developerClusterParams(options, firstPage)));
 
   for await (const page of pages) {
     for (const item of page) {

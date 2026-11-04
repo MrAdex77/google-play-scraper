@@ -5,6 +5,7 @@ import {
   clusterPages,
   CLUSTER_PAGE_SIZE,
   fetchClusterApps,
+  uniqueAppPages,
 } from './pagination.ts';
 import type { DegradationEvent } from './degradation.ts';
 import { ParseError } from './errors.ts';
@@ -407,24 +408,36 @@ describe('clusterPages', () => {
   });
 });
 
-describe('clusterPages duplicate apps', () => {
+describe('uniqueAppPages', () => {
   const pagesFrom = (responses: string[]) => {
     const { client, requests } = queuedClient(responses);
     const pages = collectPages(
-      clusterPages({
-        client,
-        lang: 'en',
-        country: 'us',
-        initialApps: [{ appId: 'seed' }, { appId: 'a' }],
-        initialToken: 't1',
-        itemSpecs,
-        appsPath: APPS_PATH,
-        tokenPath: TOKEN_PATH,
-        context: 'test',
-      }),
+      uniqueAppPages(
+        clusterPages({
+          client,
+          lang: 'en',
+          country: 'us',
+          initialApps: [{ appId: 'seed' }, { appId: 'a' }],
+          initialToken: 't1',
+          itemSpecs,
+          appsPath: APPS_PATH,
+          tokenPath: TOKEN_PATH,
+          context: 'test',
+        }),
+      ),
     );
     return { pages, requests };
   };
+
+  const fromArrays = async function* (pages: { appId: string }[][]) {
+    for (const page of pages) {
+      await Promise.resolve();
+      yield page;
+    }
+  };
+
+  const idsOf = (pages: { appId: string }[][]): string[][] =>
+    pages.map((page) => page.map((item) => item.appId));
 
   it('yields an app served again on a later page only once', async () => {
     const { pages } = pagesFrom([
@@ -432,11 +445,7 @@ describe('clusterPages duplicate apps', () => {
       batchResponse([['b'], ['c']], null),
     ]);
 
-    expect((await pages).map((page) => page.map((item) => item.appId))).toEqual([
-      ['seed', 'a'],
-      ['b'],
-      ['c'],
-    ]);
+    expect(idsOf(await pages)).toEqual([['seed', 'a'], ['b'], ['c']]);
   });
 
   it('keeps following the token past a page made only of repeated apps', async () => {
@@ -445,28 +454,13 @@ describe('clusterPages duplicate apps', () => {
       batchResponse([['d']], null),
     ]);
 
-    expect((await pages).map((page) => page.map((item) => item.appId))).toEqual([
-      ['seed', 'a'],
-      ['d'],
-    ]);
+    expect(idsOf(await pages)).toEqual([['seed', 'a'], ['d']]);
     expect(requests).toHaveLength(2);
   });
 
-  it('drops an app repeated inside the initial page', async () => {
-    const { client } = queuedClient([]);
-
+  it('drops an app repeated inside one page', async () => {
     const pages = await collectPages(
-      clusterPages({
-        client,
-        lang: 'en',
-        country: 'us',
-        initialApps: [{ appId: 'seed' }, { appId: 'seed' }],
-        initialToken: undefined,
-        itemSpecs,
-        appsPath: APPS_PATH,
-        tokenPath: TOKEN_PATH,
-        context: 'test',
-      }),
+      uniqueAppPages(fromArrays([[{ appId: 'seed' }, { appId: 'seed' }]])),
     );
 
     expect(pages).toEqual([[{ appId: 'seed' }]]);
