@@ -39,6 +39,12 @@ If you need a hosted ASO tool rather than a library, [AsoBeast](https://asobeast
 | Breakage detection   | Daily live contract tests in CI    | None                                       |
 | Maintenance          | Active                             | Unmaintained                               |
 
+## Sponsors
+
+Sponsorship funds the maintenance of this library: the daily live contract tests, and the fixes that ship when Google changes the Play Store.
+
+Companies get their logo and a short description here and on the npm page, in front of developers who collect Google Play data at scale. [Become a sponsor](https://github.com/sponsors/MrAdex77).
+
 ## Table of contents
 
 - [Installation](#installation)
