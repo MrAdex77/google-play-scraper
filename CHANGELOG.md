@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.6.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.5.0...v1.6.0) (2026-11-05)
+
+
+### Bug Fixes
+
+* **app:** return false for offersIAP when no purchases are offered ([#187](https://github.com/MrAdex77/google-play-scraper/issues/187)) ([b72e2c1](https://github.com/MrAdex77/google-play-scraper/commit/b72e2c11c1f6d2e0d7d647c1a57972b4aa814f1a))
+* **core:** read developerId from cluster items ([#191](https://github.com/MrAdex77/google-play-scraper/issues/191)) ([a937751](https://github.com/MrAdex77/google-play-scraper/commit/a9377516ae04a7d5be3307dd9152b561354ca8f8))
+* return each cluster app once and cap list results to num ([#194](https://github.com/MrAdex77/google-play-scraper/issues/194)) ([e262c7f](https://github.com/MrAdex77/google-play-scraper/commit/e262c7f375575e00911f3ff724f8ac307a991838))
+* **reviews:** add scoreText and url to every review ([#188](https://github.com/MrAdex77/google-play-scraper/issues/188)) ([5a62790](https://github.com/MrAdex77/google-play-scraper/commit/5a62790475d93fd8bb8c1ab30f40ed77e3d8a36c))
+* **types:** narrow return types on fullDetail and short ([#186](https://github.com/MrAdex77/google-play-scraper/issues/186)) ([bfbb628](https://github.com/MrAdex77/google-play-scraper/commit/bfbb62878292f972110a5df375fbbaed52713631))
+
 ## [1.5.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.4.1...v1.5.0) (2026-10-29)
 
 
