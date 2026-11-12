@@ -10,7 +10,6 @@ import { buildSuggestPayload, SUGGEST_RPC_ID, suggestUrl } from '../src/features
 import { buildListBody, CLUSTER_NAMES, listUrl } from '../src/features/list/specs.ts';
 import { category, collection, device, sort, type Device } from '../src/constants.ts';
 import { developerUrl } from '../src/features/developer/specs.ts';
-import { fetchSimilarFirstPage } from '../src/features/similar/similar.ts';
 import {
   findSimilarClusterPath,
   PAGINATION_MAPPINGS,
@@ -28,7 +27,11 @@ import { dataSafetyUrl } from '../src/features/datasafety/specs.ts';
 import { getPath } from '../src/core/path.ts';
 import { buildClusterBody, CLUSTER_PAGE_SIZE, CLUSTER_RPC_ID } from '../src/core/pagination.ts';
 import { parseScriptData } from '../src/core/scriptData.ts';
-import { SPARSE_SIMILAR_ANCHORS } from '../e2e/similarAnchors.ts';
+import {
+  fetchListedSimilarFirstPage,
+  similarQueryFor,
+  SPARSE_SIMILAR_ANCHORS,
+} from '../e2e/similarAnchors.ts';
 
 interface Recorder {
   name: string;
@@ -239,14 +242,15 @@ async function finalSimilarContinuationPage(
   client: HttpClient,
   appId: string,
 ): Promise<string | undefined> {
-  let { token } = await fetchSimilarFirstPage({ appId, lang: 'en', country: 'us' }, () => client);
+  const query = similarQueryFor(appId);
+  let token = (await fetchListedSimilarFirstPage(query, () => client))?.token;
   for (
     let request = 0;
     request < SIMILAR_CONTINUATION_REQUEST_LIMIT && token !== undefined;
     request += 1
   ) {
     const text = await client.request({
-      url: legacyBatchUrl('en', 'us'),
+      url: legacyBatchUrl(query.lang, query.country),
       method: 'POST',
       body: buildClusterBody(CLUSTER_PAGE_SIZE, token),
     });
