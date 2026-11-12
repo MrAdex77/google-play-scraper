@@ -290,11 +290,11 @@ a continuation probe never names a single third party app or term as its
 anchor. Search takes its anchor from `findSearchContinuationAnchor`, a filtered
 review stream from `findReviewFilterAnchor`, and a similar cluster from
 `findSimilarContinuationAnchor`; each walks a maintained pool and fails only
-when no anchor serves a token. The anchor and the library call under test also
-have to read the same first page, because Google can serve one cluster with a
-token on one request and without it on the next: build both on one
-`memoizingResolveClient()` so the aggregate is measured against the page it
-actually continued from.
+when no anchor serves a token. For search and similar the anchor and the
+library call under test also have to read the same first page, because Google
+can serve one cluster with a token on one request and without it on the next:
+build both on one `memoizingResolveClient()` so the aggregate is measured
+against the page it actually continued from.
 
 Three shapes follow from those rules and are worth copying. `num` equal to the
 live first page count must return exactly that page, and `num` one past it must
@@ -514,10 +514,12 @@ null token node: `com.innersloth.spacemafia` ended at 75 apps,
 Where a cluster ends is served state too, so the sparse probe annotates what
 the token node of the continuation page held and never asserts it. The
 `similar-continuation` fixture recorder walks the same pool and records the
-first cluster that ends on a null token node, so one shrunken cluster cannot
-abort `pnpm fixtures:update`. `test/fixtures/similar/mhadv-continuation-last.txt`
-keeps the name of the listing it was first recorded from, and the offline tests
-pin its 20 apps, so update them together with any fresh recording.
+first cluster that ends on a null token node. Both walks skip a pool entry
+whose listing or cluster link answers 404, so one shrunken or delisted listing
+cannot fail the probe or abort `pnpm fixtures:update`.
+`test/fixtures/similar/mhadv-continuation-last.txt` keeps the name of the
+listing it was first recorded from, and the offline tests pin its 20 apps and
+the `DHGAMES` developer link, so update them together with any fresh recording.
 
 The tokenless branch is covered on the owned `com.adex77.WhereAmI` listing: a
 first page without a token must be the whole result, compared by app id against
@@ -526,8 +528,8 @@ the first page of the same run.
 When the pool fails because no anchor serves a token:
 
 1. Probe a handful of flagship listings with `fetchSimilarFirstPage` and read
-   `token`. If any of them serves one, replace the pool the message lists in
-   `e2e/similarAnchors.ts` with listings that do and commit as
+   `token`. If any of them serves one, replace the pool whose app ids the
+   message lists in `e2e/similarAnchors.ts` with listings that do and commit as
    `test(e2e): re-anchor the similar continuation pool`.
 2. If none does, either Google stopped paginating similar clusters or the first
    page token moved off `CLUSTER_PAGE_MAPPINGS.token`. Record a cluster page
