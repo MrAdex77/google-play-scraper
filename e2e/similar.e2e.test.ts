@@ -1,9 +1,14 @@
 import { expect, it } from 'vitest';
 import { legacyBatchUrl, parseBatchResponse } from '../src/core/batchexecute.ts';
-import { clientFromOptions } from '../src/core/http.ts';
+import type { ResolveClient } from '../src/core/http.ts';
 import { buildClusterBody, CLUSTER_PAGE_SIZE, CLUSTER_RPC_ID } from '../src/core/pagination.ts';
 import { getPath } from '../src/core/path.ts';
-import { fetchSimilarFirstPage, type SimilarQuery } from '../src/features/similar/similar.ts';
+import { app } from '../src/features/app/app.ts';
+import {
+  createSimilar,
+  fetchSimilarFirstPage,
+  narrowSimilar,
+} from '../src/features/similar/similar.ts';
 import { PAGINATION_MAPPINGS, SIMILAR_MAX_APPS } from '../src/features/similar/specs.ts';
 import { NotFoundError, type DegradationEvent } from '../src/index.ts';
 import { expectAppItemsContract, expectContinuationContract } from './contracts.ts';
@@ -13,27 +18,20 @@ import {
   expectListingOffersAgree,
   liveClient,
   liveDescribe,
+  memoizingResolveClient,
   type Storefront,
 } from './helpers.ts';
+import {
+  findSimilarContinuationAnchor,
+  PAID_SIMILAR_CONTINUATION_ANCHORS,
+  SIMILAR_CONTINUATION_ANCHORS,
+  similarQueryFor,
+  SPARSE_SIMILAR_ANCHORS,
+} from './similarAnchors.ts';
 
-const FLAGSHIP_APP_ID = 'com.google.android.apps.translate';
-const FLAGSHIP_QUERY: SimilarQuery = {
-  appId: FLAGSHIP_APP_ID,
-  lang: 'en',
-  country: 'us',
-  throttle: 1,
-};
-
-const SPARSE_APP_ID = 'com.tencent.mhadv';
-const SPARSE_QUERY: SimilarQuery = {
-  appId: SPARSE_APP_ID,
-  lang: 'en',
-  country: 'us',
-  throttle: 1,
-};
+const OWNED_APP_ID = 'com.adex77.WhereAmI';
 const TOKEN_NODE_PATH = PAGINATION_MAPPINGS.token.slice(0, -1);
 
-const GAME_APP_ID = 'com.mojang.minecraftpe';
 const GERMAN_STOREFRONT: Storefront = { country: 'de', lang: 'de' };
 
 function describeTokenNode(tokenNode: unknown): string {
@@ -46,27 +44,56 @@ function describeTokenNode(tokenNode: unknown): string {
   return 'carries a token node to a further page';
 }
 
-liveDescribe('similar live contract', () => {
-  it('returns a well formed cluster for the Where Am I geography game', async ({ annotate }) => {
-    const sourceAppId = 'com.adex77.WhereAmI';
-    const items = await liveClient.similar({ appId: sourceAppId });
+function similarThrough(resolveClient: ResolveClient) {
+  return narrowSimilar(createSimilar(app, resolveClient));
+}
 
+function appIdsOf(items: readonly { appId: string }[]): Set<string> {
+  return new Set(items.map((item) => item.appId));
+}
+
+liveDescribe('similar live contract', () => {
+  it('returns the whole cluster of the Where Am I geography game', async ({ annotate }) => {
+    const events: DegradationEvent[] = [];
+    const resolveClient = memoizingResolveClient();
+    const { apps, token } = await fetchSimilarFirstPage(
+      similarQueryFor(OWNED_APP_ID),
+      resolveClient,
+    );
+
+    const items = await similarThrough(resolveClient)({
+      appId: OWNED_APP_ID,
+      onDegradation: (event) => events.push(event),
+    });
+
+    expect(events).toEqual([]);
     expectAppItemsContract(items, 'geography game similar cluster');
-    expect(items.some((item) => item.appId === sourceAppId)).toBe(false);
+    expect(items.some((item) => item.appId === OWNED_APP_ID)).toBe(false);
     expect(items.length).toBeLessThanOrEqual(SIMILAR_MAX_APPS);
+    if (token === undefined) {
+      expect(
+        appIdsOf(items),
+        'geography game similar cluster: a first page without a token must be the whole result',
+      ).toEqual(appIdsOf(apps));
+    }
 
     await annotate(
-      `${sourceAppId} is recommended alongside ${items.length.toString()} apps`,
+      `${OWNED_APP_ID} is recommended alongside ${items.length.toString()} apps, its first page ${token === undefined ? 'carries no token' : 'carries a token'}`,
       'notice',
     );
   });
 
   it('follows the cluster continuation for a flagship source app', async () => {
     const events: DegradationEvent[] = [];
-    const { apps, token } = await fetchSimilarFirstPage(FLAGSHIP_QUERY, clientFromOptions);
+    const resolveClient = memoizingResolveClient();
+    const { query, apps, token } = await findSimilarContinuationAnchor(
+      SIMILAR_CONTINUATION_ANCHORS,
+      resolveClient,
+    );
+    const label = `${query.appId} similar cluster`;
 
-    const items = await liveClient.similar({
-      appId: FLAGSHIP_APP_ID,
+    const items = await similarThrough(resolveClient)({
+      appId: query.appId,
       onDegradation: (event) => events.push(event),
     });
 
@@ -74,44 +101,43 @@ liveDescribe('similar live contract', () => {
       { firstPageCount: apps.length, token },
       items.length,
       SIMILAR_MAX_APPS,
-      'flagship similar cluster',
+      label,
     );
-    expect(items.some((item) => item.appId === FLAGSHIP_APP_ID)).toBe(false);
-    expectAppItemsContract(items, 'flagship similar cluster');
+    expect(items.some((item) => item.appId === query.appId)).toBe(false);
+    expectAppItemsContract(items, label);
 
-    expectFieldFilledOnEachPageShape(
-      'flagship similar cluster',
-      items,
-      { firstPageCount: apps.length, token },
-      ['score', 'scoreText', 'summary'],
-    );
-    await expectDeveloperIdAgreesWithApp(items.slice(apps.length), 'flagship similar continuation');
+    expectFieldFilledOnEachPageShape(label, items, { firstPageCount: apps.length, token }, [
+      'score',
+      'scoreText',
+      'summary',
+    ]);
+    await expectDeveloperIdAgreesWithApp(items.slice(apps.length), `${label} continuation`);
     expect(events).toEqual([]);
   });
 
   it('follows a sparse cluster to its end without a degradation event', async ({ annotate }) => {
     const events: DegradationEvent[] = [];
-    const { client, apps, token } = await fetchSimilarFirstPage(SPARSE_QUERY, clientFromOptions);
-    expect(
-      token,
-      'the sparse anchor must still carry a continuation token on its first page',
-    ).toBeDefined();
-
+    const resolveClient = memoizingResolveClient();
+    const { client, query, apps, token } = await findSimilarContinuationAnchor(
+      SPARSE_SIMILAR_ANCHORS,
+      resolveClient,
+    );
+    const label = `sparse ${query.appId} similar cluster`;
     const continuationPage = parseBatchResponse(
       await client.request({
-        url: legacyBatchUrl(SPARSE_QUERY.lang, SPARSE_QUERY.country),
+        url: legacyBatchUrl(query.lang, query.country),
         method: 'POST',
-        body: buildClusterBody(CLUSTER_PAGE_SIZE, token ?? ''),
+        body: buildClusterBody(CLUSTER_PAGE_SIZE, token),
       }),
       CLUSTER_RPC_ID,
     );
     await annotate(
-      `${SPARSE_APP_ID} continuation page ${describeTokenNode(getPath(continuationPage, TOKEN_NODE_PATH))}`,
+      `${query.appId} continuation page ${describeTokenNode(getPath(continuationPage, TOKEN_NODE_PATH))}`,
       'notice',
     );
 
-    const items = await liveClient.similar({
-      appId: SPARSE_APP_ID,
+    const items = await similarThrough(resolveClient)({
+      appId: query.appId,
       onDegradation: (event) => events.push(event),
     });
 
@@ -120,39 +146,41 @@ liveDescribe('similar live contract', () => {
       { firstPageCount: apps.length, token },
       items.length,
       SIMILAR_MAX_APPS,
-      'sparse similar cluster',
+      label,
     );
-    expect(items.some((item) => item.appId === SPARSE_APP_ID)).toBe(false);
-    expectAppItemsContract(items, 'sparse similar cluster');
+    expect(items.some((item) => item.appId === query.appId)).toBe(false);
+    expectAppItemsContract(items, label);
   });
 
   it('agrees with the app details on continuation offers in a comma decimal storefront', async () => {
     const events: DegradationEvent[] = [];
-    const { apps, token } = await fetchSimilarFirstPage(
-      { appId: GAME_APP_ID, ...GERMAN_STOREFRONT, throttle: 1 },
-      clientFromOptions,
+    const resolveClient = memoizingResolveClient();
+    const { query, apps, token } = await findSimilarContinuationAnchor(
+      PAID_SIMILAR_CONTINUATION_ANCHORS,
+      resolveClient,
+      GERMAN_STOREFRONT,
     );
+    const label = `german ${query.appId} similar cluster`;
 
-    const items = await liveClient.similar({
-      appId: GAME_APP_ID,
+    const items = await similarThrough(resolveClient)({
+      appId: query.appId,
       ...GERMAN_STOREFRONT,
       onDegradation: (event) => events.push(event),
     });
 
-    expect(events, 'the german game cluster degraded').toEqual([]);
+    expect(events, `${label} degraded`).toEqual([]);
     expectContinuationContract(
       { firstPageCount: apps.length, token },
       items.length,
       SIMILAR_MAX_APPS,
-      'german game similar cluster',
+      label,
     );
-    expectAppItemsContract(items, 'german game similar cluster');
+    expectAppItemsContract(items, label);
 
-    const continuation = items.slice(apps.length);
     await expectListingOffersAgree(
-      continuation,
+      items.slice(apps.length),
       GERMAN_STOREFRONT,
-      'german game similar continuation',
+      `${label} continuation`,
     );
   });
 
