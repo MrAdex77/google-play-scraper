@@ -83,7 +83,7 @@ liveDescribe('similar live contract', () => {
     );
   });
 
-  it('follows the cluster continuation for a flagship source app', async () => {
+  it('follows the cluster continuation for a flagship source app', async ({ annotate }) => {
     const events: DegradationEvent[] = [];
     const resolveClient = memoizingResolveClient();
     const { query, apps, token } = await findSimilarContinuationAnchor(
@@ -113,6 +113,7 @@ liveDescribe('similar live contract', () => {
     ]);
     await expectDeveloperIdAgreesWithApp(items.slice(apps.length), `${label} continuation`);
     expect(events).toEqual([]);
+    await annotate(`${query.appId} anchored the flagship continuation`, 'notice');
   });
 
   it('follows a sparse cluster to its end without a degradation event', async ({ annotate }) => {
@@ -152,7 +153,9 @@ liveDescribe('similar live contract', () => {
     expectAppItemsContract(items, label);
   });
 
-  it('agrees with the app details on continuation offers in a comma decimal storefront', async () => {
+  it('agrees with the app details on continuation offers in a comma decimal storefront', async ({
+    annotate,
+  }) => {
     const events: DegradationEvent[] = [];
     const resolveClient = memoizingResolveClient();
     const { query, apps, token } = await findSimilarContinuationAnchor(
@@ -182,6 +185,7 @@ liveDescribe('similar live contract', () => {
       GERMAN_STOREFRONT,
       `${label} continuation`,
     );
+    await annotate(`${query.appId} anchored the german offer continuation`, 'notice');
   });
 
   it('rejects a nonexistent source app with a NotFoundError', async () => {

@@ -1,4 +1,5 @@
-import { clientFromOptions, type ResolveClient } from '../src/core/http.ts';
+import { NotFoundError } from '../src/core/errors.ts';
+import type { ResolveClient } from '../src/core/http.ts';
 import {
   fetchSimilarFirstPage,
   type SimilarFirstPage,
@@ -41,19 +42,33 @@ export function similarQueryFor(
   return { appId, ...storefront, throttle: 1 };
 }
 
+export async function fetchListedSimilarFirstPage(
+  query: SimilarQuery,
+  resolveClient: ResolveClient,
+): Promise<SimilarFirstPage | undefined> {
+  try {
+    return await fetchSimilarFirstPage(query, resolveClient);
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 export async function findSimilarContinuationAnchor(
   appIds: readonly string[],
-  resolveClient: ResolveClient = clientFromOptions,
+  resolveClient: ResolveClient,
   storefront: Storefront = DEFAULT_STOREFRONT,
 ): Promise<SimilarContinuationAnchor> {
   for (const appId of appIds) {
     const query = similarQueryFor(appId, storefront);
-    const first = await fetchSimilarFirstPage(query, resolveClient);
-    if (first.token !== undefined) {
+    const first = await fetchListedSimilarFirstPage(query, resolveClient);
+    if (first?.token !== undefined) {
       return { ...first, query, token: first.token };
     }
   }
   throw new Error(
-    `no similar continuation anchor among ${appIds.join(', ')} serves a token for ${JSON.stringify(storefront)}: google stopped paginating similar clusters or the first page token moved, follow "Similar continuation pool" in docs/RUNBOOK.md`,
+    `no similar anchor among ${appIds.join(', ')} serves a first page with a continuation token for ${JSON.stringify(storefront)}: re-anchor that pool in e2e/similarAnchors.ts or repair the token path, see "Similar continuation pool" in docs/RUNBOOK.md`,
   );
 }
