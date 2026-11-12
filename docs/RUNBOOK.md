@@ -285,6 +285,17 @@ requested limit and to exceed the page it continued from. A probe whose first pa
 message naming the re-anchor task, because that is a serving regime change and
 not a parse break.
 
+Whether one third party listing serves a continuation token is served state, so
+a continuation probe never names a single third party app or term as its
+anchor. Search takes its anchor from `findSearchContinuationAnchor`, a filtered
+review stream from `findReviewFilterAnchor`, and a similar cluster from
+`findSimilarContinuationAnchor`; each walks a maintained pool and fails only
+when no anchor serves a token. The anchor and the library call under test also
+have to read the same first page, because Google can serve one cluster with a
+token on one request and without it on the next: build both on one
+`memoizingResolveClient()` so the aggregate is measured against the page it
+actually continued from.
+
 Three shapes follow from those rules and are worth copying. `num` equal to the
 live first page count must return exactly that page, and `num` one past it must
 return exactly one more item, which pins the slice at the sharpest place there
@@ -405,11 +416,18 @@ arranged for a maintainer's own app:
   Play Pass. It runs against four titles and fails only when all four have left,
   which is the only live gate on the `[1, 2, 62]` path.
 - `PAID_CATALOGUE_DEV_ID` in `e2e/developer.e2e.test.ts`, the German cluster of
-  `GAME_APP_ID` in `e2e/similar.e2e.test.ts` and the German paid search
-  continuation in `e2e/search.e2e.test.ts` must each keep serving a priced item
-  past the first page, because `expectListingOffersAgree` can only prove that a
-  continuation price was read from the offer micros on an item that costs
-  something. Its failure message ends in "re-anchor the paid sample".
+  the first `PAID_SIMILAR_CONTINUATION_ANCHORS` entry that serves a token and
+  the German paid search continuation in `e2e/search.e2e.test.ts` must each
+  keep serving a priced item past the first page, because
+  `expectListingOffersAgree` can only prove that a continuation price was read
+  from the offer micros on an item that costs something. Its failure message
+  ends in "re-anchor the paid sample". Measured on 2026-11-12,
+  `PAID_CATALOGUE_DEV_ID` published 110 apps, every one of them paid, on both
+  the `de` and `sa` storefronts.
+- `SIMILAR_CONTINUATION_ANCHORS` and `PAID_SIMILAR_CONTINUATION_ANCHORS` in
+  `e2e/similarAnchors.ts` must each keep one listing whose similar cluster
+  serves a continuation token on its first page. See "Similar continuation
+  pool" below.
 - `REVIEW_FILTER_ANCHORS` in `e2e/reviewAnchors.ts` must keep one phone first
   listing whose review stream serves a page with a continuation token behind
   every device filter and behind a score filter. `findReviewFilterAnchor` walks
@@ -462,6 +480,62 @@ https://play.google.com/store/apps/collection/promotion_3000000d51_pre_registrat
 Scrape the `id=` parameters out of that page, confirm `preregister` on a handful
 with `app()`, and commit the replacements as
 `test(e2e): refresh the preregistration candidates`.
+
+### Similar continuation pool
+
+A similar cluster is a set Google recommends, so its size and whether its first
+page carries a continuation token are served state. Issue #197 came from
+pinning both on single third party apps. Measured on 2026-11-12,
+`com.tencent.mhadv`, the sparse anchor that had served a first page with a
+token and a second page of 20 apps, served 27 apps and no token three times in
+a row, and the German cluster of `com.mojang.minecraftpe` served 31 apps
+without a token on five requests and 50 apps with a token on a sixth, minutes
+apart. Every tokenless page parsed cleanly and held no token anywhere in its
+HTML, so the parser read exactly what Google served.
+
+`findSimilarContinuationAnchor` therefore walks a pool and returns the first
+listing whose first page serves a token, and every similar continuation test
+runs the library on the same `memoizingResolveClient()` that surfaced the
+anchor, so a cluster that flips between two requests cannot split the anchor
+from the result. `SIMILAR_CONTINUATION_ANCHORS` holds four flagships
+(`com.google.android.apps.translate`, `com.whatsapp`, `com.spotify.music`,
+`com.duolingo`), each serving 50 apps and a token on the `us` storefront on
+2026-11-12. `PAID_SIMILAR_CONTINUATION_ANCHORS` holds four paid games for the
+German offer probe: `com.and.games505.TerrariaPaid` and
+`com.ustwo.monumentvalley` served 32 priced items past the first page,
+`com.robtopx.geometryjump` 11, and `com.mojang.minecraftpe` 3 on the requests
+that carried a token.
+
+`SPARSE_SIMILAR_ANCHORS` holds clusters that ended below `SIMILAR_MAX_APPS`
+after a continuation, which is the only live route onto a final page with a
+null token node: `com.innersloth.spacemafia` ended at 75 apps,
+`com.robtopx.geometryjump` at 78 and `com.nianticlabs.pokemongo` at 91, and
+`com.tencent.mhadv` stays first in the pool for the day its cluster grows back.
+Where a cluster ends is served state too, so the sparse probe annotates what
+the token node of the continuation page held and never asserts it. The
+`similar-continuation` fixture recorder walks the same pool and records the
+first cluster that ends on a null token node, so one shrunken cluster cannot
+abort `pnpm fixtures:update`. `test/fixtures/similar/mhadv-continuation-last.txt`
+keeps the name of the listing it was first recorded from, and the offline tests
+pin its 20 apps, so update them together with any fresh recording.
+
+The tokenless branch is covered on the owned `com.adex77.WhereAmI` listing: a
+first page without a token must be the whole result, compared by app id against
+the first page of the same run.
+
+When the pool fails because no anchor serves a token:
+
+1. Probe a handful of flagship listings with `fetchSimilarFirstPage` and read
+   `token`. If any of them serves one, replace the pool the message lists in
+   `e2e/similarAnchors.ts` with listings that do and commit as
+   `test(e2e): re-anchor the similar continuation pool`.
+2. If none does, either Google stopped paginating similar clusters or the first
+   page token moved off `CLUSTER_PAGE_MAPPINGS.token`. Record a cluster page
+   with `pnpm fixtures:update similar` and search it for a string beginning
+   `IAB`, which is how every continuation token has started so far. A token
+   found at another index is a path drift to repair in
+   `src/features/similar/specs.ts`; no token on a cluster the browser still
+   scrolls means the pagination contract changed and has to be ported again.
 
 ## Serving regime tripwires
 
