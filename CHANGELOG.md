@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/MrAdex77/google-play-scraper/compare/v1.6.0...v1.6.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **e2e:** take similar continuation anchors from a maintained pool ([#198](https://github.com/MrAdex77/google-play-scraper/issues/198)) ([64da772](https://github.com/MrAdex77/google-play-scraper/commit/64da7723ebf915f116fc0156d07c0dce4cf2bb3c))
+
 ## [1.6.0](https://github.com/MrAdex77/google-play-scraper/compare/v1.5.0...v1.6.0) (2026-11-05)
 
 
