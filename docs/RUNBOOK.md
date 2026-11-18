@@ -449,13 +449,15 @@ arranged for a maintainer's own app:
   serving a linked security practice description, VK offered on the `us`
   storefront and withheld on `de`, and PhonePe gaining the UPI practice on the
   `in` storefront. Each failure message ends in "re-anchor the ... anchor".
-- `REGION_RESTRICTED` in `e2e/edgeCases.e2e.test.ts` must stay sold on its
-  home storefront and withheld on `us`. It is the only live gate on the false
-  branch of `[1, 2, 18, 0]`, which both `app().available` and `availability`
-  read. Measured on 2026-11-18, `com.google.android.apps.nbu.paisa.user` read
-  `available: false` on `us` and `true` on `in`, and `com.venmo` read
-  `available: false` on `pl`, `gb` and `de` and `true` on `us`, so Venmo is the
-  replacement if Google Pay launches in the US. The failure message ends in
+- `REGION_RESTRICTED` in `e2e/edgeCases.e2e.test.ts` must stay sold on
+  `REGION_RESTRICTED_HOME` and withheld on `REGION_RESTRICTED_ABSENT`. It is
+  the only live gate on the false branch of `[1, 2, 18, 0]`, which both
+  `app().available` and `availability` read. Measured on 2026-11-18,
+  `com.google.android.apps.nbu.paisa.user` read `available: false` on `us` and
+  `true` on `in`, and `com.venmo` read `available: false` on `pl`, `gb` and
+  `de` and `true` on `us`, so Venmo is the replacement if Google Pay launches
+  in the US: set the three constants together to `com.venmo`, `us` and `pl`,
+  since the two storefronts must differ. The failure message ends in
   "re-anchor the region restricted anchor"; re-anchor as
   `test(e2e): re-anchor the region restricted anchor`.
 
