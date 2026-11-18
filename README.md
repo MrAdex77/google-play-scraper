@@ -348,7 +348,7 @@ type AppsEntry =
 
 ### availability
 
-Answers "in which countries is this app sold?" by probing the Google Play details page once per country. Google Play serves a listing with `200` even in a storefront that does not sell the app, so a probe reads the same flag as `app().available` from the listing's details block. It skips every other field, so a probe costs less than an `app` lookup.
+Answers "in which countries is this app sold?" by probing the Google Play details page once per country. Google Play serves a listing with `200` even in a storefront that does not sell the app, so a probe reads the same flag as `app().available` from the listing's details block. It skips the fields it does not need, so a probe costs less than an `app` lookup.
 
 | Option        | Type       | Default  | Description                                                      |
 | ------------- | ---------- | -------- | ---------------------------------------------------------------- |
@@ -380,11 +380,11 @@ const result = await availability({
 
 Each country resolves to one of three statuses:
 
-- `available`: the probe returned `200` and the listing is sold in that storefront.
+- `available`: the probe returned `200` and the listing is sold in that storefront. A preregistration listing counts as sold.
 - `unavailable`: the probe returned `404`, or the listing it returned is not sold in that storefront.
-- `error`: the probe could not tell. A block (consent wall or captcha), a rate limit, any other HTTP failure, a network error or a page without listing data, with the original `message` preserved.
+- `error`: the probe could not tell. A block (consent wall or captcha), a rate limit, any other HTTP failure, a network error, or a page whose listing data is missing or laid out differently than expected, with the original `message` preserved.
 
-A [cancelled](#cancellation) call rejects with your abort reason instead of reporting countries as `error`. `error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not published" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
+A [cancelled](#cancellation) call rejects with your abort reason instead of reporting countries as `error`. `error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not sold" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
 
 Google Play geoblocking depends on the caller's IP as much as on the `gl` parameter, so pair `availability` with [`createCountryFetch`](#routing-by-country). Each probe carries `gl=<country>`, so a per-country route sends the `us` probe through a US proxy and the `de` probe through a German one.
 
@@ -1166,6 +1166,7 @@ Boundaries to know:
 - An empty continuation page emits nothing: that is the normal end-of-results signal. A continuation answered with a null payload and a not found status is read the same way. Any other error status emits `cluster-page-parse`.
 - Google Play can serve an app again on a later page of `developer`, `similar` or `search`. Each app is returned once, at its first position, emits no event and does not count toward `num`, so `developerIterator` and `searchIterator` never repeat an app either. After three pages in a row that only repeat earlier apps, the call stops paginating and returns what it has.
 - `developer` reads a continuation page from the layout that matches the kind of `devId` (numeric id or name). When Google serves the other layout, the page is still read and `rpc-anchor-fallback` reports it, so treat that event as a scheduled repair.
+- `availability` reads each listing through the same details root as `app`, so a probe that resolves it through the fallback emits `rpc-anchor-fallback` with context `availability details`.
 - `app` emits `optional-section-parse` with context `app comments` when the comment roots are structurally invalid. A valid empty comment root returns an empty list without an event. Treat a rising event rate as the signal.
 - `reviews` pagination never swallows a parse failure: malformed pages reject with `ParseError`, a repeated token stops the walk and emits `pagination-token-cycle`, and an exhausted request budget returns the partial set and emits `request-budget-exhausted`.
 
