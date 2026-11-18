@@ -16,14 +16,24 @@ const whereAmIHtml = readFileSync(
   'utf8',
 );
 
-const notSoldHtml = (): string => {
-  const details = parseScriptData(whereAmIHtml).blocks['ds:5'];
-  if (!Array.isArray(details) || !Array.isArray(details[1]) || !Array.isArray(details[1][2])) {
+const listingHtml = (mutate: (details: unknown[]) => void): string => {
+  const root = parseScriptData(whereAmIHtml).blocks['ds:5'];
+  if (!Array.isArray(root) || !Array.isArray(root[1]) || !Array.isArray(root[1][2])) {
     throw new Error('whereami fixture lost its details root');
   }
-  details[1][2][18] = [];
-  return replaceScriptBlockData(whereAmIHtml, 'ds:5', details);
+  mutate(root[1][2]);
+  return replaceScriptBlockData(whereAmIHtml, 'ds:5', root);
 };
+
+const soldFlagHtml = (flag: unknown): string =>
+  listingHtml((details) => {
+    details[18] = flag;
+  });
+
+const servingOnePage =
+  (body: string): typeof fetch =>
+  () =>
+    Promise.resolve(fakeResponse({ body }));
 
 const urlOf = (input: string | URL | Request): string =>
   typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -78,31 +88,52 @@ describe('availability', () => {
     }
   });
 
-  it('reports a listing served in a storefront that does not sell it as unavailable', async () => {
-    const bodies: Record<string, string> = { us: whereAmIHtml, pl: notSoldHtml() };
-    const fetchImpl: typeof fetch = (input) =>
-      Promise.resolve(fakeResponse({ body: bodies[glOf(input) ?? ''] }));
-
+  it.each([
+    { flag: [2], status: 'available' },
+    { flag: [1], status: 'available' },
+    { flag: [], status: 'unavailable' },
+    { flag: [0], status: 'unavailable' },
+    { flag: null, status: 'unavailable' },
+  ])('reads a 200 listing whose sold flag is $flag as $status', async ({ flag, status }) => {
     const result = await availability({
       appId: 'com.adex77.WhereAmI',
-      countries: ['us', 'pl'],
-      requestOptions: { fetchImpl, retries: 0 },
+      countries: ['pl'],
+      requestOptions: { fetchImpl: servingOnePage(soldFlagHtml(flag)), retries: 0 },
     });
 
-    expect(result.countries.us).toEqual({ status: 'available' });
-    expect(result.countries.pl).toEqual({ status: 'unavailable' });
+    expect(result.countries.pl).toEqual({ status });
   });
 
   it('reports a 200 page without listing data as error, never as available', async () => {
-    const emptyPage: typeof fetch = () => Promise.resolve(fakeResponse({ body: '<html></html>' }));
-
     const result = await availability({
       appId: 'com.example.app',
       countries: ['us'],
-      requestOptions: { fetchImpl: emptyPage, retries: 0 },
+      requestOptions: { fetchImpl: servingOnePage('<html></html>'), retries: 0 },
     });
 
-    expect(result.countries.us?.status).toBe('error');
+    const us = result.countries.us;
+    expect(us?.status).toBe('error');
+    if (us?.status === 'error') {
+      expect(us.message).toMatch(/required script root missing/);
+    }
+  });
+
+  it('reports a shifted listing layout as error, never as unavailable', async () => {
+    const shifted = listingHtml((details) => {
+      details.splice(10, 0, null);
+    });
+
+    const result = await availability({
+      appId: 'com.adex77.WhereAmI',
+      countries: ['us'],
+      requestOptions: { fetchImpl: servingOnePage(shifted), retries: 0 },
+    });
+
+    const us = result.countries.us;
+    expect(us?.status).toBe('error');
+    if (us?.status === 'error') {
+      expect(us.message).toMatch(/developer/);
+    }
   });
 
   it('rejects with the abort reason instead of reporting every country as error', async () => {

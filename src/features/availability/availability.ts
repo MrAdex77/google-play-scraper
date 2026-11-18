@@ -47,7 +47,9 @@ const AVAILABILITY_CONTEXT = 'availability';
 
 const listingSelection = deriveScriptDataSelection([appDetailsRootSpec]);
 
-const listingSpecs = { available: appSpecs.available };
+const layoutAnchors = { developer: appSpecs.developer, genreId: appSpecs.genreId };
+
+const listingSpecs = { ...layoutAnchors, available: appSpecs.available };
 
 function soldInStorefront(html: string, onIntegrityEvent: OnIntegrityEvent | undefined): boolean {
   const data = parseScriptData(html, listingSelection);
