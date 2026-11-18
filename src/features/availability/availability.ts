@@ -2,6 +2,7 @@ import * as z from 'zod/mini';
 import { mapWithConcurrency } from '../../core/concurrency.ts';
 import { GooglePlayError, NotFoundError } from '../../core/errors.ts';
 import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import type { OnIntegrityEvent } from '../../core/integrity.ts';
 import {
   appIdSchema,
   baseOptionsSchema,
@@ -10,7 +11,11 @@ import {
   parseOptions,
   requestOptionsSchema,
 } from '../../core/options.ts';
+import { deriveScriptDataSelection, parseScriptData } from '../../core/scriptData.ts';
+import { resolveScriptRoot } from '../../core/scriptRoot.ts';
+import { extract } from '../../core/spec.ts';
 import { appDetailsUrl } from '../../core/url.ts';
+import { appDetailsRootSpec, appSpecs } from '../app/specs.ts';
 import {
   availabilityResultSchema,
   type AvailabilityResult,
@@ -40,6 +45,21 @@ export type AvailabilityOptions = z.input<typeof availabilityOptionsSchema>;
 
 const AVAILABILITY_CONTEXT = 'availability';
 
+const listingSelection = deriveScriptDataSelection([appDetailsRootSpec]);
+
+const listingSpecs = { available: appSpecs.available };
+
+function soldInStorefront(html: string, onIntegrityEvent: OnIntegrityEvent | undefined): boolean {
+  const data = parseScriptData(html, listingSelection);
+  const details = resolveScriptRoot(
+    data,
+    appDetailsRootSpec,
+    `${AVAILABILITY_CONTEXT} details`,
+    onIntegrityEvent,
+  );
+  return extract(details.root, listingSpecs, AVAILABILITY_CONTEXT).available;
+}
+
 function toCountryAvailability(error: unknown): CountryAvailability {
   if (!(error instanceof GooglePlayError)) {
     throw error;
@@ -59,8 +79,10 @@ export function createAvailability(resolveClient: ResolveClient = clientFromOpti
     const probe = async (country: string): Promise<CountryAvailability> => {
       const url = appDetailsUrl({ id: parsed.appId, hl: parsed.lang, gl: country });
       try {
-        await client.request({ url });
-        return { status: 'available' };
+        const html = await client.request({ url });
+        return soldInStorefront(html, parsed.onIntegrityEvent)
+          ? { status: 'available' }
+          : { status: 'unavailable' };
       } catch (error) {
         return toCountryAvailability(error);
       }

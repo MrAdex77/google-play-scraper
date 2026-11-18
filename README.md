@@ -187,7 +187,7 @@ Every method from the [reference below](#methods) is available on the client, al
 
 - [app](#app): full detail of a single application
 - [apps](#apps): full detail of many applications in one call
-- [availability](#availability): the countries an app is published in
+- [availability](#availability): the countries an app is sold in
 - [search](#search): apps matching a search term
 - [suggest](#suggest): search term autocompletions
 - [list](#list): a ranked collection of apps
@@ -348,7 +348,7 @@ type AppsEntry =
 
 ### availability
 
-Answers "in which countries is this app published?" by probing the Google Play details page once per country. Each probe is a plain `GET` whose HTTP status is the whole answer, so the body is never parsed and a probe costs far less than an `app` lookup.
+Answers "in which countries is this app sold?" by probing the Google Play details page once per country. Google Play serves a listing with `200` even in a storefront that does not sell the app, so a probe reads the same flag as `app().available` from the listing's details block. It skips every other field, so a probe costs less than an `app` lookup.
 
 | Option        | Type       | Default  | Description                                                      |
 | ------------- | ---------- | -------- | ---------------------------------------------------------------- |
@@ -380,9 +380,9 @@ const result = await availability({
 
 Each country resolves to one of three statuses:
 
-- `available`: the probe returned `200`; the app is published in that storefront.
-- `unavailable`: the probe returned `404`; the app is not published there.
-- `error`: the probe could not tell. A block (consent wall or captcha), a rate limit, any other HTTP failure or a network error, with the original `message` preserved.
+- `available`: the probe returned `200` and the listing is sold in that storefront.
+- `unavailable`: the probe returned `404`, or the listing it returned is not sold in that storefront.
+- `error`: the probe could not tell. A block (consent wall or captcha), a rate limit, any other HTTP failure, a network error or a page without listing data, with the original `message` preserved.
 
 A [cancelled](#cancellation) call rejects with your abort reason instead of reporting countries as `error`. `error` is never collapsed into `unavailable`: a blocked or rate-limited probe means "could not determine", which must not read as "not published" in data used for release decisions. Country codes are returned lowercased, duplicates (ignoring case) are rejected, and a single call probes at most `50` countries.
 

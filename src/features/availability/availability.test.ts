@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { availability } from './availability.ts';
 import { availabilityResultSchema } from './schema.ts';
@@ -6,6 +8,22 @@ import { memoized } from '../memoized/memoized.ts';
 import { createCountryFetch } from '../../core/countryFetch.ts';
 import { ValidationError } from '../../core/errors.ts';
 import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
+import { replaceScriptBlockData } from '../../../test/helpers/responseMutation.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
+
+const whereAmIHtml = readFileSync(
+  fileURLToPath(new URL('../../../test/fixtures/app/whereami.html', import.meta.url)),
+  'utf8',
+);
+
+const notSoldHtml = (): string => {
+  const details = parseScriptData(whereAmIHtml).blocks['ds:5'];
+  if (!Array.isArray(details) || !Array.isArray(details[1]) || !Array.isArray(details[1][2])) {
+    throw new Error('whereami fixture lost its details root');
+  }
+  details[1][2][18] = [];
+  return replaceScriptBlockData(whereAmIHtml, 'ds:5', details);
+};
 
 const urlOf = (input: string | URL | Request): string =>
   typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -26,7 +44,7 @@ const fakeResponse = (init: FakeResponseInit = {}): Response => {
     status,
     url: init.url ?? 'https://play.google.com/store/apps/details',
     headers: new Headers(),
-    text: () => Promise.resolve(init.body ?? ''),
+    text: () => Promise.resolve(init.body ?? whereAmIHtml),
   } as unknown as Response;
 };
 
@@ -58,6 +76,33 @@ describe('availability', () => {
     if (de?.status === 'error') {
       expect(de.message).toContain('500');
     }
+  });
+
+  it('reports a listing served in a storefront that does not sell it as unavailable', async () => {
+    const bodies: Record<string, string> = { us: whereAmIHtml, pl: notSoldHtml() };
+    const fetchImpl: typeof fetch = (input) =>
+      Promise.resolve(fakeResponse({ body: bodies[glOf(input) ?? ''] }));
+
+    const result = await availability({
+      appId: 'com.adex77.WhereAmI',
+      countries: ['us', 'pl'],
+      requestOptions: { fetchImpl, retries: 0 },
+    });
+
+    expect(result.countries.us).toEqual({ status: 'available' });
+    expect(result.countries.pl).toEqual({ status: 'unavailable' });
+  });
+
+  it('reports a 200 page without listing data as error, never as available', async () => {
+    const emptyPage: typeof fetch = () => Promise.resolve(fakeResponse({ body: '<html></html>' }));
+
+    const result = await availability({
+      appId: 'com.example.app',
+      countries: ['us'],
+      requestOptions: { fetchImpl: emptyPage, retries: 0 },
+    });
+
+    expect(result.countries.us?.status).toBe('error');
   });
 
   it('rejects with the abort reason instead of reporting every country as error', async () => {

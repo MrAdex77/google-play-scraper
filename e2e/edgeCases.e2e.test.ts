@@ -191,6 +191,16 @@ liveDescribe('availability and catalogue edges live contract', () => {
     expectListingContract(result, 'home storefront listing');
   });
 
+  it('probes the region restricted listing as sold only on its own storefront', async () => {
+    const result = await liveClient.availability({
+      appId: REGION_RESTRICTED,
+      countries: [REGION_RESTRICTED_HOME, 'us'],
+    });
+
+    expect(result.countries[REGION_RESTRICTED_HOME]).toEqual({ status: 'available' });
+    expect(result.countries.us).toEqual({ status: 'unavailable' });
+  });
+
   it('resolves details across live comment root variants', async () => {
     const events: IntegrityEvent[] = [];
     const result = await liveClient.app({
