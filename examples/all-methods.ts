@@ -118,7 +118,7 @@ async function showApps(client: Client): Promise<void> {
 }
 
 async function showAvailability(client: Client): Promise<void> {
-  heading('availability()', 'in which countries an app is published');
+  heading('availability()', 'in which countries an app is sold');
   const result = await client.availability({
     appId: TEST_APP_ID,
     countries: ['us', 'pl', 'de'],

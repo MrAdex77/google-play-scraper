@@ -22,7 +22,7 @@ others still run.
 | ------------------------------------ | ----------------------------------------------- |
 | `app()`                              | Full details for a single app by `appId`        |
 | `apps()`                             | Batch details for many ids with per-id failures |
-| `availability()`                     | In which countries an app is published          |
+| `availability()`                     | In which countries an app is sold               |
 | `search()`                           | Apps matching a query                           |
 | `suggest()`                          | Search term autocompletions                     |
 | `list()`                             | A ranked collection (`TOP_FREE` / `GAME`)       |

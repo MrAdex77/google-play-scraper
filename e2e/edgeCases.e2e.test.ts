@@ -18,6 +18,8 @@ const SPARSE_SAFETY_ANCHOR = 'com.hDel.codeblue';
 const SPARSE_SIMILAR_ANCHOR = 'org.asccp.app2019';
 const REGION_RESTRICTED = 'com.google.android.apps.nbu.paisa.user';
 const REGION_RESTRICTED_HOME = 'in';
+const REGION_RESTRICTED_ABSENT = 'us';
+const REANCHOR_REGION_RESTRICTED = 're-anchor the region restricted anchor';
 const PLAY_PASS_CANDIDATES = [
   'com.noodlecake.altosodyssey',
   'com.chucklefish.stardewvalley',
@@ -170,11 +172,11 @@ liveDescribe('availability and catalogue edges live contract', () => {
     const events: IntegrityEvent[] = [];
     const result = await liveClient.app({
       appId: REGION_RESTRICTED,
-      country: 'us',
+      country: REGION_RESTRICTED_ABSENT,
       onIntegrityEvent: (event) => events.push(event),
     });
 
-    expect(result.available).toBe(false);
+    expect(result.available, REANCHOR_REGION_RESTRICTED).toBe(false);
     expect(result.preregister).toBe(false);
     expectListingContract(result, 'region restricted listing');
     expect(result.ratings).toBeGreaterThan(0);
@@ -187,8 +189,22 @@ liveDescribe('availability and catalogue edges live contract', () => {
       country: REGION_RESTRICTED_HOME,
     });
 
-    expect(result.available).toBe(true);
+    expect(result.available, REANCHOR_REGION_RESTRICTED).toBe(true);
     expectListingContract(result, 'home storefront listing');
+  });
+
+  it('probes the region restricted listing as sold only on its own storefront', async () => {
+    const result = await liveClient.availability({
+      appId: REGION_RESTRICTED,
+      countries: [REGION_RESTRICTED_HOME, REGION_RESTRICTED_ABSENT],
+    });
+
+    expect(result.countries[REGION_RESTRICTED_HOME], REANCHOR_REGION_RESTRICTED).toEqual({
+      status: 'available',
+    });
+    expect(result.countries[REGION_RESTRICTED_ABSENT], REANCHOR_REGION_RESTRICTED).toEqual({
+      status: 'unavailable',
+    });
   });
 
   it('resolves details across live comment root variants', async () => {
