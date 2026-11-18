@@ -1,8 +1,8 @@
 import * as z from 'zod/mini';
 import { mapWithConcurrency } from '../../core/concurrency.ts';
 import { GooglePlayError, NotFoundError } from '../../core/errors.ts';
-import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
-import type { OnIntegrityEvent } from '../../core/integrity.ts';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
+import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 import {
   appIdSchema,
   baseOptionsSchema,
@@ -51,7 +51,7 @@ const layoutAnchors = { developer: appSpecs.developer, genreId: appSpecs.genreId
 
 const listingSpecs = { ...layoutAnchors, available: appSpecs.available };
 
-function soldInStorefront(html: string, onIntegrityEvent: OnIntegrityEvent | undefined): boolean {
+function soldInStorefront(html: string, onIntegrityEvent: OnIntegrityEvent): boolean {
   const data = parseScriptData(html, listingSelection);
   const details = resolveScriptRoot(
     data,
@@ -72,6 +72,21 @@ function toCountryAvailability(error: unknown): CountryAvailability {
   return { status: 'error', message: error.message };
 }
 
+async function readListing(
+  client: HttpClient,
+  url: string,
+  onIntegrityEvent: OnIntegrityEvent,
+): Promise<CountryAvailability> {
+  try {
+    const html = await client.request({ url });
+    return soldInStorefront(html, onIntegrityEvent)
+      ? { status: 'available' }
+      : { status: 'unavailable' };
+  } catch (error) {
+    return toCountryAvailability(error);
+  }
+}
+
 export function createAvailability(resolveClient: ResolveClient = clientFromOptions) {
   return async function availability(options: AvailabilityOptions): Promise<AvailabilityResult> {
     const parsed = parseOptions(availabilityOptionsSchema, options, AVAILABILITY_CONTEXT);
@@ -80,14 +95,14 @@ export function createAvailability(resolveClient: ResolveClient = clientFromOpti
 
     const probe = async (country: string): Promise<CountryAvailability> => {
       const url = appDetailsUrl({ id: parsed.appId, hl: parsed.lang, gl: country });
-      try {
-        const html = await client.request({ url });
-        return soldInStorefront(html, parsed.onIntegrityEvent)
-          ? { status: 'available' }
-          : { status: 'unavailable' };
-      } catch (error) {
-        return toCountryAvailability(error);
+      const events: IntegrityEvent[] = [];
+      const outcome = await readListing(client, url, (event) => {
+        events.push(event);
+      });
+      for (const event of events) {
+        parsed.onIntegrityEvent?.(event);
       }
+      return outcome;
     };
 
     const outcomes = await mapWithConcurrency(countries, parsed.concurrency, probe);

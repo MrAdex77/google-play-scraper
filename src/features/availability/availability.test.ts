@@ -6,7 +6,7 @@ import { availabilityResultSchema } from './schema.ts';
 import { createClient } from '../../client.ts';
 import { memoized } from '../memoized/memoized.ts';
 import { createCountryFetch } from '../../core/countryFetch.ts';
-import { ValidationError } from '../../core/errors.ts';
+import { ParseError, ValidationError } from '../../core/errors.ts';
 import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
 import { replaceScriptBlockData } from '../../../test/helpers/responseMutation.ts';
 import { parseScriptData } from '../../core/scriptData.ts';
@@ -134,6 +134,23 @@ describe('availability', () => {
     if (us?.status === 'error') {
       expect(us.message).toMatch(/developer/);
     }
+  });
+
+  it('rejects with the error an integrity callback throws, never as a country error', async () => {
+    const root = parseScriptData(whereAmIHtml).blocks['ds:5'];
+    const unroutedPage = `<script>AF_initDataCallback({key: 'ds:5', hash: '1', data:${JSON.stringify(root)}, sideChannel: {}});</script>`;
+    const callbackError = new ParseError('integrity callback refused');
+
+    await expect(
+      availability({
+        appId: 'com.adex77.WhereAmI',
+        countries: ['us'],
+        requestOptions: { fetchImpl: servingOnePage(unroutedPage), retries: 0 },
+        onIntegrityEvent: () => {
+          throw callbackError;
+        },
+      }),
+    ).rejects.toBe(callbackError);
   });
 
   it('rejects with the abort reason instead of reporting every country as error', async () => {
