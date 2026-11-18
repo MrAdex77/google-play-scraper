@@ -18,6 +18,7 @@ const SPARSE_SAFETY_ANCHOR = 'com.hDel.codeblue';
 const SPARSE_SIMILAR_ANCHOR = 'org.asccp.app2019';
 const REGION_RESTRICTED = 'com.google.android.apps.nbu.paisa.user';
 const REGION_RESTRICTED_HOME = 'in';
+const REANCHOR_REGION_RESTRICTED = 're-anchor the region restricted anchor';
 const PLAY_PASS_CANDIDATES = [
   'com.noodlecake.altosodyssey',
   'com.chucklefish.stardewvalley',
@@ -174,7 +175,7 @@ liveDescribe('availability and catalogue edges live contract', () => {
       onIntegrityEvent: (event) => events.push(event),
     });
 
-    expect(result.available).toBe(false);
+    expect(result.available, REANCHOR_REGION_RESTRICTED).toBe(false);
     expect(result.preregister).toBe(false);
     expectListingContract(result, 'region restricted listing');
     expect(result.ratings).toBeGreaterThan(0);
@@ -187,7 +188,7 @@ liveDescribe('availability and catalogue edges live contract', () => {
       country: REGION_RESTRICTED_HOME,
     });
 
-    expect(result.available).toBe(true);
+    expect(result.available, REANCHOR_REGION_RESTRICTED).toBe(true);
     expectListingContract(result, 'home storefront listing');
   });
 
@@ -197,8 +198,10 @@ liveDescribe('availability and catalogue edges live contract', () => {
       countries: [REGION_RESTRICTED_HOME, 'us'],
     });
 
-    expect(result.countries[REGION_RESTRICTED_HOME]).toEqual({ status: 'available' });
-    expect(result.countries.us).toEqual({ status: 'unavailable' });
+    expect(result.countries[REGION_RESTRICTED_HOME], REANCHOR_REGION_RESTRICTED).toEqual({
+      status: 'available',
+    });
+    expect(result.countries.us, REANCHOR_REGION_RESTRICTED).toEqual({ status: 'unavailable' });
   });
 
   it('resolves details across live comment root variants', async () => {
