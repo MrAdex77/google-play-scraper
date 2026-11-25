@@ -1,11 +1,42 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as z from 'zod/mini';
 import { availability } from './availability.ts';
 import { availabilityResultSchema } from './schema.ts';
 import { createClient } from '../../client.ts';
 import { memoized } from '../memoized/memoized.ts';
 import { createCountryFetch } from '../../core/countryFetch.ts';
-import { ValidationError } from '../../core/errors.ts';
+import { ParseError, ValidationError } from '../../core/errors.ts';
 import { MALFORMED_APP_IDS } from '../../../test/helpers/appIds.ts';
+import { replaceScriptBlockData } from '../../../test/helpers/responseMutation.ts';
+import { parseScriptData } from '../../core/scriptData.ts';
+
+const whereAmIHtml = readFileSync(
+  fileURLToPath(new URL('../../../test/fixtures/app/whereami.html', import.meta.url)),
+  'utf8',
+);
+
+const detailsRootSchema = z.tuple(
+  [z.unknown(), z.tuple([z.unknown(), z.unknown(), z.array(z.unknown())], z.unknown())],
+  z.unknown(),
+);
+
+const listingHtml = (mutate: (details: unknown[]) => void): string => {
+  const root = detailsRootSchema.parse(parseScriptData(whereAmIHtml).blocks['ds:5']);
+  mutate(root[1][2]);
+  return replaceScriptBlockData(whereAmIHtml, 'ds:5', root);
+};
+
+const soldFlagHtml = (flag: unknown): string =>
+  listingHtml((details) => {
+    details[18] = flag;
+  });
+
+const servingOnePage =
+  (body: string): typeof fetch =>
+  () =>
+    Promise.resolve(fakeResponse({ body }));
 
 const urlOf = (input: string | URL | Request): string =>
   typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -26,7 +57,7 @@ const fakeResponse = (init: FakeResponseInit = {}): Response => {
     status,
     url: init.url ?? 'https://play.google.com/store/apps/details',
     headers: new Headers(),
-    text: () => Promise.resolve(init.body ?? ''),
+    text: () => Promise.resolve(init.body ?? whereAmIHtml),
   } as unknown as Response;
 };
 
@@ -58,6 +89,71 @@ describe('availability', () => {
     if (de?.status === 'error') {
       expect(de.message).toContain('500');
     }
+  });
+
+  it.each([
+    { flag: [2], status: 'available' },
+    { flag: [1], status: 'available' },
+    { flag: [], status: 'unavailable' },
+    { flag: [0], status: 'unavailable' },
+    { flag: null, status: 'unavailable' },
+  ])('reads a 200 listing whose sold flag is $flag as $status', async ({ flag, status }) => {
+    const result = await availability({
+      appId: 'com.adex77.WhereAmI',
+      countries: ['pl'],
+      requestOptions: { fetchImpl: servingOnePage(soldFlagHtml(flag)), retries: 0 },
+    });
+
+    expect(result.countries.pl).toEqual({ status });
+  });
+
+  it('reports a 200 page without listing data as error, never as available', async () => {
+    const result = await availability({
+      appId: 'com.example.app',
+      countries: ['us'],
+      requestOptions: { fetchImpl: servingOnePage('<html></html>'), retries: 0 },
+    });
+
+    const us = result.countries.us;
+    expect(us?.status).toBe('error');
+    if (us?.status === 'error') {
+      expect(us.message).toMatch(/required script root missing/);
+    }
+  });
+
+  it('reports a shifted listing layout as error, never as unavailable', async () => {
+    const shifted = listingHtml((details) => {
+      details.splice(10, 0, null);
+    });
+
+    const result = await availability({
+      appId: 'com.adex77.WhereAmI',
+      countries: ['us'],
+      requestOptions: { fetchImpl: servingOnePage(shifted), retries: 0 },
+    });
+
+    const us = result.countries.us;
+    expect(us?.status).toBe('error');
+    if (us?.status === 'error') {
+      expect(us.message).toMatch(/developer/);
+    }
+  });
+
+  it('rejects with the error an integrity callback throws, never as a country error', async () => {
+    const root = parseScriptData(whereAmIHtml).blocks['ds:5'];
+    const unroutedPage = `<script>AF_initDataCallback({key: 'ds:5', hash: '1', data:${JSON.stringify(root)}, sideChannel: {}});</script>`;
+    const callbackError = new ParseError('integrity callback refused');
+
+    await expect(
+      availability({
+        appId: 'com.adex77.WhereAmI',
+        countries: ['us'],
+        requestOptions: { fetchImpl: servingOnePage(unroutedPage), retries: 0 },
+        onIntegrityEvent: () => {
+          throw callbackError;
+        },
+      }),
+    ).rejects.toBe(callbackError);
   });
 
   it('rejects with the abort reason instead of reporting every country as error', async () => {

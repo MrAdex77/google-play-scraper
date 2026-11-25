@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
 import { mapWithConcurrency } from '../../core/concurrency.ts';
 import { GooglePlayError, NotFoundError } from '../../core/errors.ts';
-import { clientFromOptions, type ResolveClient } from '../../core/http.ts';
+import { clientFromOptions, type HttpClient, type ResolveClient } from '../../core/http.ts';
+import type { IntegrityEvent, OnIntegrityEvent } from '../../core/integrity.ts';
 import {
   appIdSchema,
   baseOptionsSchema,
@@ -10,7 +11,11 @@ import {
   parseOptions,
   requestOptionsSchema,
 } from '../../core/options.ts';
+import { deriveScriptDataSelection, parseScriptData } from '../../core/scriptData.ts';
+import { resolveScriptRoot } from '../../core/scriptRoot.ts';
+import { extract } from '../../core/spec.ts';
 import { appDetailsUrl } from '../../core/url.ts';
+import { appDetailsRootSpec, appSpecs } from '../app/specs.ts';
 import {
   availabilityResultSchema,
   type AvailabilityResult,
@@ -40,6 +45,23 @@ export type AvailabilityOptions = z.input<typeof availabilityOptionsSchema>;
 
 const AVAILABILITY_CONTEXT = 'availability';
 
+const listingSelection = deriveScriptDataSelection([appDetailsRootSpec]);
+
+const layoutAnchors = { developer: appSpecs.developer, genreId: appSpecs.genreId };
+
+const listingSpecs = { ...layoutAnchors, available: appSpecs.available };
+
+function soldInStorefront(html: string, onIntegrityEvent: OnIntegrityEvent): boolean {
+  const data = parseScriptData(html, listingSelection);
+  const details = resolveScriptRoot(
+    data,
+    appDetailsRootSpec,
+    `${AVAILABILITY_CONTEXT} details`,
+    onIntegrityEvent,
+  );
+  return extract(details.root, listingSpecs, AVAILABILITY_CONTEXT).available;
+}
+
 function toCountryAvailability(error: unknown): CountryAvailability {
   if (!(error instanceof GooglePlayError)) {
     throw error;
@@ -50,6 +72,21 @@ function toCountryAvailability(error: unknown): CountryAvailability {
   return { status: 'error', message: error.message };
 }
 
+async function readListing(
+  client: HttpClient,
+  url: string,
+  onIntegrityEvent: OnIntegrityEvent,
+): Promise<CountryAvailability> {
+  try {
+    const html = await client.request({ url });
+    return soldInStorefront(html, onIntegrityEvent)
+      ? { status: 'available' }
+      : { status: 'unavailable' };
+  } catch (error) {
+    return toCountryAvailability(error);
+  }
+}
+
 export function createAvailability(resolveClient: ResolveClient = clientFromOptions) {
   return async function availability(options: AvailabilityOptions): Promise<AvailabilityResult> {
     const parsed = parseOptions(availabilityOptionsSchema, options, AVAILABILITY_CONTEXT);
@@ -58,12 +95,14 @@ export function createAvailability(resolveClient: ResolveClient = clientFromOpti
 
     const probe = async (country: string): Promise<CountryAvailability> => {
       const url = appDetailsUrl({ id: parsed.appId, hl: parsed.lang, gl: country });
-      try {
-        await client.request({ url });
-        return { status: 'available' };
-      } catch (error) {
-        return toCountryAvailability(error);
+      const events: IntegrityEvent[] = [];
+      const outcome = await readListing(client, url, (event) => {
+        events.push(event);
+      });
+      for (const event of events) {
+        parsed.onIntegrityEvent?.(event);
       }
+      return outcome;
     };
 
     const outcomes = await mapWithConcurrency(countries, parsed.concurrency, probe);
