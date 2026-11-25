@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as z from 'zod/mini';
 import { availability } from './availability.ts';
 import { availabilityResultSchema } from './schema.ts';
 import { createClient } from '../../client.ts';
@@ -16,11 +17,13 @@ const whereAmIHtml = readFileSync(
   'utf8',
 );
 
+const detailsRootSchema = z.tuple(
+  [z.unknown(), z.tuple([z.unknown(), z.unknown(), z.array(z.unknown())], z.unknown())],
+  z.unknown(),
+);
+
 const listingHtml = (mutate: (details: unknown[]) => void): string => {
-  const root = parseScriptData(whereAmIHtml).blocks['ds:5'];
-  if (!Array.isArray(root) || !Array.isArray(root[1]) || !Array.isArray(root[1][2])) {
-    throw new Error('whereami fixture lost its details root');
-  }
+  const root = detailsRootSchema.parse(parseScriptData(whereAmIHtml).blocks['ds:5']);
   mutate(root[1][2]);
   return replaceScriptBlockData(whereAmIHtml, 'ds:5', root);
 };
